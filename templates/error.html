@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Error - MoveIt{% endblock %}
+
+{% block content %}
+            <div class="error-section">
+                <div class="error-card">
+                    <div class="error-icon">
+                        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                            <circle cx="40" cy="40" r="40" fill="#FEE2E2"/>
+                            <circle cx="40" cy="40" r="30" stroke="#EF4444" stroke-width="4"/>
+                            <path d="M40 28V44" stroke="#EF4444" stroke-width="4" stroke-linecap="round"/>
+                            <circle cx="40" cy="52" r="2" fill="#EF4444"/>
+                        </svg>
+                    </div>
+
+                    <h2>Oops! Something went wrong</h2>
+                    <p class="error-message">{{ error_message }}</p>
+
+                    <div class="error-actions">
+                        <a href="/" class="btn-primary">Go to Home</a>
+                        <a href="/files" class="btn-secondary">View My Files</a>
+                    </div>
+
+                    <div class="help-text">
+                        <p>If the problem persists, please check:</p>
+                        <ul>
+                            <li>The file link is correct and hasn't expired</li>
+                            <li>Your file doesn't exceed the 500MB size limit</li>
+                            <li>The file type is supported</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+{% endblock %}

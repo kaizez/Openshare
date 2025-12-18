@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Download File - MoveIt{% endblock %}
+
+{% block content %}
+            <div class="claim-section">
+                <div class="claim-header">
+                    <div class="claim-icon">
+                        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                            <circle cx="40" cy="40" r="40" fill="#C6F6D5"/>
+                            <path d="M40 20C31.72 20 25 26.72 25 35C25 40 27.5 44.38 31.25 47.12V52.5C31.25 53.88 32.37 55 33.75 55H46.25C47.63 55 48.75 53.88 48.75 52.5V47.12C52.5 44.38 55 40 55 35C55 26.72 48.28 20 40 20ZM45 45V50H35V45H37.5V40H35V37.5H42.5V45H45ZM40 32.5C38.62 32.5 37.5 31.38 37.5 30C37.5 28.62 38.62 27.5 40 27.5C41.38 27.5 42.5 28.62 42.5 30C42.5 31.38 41.38 32.5 40 32.5Z" fill="#38A169"/>
+                        </svg>
+                    </div>
+                    <h2>Download Your File</h2>
+                    <p>Enter your 16-character access code to download the file</p>
+                </div>
+
+                <div class="claim-form" id="downloadForm">
+                    <div class="code-input-container">
+                        <label for="accessCode">Access Code</label>
+                        <input
+                            type="text"
+                            id="accessCode"
+                            placeholder="Enter 16-character code"
+                            maxlength="16"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <p class="code-hint">Code is case-sensitive • Example: aB3x9K2pQ7mN4sT1</p>
+                    </div>
+
+                    <button class="btn-primary" id="verifyButton" onclick="verifyCode()">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="margin-right: 8px;">
+                            <path d="M10 2C5.58 2 2 5.58 2 10C2 14.42 5.58 18 10 18C14.42 18 18 14.42 18 10C18 5.58 14.42 2 10 2ZM8 14L4 10L5.41 8.59L8 11.17L14.59 4.58L16 6L8 14Z"/>
+                        </svg>
+                        Verify Code
+                    </button>
+
+                    <div class="error-message" id="errorMessage" style="display: none;"></div>
+                </div>
+
+                <div class="claim-success" id="downloadSuccess" style="display: none;">
+                    <div class="success-icon">
+                        <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                            <circle cx="30" cy="30" r="30" fill="#38A169"/>
+                            <path d="M18 30L26 38L42 22" stroke="white" stroke-width="4" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h3>Access Granted!</h3>
+                    <div class="file-details" id="fileDetails">
+                        <p><strong>File:</strong> <span id="verifiedFileName"></span></p>
+                        <p><strong>Size:</strong> <span id="verifiedFileSize"></span></p>
+                        <p><strong>Classification:</strong> <span id="verifiedFileClass" class="badge"></span></p>
+                    </div>
+                    <button class="btn-primary" id="downloadButton">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="margin-right: 8px;">
+                            <path d="M10 2V12M10 12L6 8M10 12L14 8M4 14H16V18H4V14Z"/>
+                        </svg>
+                        Download File
+                    </button>
+                    <p class="security-notice">Note: This code will expire after download. A new code will be generated automatically.</p>
+                </div>
+
+                <div class="security-info">
+                    <h4>Security Features:</h4>
+                    <ul>
+                        <li><strong>One-Time Use:</strong> Each code works only once</li>
+                        <li><strong>24-Hour Expiration:</strong> Codes expire after 24 hours</li>
+                        <li><strong>Auto-Regeneration:</strong> New code generated after each download</li>
+                        <li><strong>Access Logging:</strong> All attempts are logged for security</li>
+                    </ul>
+                </div>
+            </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        let currentFileId = null;
+
+        // Auto-focus on code input
+        document.getElementById('accessCode').focus();
+
+        // Allow Enter key to submit
+        document.getElementById('accessCode').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verifyCode();
+            }
+        });
+
+        function verifyCode() {
+            const code = document.getElementById('accessCode').value.trim();
+            const errorMsg = document.getElementById('errorMessage');
+            const button = document.getElementById('verifyButton');
+
+            // Validate code format
+            if (!code) {
+                showError('Please enter an access code');
+                return;
+            }
+
+            if (code.length !== 16) {
+                showError('Access code must be exactly 16 characters');
+                return;
+            }
+
+            // Disable button and show loading
+            button.disabled = true;
+            button.innerHTML = '<span style="margin-right: 8px;">⏳</span> Verifying...';
+            errorMsg.style.display = 'none';
+
+            // Send verification request
+            fetch('/verify-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code: code })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Store file ID and show success
+                    currentFileId = data.file_id;
+                    showSuccess(data);
+                } else {
+                    showError(data.error || 'Invalid access code');
+                    button.disabled = false;
+                    button.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="margin-right: 8px;"><path d="M10 2C5.58 2 2 5.58 2 10C2 14.42 5.58 18 10 18C14.42 18 18 14.42 18 10C18 5.58 14.42 2 10 2ZM8 14L4 10L5.41 8.59L8 11.17L14.59 4.58L16 6L8 14Z"/></svg>Verify Code';
+                }
+            })
+            .catch(error => {
+                showError('Connection error. Please try again.');
+                button.disabled = false;
+                button.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="margin-right: 8px;"><path d="M10 2C5.58 2 2 5.58 2 10C2 14.42 5.58 18 10 18C14.42 18 18 14.42 18 10C18 5.58 14.42 2 10 2ZM8 14L4 10L5.41 8.59L8 11.17L14.59 4.58L16 6L8 14Z"/></svg>Verify Code';
+            });
+        }
+
+        function showSuccess(data) {
+            // Update file details
+            document.getElementById('verifiedFileName').textContent = data.filename;
+            document.getElementById('verifiedFileSize').textContent = data.file_size;
+
+            const classificationBadge = document.getElementById('verifiedFileClass');
+            classificationBadge.textContent = data.classification;
+            classificationBadge.className = 'badge badge-' + data.classification.toLowerCase().replace(' ', '-');
+
+            // Hide form, show success
+            document.getElementById('downloadForm').style.display = 'none';
+            document.getElementById('downloadSuccess').style.display = 'block';
+
+            // Setup download button
+            document.getElementById('downloadButton').onclick = function() {
+                window.location.href = '/file/' + currentFileId;
+            };
+        }
+
+        function showError(message) {
+            const errorMsg = document.getElementById('errorMessage');
+            errorMsg.textContent = message;
+            errorMsg.style.display = 'block';
+
+            // Shake animation
+            document.getElementById('accessCode').classList.add('shake');
+            setTimeout(() => {
+                document.getElementById('accessCode').classList.remove('shake');
+            }, 500);
+        }
+    </script>
+{% endblock %}
