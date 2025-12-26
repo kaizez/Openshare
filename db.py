@@ -82,7 +82,7 @@ class Database:
     def get_all_metadata(self):
         """Get all file metadata as a dictionary (replacement for load_metadata)"""
         try:
-            cursor = self.connection.cursor(dictionary=True)
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
             cursor.execute("SELECT * FROM file_metadata")
             rows = cursor.fetchall()
 
@@ -124,7 +124,7 @@ class Database:
             include_content: If True, includes the file_content BLOB (default False for performance)
         """
         try:
-            cursor = self.connection.cursor(dictionary=True)
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
 
             if include_content:
                 cursor.execute("SELECT * FROM file_metadata WHERE file_id = %s", (file_id,))
@@ -285,7 +285,7 @@ class Database:
     def get_access_logs(self, file_id):
         """Get access logs for a specific file"""
         try:
-            cursor = self.connection.cursor(dictionary=True)
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
             cursor.execute("""
                 SELECT timestamp, status, details, ip_address
                 FROM access_logs
@@ -332,7 +332,7 @@ class Database:
     def find_file_by_otp(self, otp_code):
         """Find file by OTP code"""
         try:
-            cursor = self.connection.cursor(dictionary=True)
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
             cursor.execute("""
                 SELECT file_id FROM file_metadata
                 WHERE current_otp_code = %s
