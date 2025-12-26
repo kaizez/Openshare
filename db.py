@@ -81,10 +81,14 @@ class Database:
 
     def get_all_metadata(self):
         """Get all file metadata as a dictionary (replacement for load_metadata)"""
+        cursor = None
         try:
             cursor = self.connection.cursor(dictionary=True, buffered=True)
             cursor.execute("SELECT * FROM file_metadata")
             rows = cursor.fetchall()
+            # Close cursor before making additional queries
+            cursor.close()
+            cursor = None
 
             result = {}
             for row in rows:
@@ -114,7 +118,8 @@ class Database:
             print(f"Error fetching all metadata: {e}")
             return {}
         finally:
-            cursor.close()
+            if cursor is not None:
+                cursor.close()
 
     def get_file_metadata(self, file_id, include_content=False):
         """Get metadata for a specific file
