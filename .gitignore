@@ -208,3 +208,9 @@ __marimo__/
 
 # Claude Code
 .claude/
+
+# Certificates and private keys
+certs/
+*.pem
+*.key
+*.crt
