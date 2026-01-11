@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Your Profile - MoveIt{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <img src="{{ url_for('static', filename='images/moveitlogo.png') }}" alt="MoveIt Logo" class="auth-logo-img">
+            <h2 class="brand-name">MoveIt</h2>
+        </div>
+
+        <div class="peek-character">
+            <div class="welcome-message">Almost there!</div>
+            <div class="character-head">
+                <div class="sunglasses"></div>
+                <div class="sunglasses-bridge"></div>
+                <div class="eyes">
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                </div>
+                <div class="mouth"></div>
+            </div>
+            <div class="hand hand-left"></div>
+            <div class="hand hand-right"></div>
+        </div>
+
+        <h1 class="auth-title">Complete Your Profile</h1>
+        <p class="oauth-subtitle">You're signing in with Google. Just choose a username and password to complete your account.</p>
+
+        <form method="POST" action="{{ url_for('main.oauth_signup') }}" class="auth-form">
+            <div class="form-group">
+                <label for="email">Email (from Google)</label>
+                <input type="email" id="email" name="email" class="form-control" value="{{ session.get('oauth_email', '') }}" readonly>
+                <small class="form-text">A security notification will be sent to this email</small>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Choose a Username</label>
+                <input type="text" id="username" name="username" class="form-control" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Create a Password</label>
+                <input type="password" id="password" name="password" class="form-control" required
+                       minlength="8" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$">
+                <div class="password-requirements">
+                    <small>Password must contain:</small>
+                    <ul>
+                        <li id="req-length">At least 8 characters</li>
+                        <li id="req-uppercase">One uppercase letter (A-Z)</li>
+                        <li id="req-lowercase">One lowercase letter (a-z)</li>
+                        <li id="req-number">One number (0-9)</li>
+                        <li id="req-special">One special character (@$!%*?&)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+                <small id="password-match-message" class="form-text"></small>
+            </div>
+
+            <div class="form-group">
+                <div class="g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Complete Registration</button>
+        </form>
+
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+        <div class="auth-footer">
+            <p><a href="{{ url_for('main.login') }}">Cancel and return to login</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

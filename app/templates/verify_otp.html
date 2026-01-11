@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Identity - MoveIt{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <img src="{{ url_for('static', filename='images/moveitlogo.png') }}" alt="MoveIt Logo" class="auth-logo-img">
+            <h2 class="brand-name">MoveIt</h2>
+        </div>
+
+        <div class="peek-character">
+            <div class="welcome-message">Verify Your Identity</div>
+            <div class="character-head">
+                <div class="sunglasses"></div>
+                <div class="sunglasses-bridge"></div>
+                <div class="eyes">
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                </div>
+                <div class="mouth"></div>
+            </div>
+            <div class="hand hand-left"></div>
+            <div class="hand hand-right"></div>
+        </div>
+
+        <h1 class="auth-title">Two-Factor Authentication</h1>
+        <p class="forgot-password-subtitle">Enter your email and the 6-digit verification code that was sent to you.</p>
+
+        <form method="POST" action="{{ url_for('main.verify_reset_otp') }}" class="auth-form">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    class="form-control"
+                    value="{{ email }}"
+                    required
+                    autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="otp_code">Verification Code</label>
+                <input
+                    type="text"
+                    id="otp_code"
+                    name="otp_code"
+                    class="form-control otp-input"
+                    placeholder="000000"
+                    required
+                    maxlength="6"
+                    pattern="\d{6}"
+                    inputmode="numeric"
+                    style="font-size: 24px; letter-spacing: 8px; text-align: center; font-weight: bold;">
+                <small class="form-text">Enter the 6-digit code from your email</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Verify Code</button>
+        </form>
+
+        <div class="forgot-password-info">
+            <div class="info-box" style="background-color: #f0f9ff; border-left-color: #3b82f6;">
+                <svg class="info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+                <div class="info-text">
+                    <strong>Check Your Email</strong>
+                    <p>We sent a 6-digit verification code to your email address. The code will expire in 15 minutes.</p>
+                    <p style="margin-top: 10px; font-size: 13px; color: #64748b;">Don't see the email? Check your spam or junk folder.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider">
+            <span>OR</span>
+        </div>
+
+        <div class="auth-footer">
+            <p>Didn't receive a code? <a href="{{ url_for('main.forgot_password') }}">Request a new one</a></p>
+            <p>Remember your password? <a href="{{ url_for('main.login') }}">Back to Login</a></p>
+        </div>
+    </div>
+</div>
+
+<style>
+.otp-input {
+    font-family: 'Courier New', monospace;
+}
+
+.otp-input::-webkit-inner-spin-button,
+.otp-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.otp-input[type=number] {
+    -moz-appearance: textfield;
+}
+</style>
+
+<script>
+// Auto-submit form when 6 digits are entered
+document.getElementById('otp_code').addEventListener('input', function(e) {
+    const value = e.target.value;
+    // Remove non-numeric characters
+    e.target.value = value.replace(/\D/g, '');
+
+    // Auto-submit when 6 digits are entered
+    if (e.target.value.length === 6) {
+        // Optional: Auto-submit after a brief delay
+        setTimeout(function() {
+            // Uncomment the line below to enable auto-submit
+            // e.target.form.submit();
+        }, 500);
+    }
+});
+
+// Focus on input on page load
+window.addEventListener('load', function() {
+    document.getElementById('otp_code').focus();
+});
+</script>
+{% endblock %}

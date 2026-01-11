@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}MoveIt - Secure File Transfer{% endblock %}
+
+{% block content %}
+<div class="landing-page">
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-logo">
+                <div class="mascot-logo">
+                    <div class="character-head">
+                        <div class="sunglasses"></div>
+                        <div class="sunglasses-bridge"></div>
+                        <div class="eyes">
+                            <div class="eye">
+                                <div class="pupil"></div>
+                            </div>
+                            <div class="eye">
+                                <div class="pupil"></div>
+                            </div>
+                        </div>
+                        <div class="mouth"></div>
+                    </div>
+                    <div class="hand hand-left-small"></div>
+                    <div class="hand hand-right-small"></div>
+                </div>
+                <span class="brand-name">MoveIt</span>
+            </div>
+            <div class="nav-links">
+                {% if 'user' in session %}
+                    <span class="welcome-text">Welcome, {{ session['user'] }}!</span>
+                    <a href="{{ url_for('main.logout') }}" class="nav-btn btn-outline">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('main.login') }}" class="nav-btn btn-outline">Login</a>
+                    <a href="{{ url_for('main.register') }}" class="nav-btn btn-primary">Sign Up</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Secure File Transfer Made Simple</h1>
+            <p class="hero-subtitle">Transfer files with confidence. Fast, secure, and reliable file sharing for everyone.</p>
+            {% if 'user' not in session %}
+                <div class="hero-buttons">
+                    <a href="{{ url_for('main.register') }}" class="btn btn-primary btn-large">Get Started Free</a>
+                    <a href="{{ url_for('main.login') }}" class="btn btn-outline btn-large">Sign In</a>
+                </div>
+            {% else %}
+                <div class="hero-buttons">
+                    <a href="#upload" class="btn btn-primary btn-large">Upload Files</a>
+                    <a href="#files" class="btn btn-outline btn-large">My Files</a>
+                </div>
+            {% endif %}
+        </div>
+        <div class="hero-image">
+            <div class="floating-card card-1">
+                <div class="card-icon">📁</div>
+                <div class="card-text">Upload</div>
+            </div>
+            <div class="floating-card card-2">
+                <div class="card-icon">🔒</div>
+                <div class="card-text">Secure</div>
+            </div>
+            <div class="floating-card card-3">
+                <div class="card-icon">⚡</div>
+                <div class="card-text">Fast</div>
+            </div>
+            <div class="floating-card card-4">
+                <div class="card-icon">🌐</div>
+                <div class="card-text">Share</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features">
+        <h2 class="section-title">Why Choose MoveIt?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>End-to-End Encryption</h3>
+                <p>Your files are encrypted with Argon2id authentication, ensuring maximum security.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Lightning Fast</h3>
+                <p>Optimized transfer speeds to get your files where they need to be, instantly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌍</div>
+                <h3>Share Anywhere</h3>
+                <p>Access your files from any device, anywhere in the world.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💾</div>
+                <h3>Large File Support</h3>
+                <p>Transfer files of any size without compression or quality loss.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">👥</div>
+                <h3>Collaboration</h3>
+                <p>Share files with teams and collaborate seamlessly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Track Activity</h3>
+                <p>Monitor downloads, views, and manage permissions easily.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-logo">
+                <div class="mascot-logo-small">
+                    <div class="character-head">
+                        <div class="eyes">
+                            <div class="eye">
+                                <div class="pupil"></div>
+                            </div>
+                            <div class="eye">
+                                <div class="pupil"></div>
+                            </div>
+                        </div>
+                        <div class="mouth"></div>
+                    </div>
+                </div>
+                <span class="brand-name">MoveIt</span>
+            </div>
+            <p class="footer-text">&copy; 2025 MoveIt. Secure file transfer platform.</p>
+        </div>
+    </footer>
+</div>
+{% endblock %}

@@ -1,0 +1,238 @@
+.peek-character {
+    position: absolute;
+    top: 0px;
+    left: 50%;
+    z-index: 1000;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+
+/* Welcome message */
+.welcome-message {
+    position: absolute;
+    top: -45px;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+    border: 2px solid white;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.welcome-message::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid #38a169;
+}
+
+.welcome-message.show {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+}
+
+.character-head {
+    width: 90px;
+    height: 70px;
+    background: white;
+    border-radius: 6px;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+    border: 3px solid #48bb78;
+}
+
+.character-head::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 0;
+    width: 35px;
+    height: 15px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    border-radius: 4px 4px 0 0;
+    border: 3px solid #48bb78;
+    border-bottom: none;
+}
+
+.character-head::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: #48bb78;
+    border-radius: 2px;
+}
+
+.eyes {
+    display: flex;
+    gap: 15px;
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.eye {
+    width: 14px;
+    height: 14px;
+    background: transparent;
+    border-radius: 50%;
+    position: relative;
+}
+
+.pupil {
+    width: 6px;
+    height: 6px;
+    background: #2d3748;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.1s ease-out;
+}
+
+/* Sunglasses */
+.sunglasses {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    width: 60px;
+    height: 20px;
+    z-index: 10;
+}
+
+.peek-character.typing .sunglasses {
+    display: block;
+}
+
+.peek-character.typing .pupil {
+    opacity: 0;
+}
+
+.sunglasses::before,
+.sunglasses::after {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 18px;
+    background: rgba(45, 55, 72, 0.85);
+    border: 2px solid #2d3748;
+    border-radius: 8px;
+    top: 0;
+}
+
+.sunglasses::before {
+    left: 0;
+}
+
+.sunglasses::after {
+    right: 0;
+}
+
+/* Bridge of sunglasses */
+.sunglasses-bridge {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 3px;
+    background: #2d3748;
+    border-radius: 2px;
+    display: none;
+}
+
+.peek-character.typing .sunglasses-bridge {
+    display: block;
+}
+
+.mouth {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 10px;
+    border: 2px solid #48bb78;
+    border-top: none;
+    border-radius: 0 0 20px 20px;
+}
+
+.hand {
+    position: absolute;
+    width: 20px;
+    height: 35px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    border-radius: 10px;
+    border: 2px solid #2d5f3f;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    top: 10px;
+}
+
+.hand-left {
+    left: -90px;
+    transform: rotate(-10deg);
+}
+
+.hand-right {
+    right: -90px;
+    transform: rotate(10deg);
+}
+
+.hand::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 12px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    border: 2px solid #2d5f3f;
+    border-radius: 8px;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%) rotate(90deg);
+}
+
+.hand::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: white;
+    border-radius: 50%;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+@media (max-width: 768px) {
+    .peek-character {
+        top: 0px;
+        left: 50%;
+        transform: translate(-50%, -45%) scale(0.85);
+    }
+}
+
+@media (max-width: 480px) {
+    .peek-character {
+        display: none;
+    }
+}

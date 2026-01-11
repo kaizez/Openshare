@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(tree:*)",
+      "Bash(pip install:*)",
+      "Bash(where choco:*)",
+      "Bash(where:*)",
+      "Bash(curl:*)",
+      "Bash(./mkcert.exe:*)",
+      "Bash(python:*)",
+      "Bash(dir /B /S)",
+      "Bash(dir:*)",
+      "Bash(move run.py app.py)",
+      "Bash(ls:*)",
+      "Bash(findstr:*)",
+      "Bash(git init:*)",
+      "Bash(git remote:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
