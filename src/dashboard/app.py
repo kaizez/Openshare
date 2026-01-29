@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
 import os
+import secrets
 
 import sys
 import os
@@ -52,7 +53,81 @@ def create_app():
                 return redirect(url_for('login'))
             return f(*args, **kwargs)
         return decorated_function
-    
+
+    def require_auth(f):
+        """Decorator to require either session login OR API key."""
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Check session first
+            if 'user_id' in session:
+                return f(*args, **kwargs)
+
+            # Check API key
+            api_key = request.headers.get('X-API-Key')
+            if api_key:
+                if verify_api_key(api_key):
+                    return f(*args, **kwargs)
+                return jsonify({'error': 'Invalid API key'}), 401
+
+            # No auth provided
+            if request.is_json:
+                return jsonify({'error': 'Authentication required'}), 401
+            return redirect(url_for('login'))
+        return decorated_function
+
+    def verify_api_key(api_key: str) -> bool:
+        """Verify an API key against the database."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute('''
+                SELECT id FROM api_keys
+                WHERE api_key = %s AND is_active = TRUE
+            ''', (api_key,))
+            result = cursor.fetchone()
+            if result:
+                # Update last used
+                cursor.execute('''
+                    UPDATE api_keys SET last_used = %s WHERE api_key = %s
+                ''', (datetime.utcnow(), api_key))
+                connection.commit()
+                return True
+            return False
+        except mysql.connector.Error:
+            return False
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+
+    # ==================== HEALTH CHECK ====================
+
+    @app.route('/health')
+    def health_check():
+        """Health check endpoint for Docker/monitoring."""
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute('SELECT 1')
+            cursor.fetchone()
+            cursor.close()
+            connection.close()
+            return jsonify({
+                'status': 'healthy',
+                'database': 'connected',
+                'timestamp': datetime.utcnow().isoformat()
+            }), 200
+        except Exception as e:
+            return jsonify({
+                'status': 'unhealthy',
+                'database': 'disconnected',
+                'error': str(e),
+                'timestamp': datetime.utcnow().isoformat()
+            }), 503
+
     @app.route('/')
     def index():
         """Redirect to login or dashboard."""
@@ -194,7 +269,7 @@ def create_app():
                              })
     
     @app.route('/api/ingest_log', methods=['POST'])
-    @require_login
+    @require_auth
     def ingest_log():
         """
         API endpoint to ingest security logs.
@@ -302,20 +377,151 @@ def create_app():
         """Manual playbook action: Release IP from quarantine."""
         data = request.get_json()
         ip_address = data.get('ip_address', '').strip()
-        
+
         if not ip_address:
             return jsonify({'error': 'IP address is required'}), 400
-        
+
         playbook_engine = get_playbook_engine()
         success = playbook_engine.release_ip(
             ip_address=ip_address,
             action_taken_by=session.get('username', 'unknown')
         )
-        
+
         if success:
             return jsonify({'status': 'success', 'message': f'IP {ip_address} released'}), 200
         else:
             return jsonify({'status': 'error', 'message': 'Failed to release IP'}), 400
+
+    # ==================== API KEY MANAGEMENT ====================
+
+    @app.route('/api/keys', methods=['GET'])
+    @require_login
+    def list_api_keys():
+        """List all API keys (without showing the actual keys)."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute('''
+                SELECT id, key_name, created_at, last_used, is_active, created_by
+                FROM api_keys
+                ORDER BY created_at DESC
+            ''')
+            keys = cursor.fetchall()
+            for key in keys:
+                if key.get('created_at'):
+                    key['created_at'] = key['created_at'].isoformat()
+                if key.get('last_used'):
+                    key['last_used'] = key['last_used'].isoformat()
+            return jsonify({'keys': keys}), 200
+        except mysql.connector.Error as e:
+            return jsonify({'error': str(e)}), 500
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+
+    @app.route('/api/keys', methods=['POST'])
+    @require_login
+    def create_api_key():
+        """Create a new API key."""
+        data = request.get_json()
+        key_name = data.get('key_name', '').strip()
+
+        if not key_name:
+            return jsonify({'error': 'Key name is required'}), 400
+
+        # Generate a secure API key
+        api_key = secrets.token_hex(32)
+
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute('''
+                INSERT INTO api_keys (key_name, api_key, created_at, created_by, is_active)
+                VALUES (%s, %s, %s, %s, TRUE)
+            ''', (key_name, api_key, datetime.utcnow(), session.get('username', 'unknown')))
+            connection.commit()
+
+            return jsonify({
+                'status': 'success',
+                'key_name': key_name,
+                'api_key': api_key,
+                'message': 'API key created. Save this key - it will not be shown again!'
+            }), 201
+        except mysql.connector.Error as e:
+            if connection:
+                connection.rollback()
+            return jsonify({'error': str(e)}), 500
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+
+    @app.route('/api/keys/<int:key_id>', methods=['DELETE'])
+    @require_login
+    def revoke_api_key(key_id):
+        """Revoke (deactivate) an API key."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute('''
+                UPDATE api_keys SET is_active = FALSE WHERE id = %s
+            ''', (key_id,))
+            connection.commit()
+
+            if cursor.rowcount > 0:
+                return jsonify({'status': 'success', 'message': 'API key revoked'}), 200
+            else:
+                return jsonify({'error': 'API key not found'}), 404
+        except mysql.connector.Error as e:
+            if connection:
+                connection.rollback()
+            return jsonify({'error': str(e)}), 500
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+
+    # ==================== HONEYTOKEN MANAGEMENT ====================
+
+    @app.route('/api/honeytokens', methods=['GET'])
+    @require_login
+    def list_honeytokens():
+        """List all active honeytokens."""
+        playbook_engine = get_playbook_engine()
+        honeytokens = playbook_engine.get_honeytokens()
+        return jsonify({'honeytokens': honeytokens}), 200
+
+    @app.route('/api/honeytokens', methods=['POST'])
+    @require_login
+    def create_honeytoken():
+        """Create a new honeytoken."""
+        data = request.get_json()
+        file_name = data.get('file_name', '').strip()
+        file_path = data.get('file_path', '').strip()
+        description = data.get('description', '').strip()
+
+        if not file_name:
+            return jsonify({'error': 'File name is required'}), 400
+
+        playbook_engine = get_playbook_engine()
+        result = playbook_engine.create_honeytoken(
+            file_name=file_name,
+            file_path=file_path if file_path else None,
+            description=description,
+            created_by=session.get('username', 'unknown')
+        )
+
+        return jsonify(result), 200 if result.get('status') == 'success' else 400
     
     @app.route('/add_admin', methods=['GET', 'POST'])
     @require_login

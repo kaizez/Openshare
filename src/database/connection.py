@@ -167,6 +167,150 @@ def init_database():
                 INDEX idx_status (status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
+
+        # Create API keys table for service-to-service authentication
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS api_keys (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                key_name VARCHAR(255) NOT NULL,
+                api_key VARCHAR(64) NOT NULL UNIQUE,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_used TIMESTAMP NULL,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_by VARCHAR(255),
+                INDEX idx_api_key (api_key),
+                INDEX idx_is_active (is_active)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
+        # Create honeytokens table for decoy file tracking
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS honeytokens (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                file_name VARCHAR(500) NOT NULL,
+                file_path TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                created_by VARCHAR(255),
+                is_active BOOLEAN DEFAULT TRUE,
+                description TEXT,
+                INDEX idx_file_name (file_name(255)),
+                INDEX idx_is_active (is_active)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
+        # Create file_hashes table for SHA-256 integrity tracking
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS file_hashes (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                file_name VARCHAR(500) NOT NULL,
+                file_path TEXT,
+                sha256_hash VARCHAR(64) NOT NULL,
+                first_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                hash_changed BOOLEAN DEFAULT FALSE,
+                previous_hash VARCHAR(64),
+                INDEX idx_file_name (file_name(255)),
+                INDEX idx_sha256_hash (sha256_hash),
+                INDEX idx_hash_changed (hash_changed)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
+        # Create geo_cache table for IP geolocation caching
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS geo_cache (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                ip_address VARCHAR(45) NOT NULL UNIQUE,
+                country VARCHAR(100),
+                country_code VARCHAR(10),
+                city VARCHAR(255),
+                latitude DECIMAL(10, 8),
+                longitude DECIMAL(11, 8),
+                cached_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_ip_address (ip_address)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
+        # Create disabled_accounts table for auto-disabled accounts
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS disabled_accounts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(255) NOT NULL,
+                disabled_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                reason TEXT NOT NULL,
+                disabled_by VARCHAR(255) NOT NULL,
+                is_disabled BOOLEAN DEFAULT TRUE,
+                re_enabled_at TIMESTAMP NULL,
+                re_enabled_by VARCHAR(255),
+                INDEX idx_user_id (user_id),
+                INDEX idx_is_disabled (is_disabled)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
+        # Create blacklisted_networks table for network blocking
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS blacklisted_networks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                network_cidr VARCHAR(50) NOT NULL,
+                description TEXT,
+                added_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                added_by VARCHAR(255),
+                is_active BOOLEAN DEFAULT TRUE,
+                INDEX idx_network_cidr (network_cidr),
+                INDEX idx_is_active (is_active)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
+        # Create user_baselines table for behavior tracking (30-day baseline)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_baselines (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(255) NOT NULL,
+                date DATE NOT NULL,
+                total_downloads INT DEFAULT 0,
+                total_uploads INT DEFAULT 0,
+                total_bytes_transferred BIGINT DEFAULT 0,
+                login_count INT DEFAULT 0,
+                unique_ips_used INT DEFAULT 0,
+                avg_file_size BIGINT DEFAULT 0,
+                UNIQUE KEY unique_user_date (user_id, date),
+                INDEX idx_user_id (user_id),
+                INDEX idx_date (date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
+        # Create login_history table for impossible travel detection
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS login_history (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id VARCHAR(255) NOT NULL,
+                ip_address VARCHAR(45) NOT NULL,
+                login_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                country VARCHAR(100),
+                city VARCHAR(255),
+                latitude DECIMAL(10, 8),
+                longitude DECIMAL(11, 8),
+                INDEX idx_user_id (user_id),
+                INDEX idx_login_time (login_time)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
+        # Create dlp_alerts table for sensitive data detection
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS dlp_alerts (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                file_name VARCHAR(500),
+                user_id VARCHAR(255),
+                ip_address VARCHAR(45),
+                pattern_matched VARCHAR(100) NOT NULL,
+                matched_count INT DEFAULT 1,
+                severity ENUM('Critical', 'High', 'Medium', 'Low') NOT NULL,
+                timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                status ENUM('new', 'reviewed', 'false_positive', 'confirmed') DEFAULT 'new',
+                INDEX idx_timestamp (timestamp),
+                INDEX idx_pattern_matched (pattern_matched),
+                INDEX idx_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
         
         connection.commit()
         print("Database initialized successfully")

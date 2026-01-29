@@ -1,245 +1,161 @@
-# SIEM/SOAR System for MoveIT File Transfer Monitoring
+# SIEM/SOAR System for MoveIT
 
-A comprehensive Security Information and Event Management (SIEM) and Security Orchestration, Automation, and Response (SOAR) system built to monitor the MoveIT file transfer system. This system provides real-time security event monitoring with manual playbook response capabilities.
+Security Information and Event Management (SIEM) and Security Orchestration, Automation, and Response (SOAR) system for monitoring the MoveIT file transfer application.
 
-## 🏗️ Architecture
+## Quick Start
 
-The system is organized into clean, modular components:
+### Option 1: Run Everything in Docker (Recommended)
+
+```bash
+# Build and start both MySQL + SIEM
+docker-compose up --build
+
+# Access dashboard at http://localhost:5001
+# Login: admin / admin123
+```
+
+### Option 2: Run SIEM Locally (MySQL in Docker)
+
+```bash
+# 1. Start MySQL only
+docker-compose up db -d
+
+# 2. Install Python dependencies
+pip install -r requirements.txt
+
+# 3. Run SIEM
+python app.py
+
+# Access dashboard at http://localhost:5001
+```
+
+## Project Structure
 
 ```
 siem-Moveit/
 ├── src/
-│   ├── database/          # MySQL database connection and models
-│   │   ├── connection.py  # Database connection management
-│   │   └── models.py      # Data models
-│   ├── ingestion/         # SIEM log ingestion engine
-│   │   └── siem_engine.py # Security event detection rules
-│   ├── dashboard/         # Flask web application
-│   │   └── app.py         # Main dashboard routes and logic
-│   └── playbooks/         # SOAR manual response actions
-│       └── playbook_engine.py  # Playbook execution engine
-├── templates/             # HTML templates
-├── static/               # CSS and JavaScript
-├── app.py                # Application entry point
-├── docker-compose.yml     # MySQL database setup
-└── requirements.txt      # Python dependencies
+│   ├── database/           # MySQL connection & models
+│   ├── ingestion/          # SIEM detection engine
+│   │   ├── siem_engine.py  # Detection rules
+│   │   ├── geo_lookup.py   # GeoIP for impossible travel
+│   │   └── dlp_scanner.py  # Sensitive data detection
+│   ├── dashboard/          # Flask web app
+│   └── playbooks/          # SOAR response actions
+├── templates/              # HTML templates
+├── static/                 # CSS & JavaScript
+├── siem_logger.py          # DROP-IN FILE FOR TEAMMATES
+├── INTEGRATION_GUIDE.md    # GUIDE FOR TEAMMATES
+├── TESTING.md              # How to test/inject sample data
+├── Dockerfile              # Container build
+└── docker-compose.yml      # MySQL + SIEM containers
 ```
 
-## 🔍 Critical Events Tracked
+## Detection Rules
 
-Based on analysis of the MoveIT repository (Ayden branch), the SIEM monitors:
+| Rule | Trigger | Severity |
+|------|---------|----------|
+| Failed Logins | 5+ failures from same IP | High |
+| Brute Force Success | Login after multiple failures | Critical |
+| Impossible Travel | Login from distant locations | Critical |
+| Suspicious Volume | 10+ downloads in 60 seconds | High |
+| Large Data Transfer | 100MB+ in 5 minutes | Medium |
+| Mass Deletion | 10+ files deleted in 2 minutes | Critical |
+| Data Staging | Multiple archive files created | High |
+| Unauthorized Access | Non-admin accessing config files | Critical |
+| Failed MFA | 5+ MFA failures | Critical |
+| Privilege Escalation | Role changed to admin | High |
+| Honeytoken Access | Decoy file accessed | Critical |
+| File Integrity | SHA-256 hash changed | Critical |
+| Sensitive Data | SSN, credit cards, API keys detected | Critical |
 
-1. **Login Failures** - 5+ consecutive failed login attempts from same IP
-2. **Suspicious Volume** - 10+ files downloaded by single user within 60 seconds
-3. **Unauthorized File Access** - Attempts to access config files (.cfg, .ini, .conf, .env, .key, .pem) without admin role
-4. **Large Data Transfers** - 100MB+ transferred by single user within 5 minutes
-5. **Failed Access Attempts** - 5+ consecutive failed file access attempts from same IP
+## Dashboard Features
 
-## 🚀 Setup Instructions
+- **Statistics Cards** - Critical events, high severity, quarantined IPs, new alerts
+- **Security Logs** - Last 20 events with details
+- **Active Alerts** - With playbook action buttons
+- **Quarantined Items** - Manage blocked IPs and files
 
-### Prerequisites
+## Manual Playbook Actions
 
-- Python 3.8+
-- Docker and Docker Compose
-- MySQL client (optional, for direct database access)
+| Action | What It Does |
+|--------|--------------|
+| Block IP | Quarantines an IP address |
+| Terminate Session | Ends user sessions |
+| Quarantine File | Isolates suspicious files |
+| Release IP | Removes IP from quarantine |
 
-### Step 1: Start MySQL Database
+## Automated Responses (Optional)
 
-```bash
-docker-compose up -d
-```
+Can be enabled in `playbook_engine.py`:
 
-This starts a MySQL container on `localhost:3306` with:
-- Database: `siem_db`
-- Root password: `your_secure_password` (change in docker-compose.yml for production)
-- Port: `3306`
+- Auto-disable account after 5 MFA failures
+- Auto-block IP after 10 login failures
+- Auto-kill sessions from blacklisted networks
 
-### Step 2: Install Python Dependencies
+## API Endpoints
 
-```bash
-pip install -r requirements.txt
-```
-
-### Step 3: Run the Application
-
-```bash
-python app.py
-```
-
-The dashboard will be available at `http://localhost:5000`
-
-### Step 4: Login
-
-Default credentials:
-- Username: `admin`
-- Password: `admin123`
-
-**⚠️ Change default credentials in production!**
-
-## 📊 Features
-
-### SIEM Capabilities
-
-- **Real-time Log Ingestion**: POST logs to `/api/ingest_log`
-- **Event Detection**: Automatic detection of security anomalies
-- **Alert Generation**: Alerts stored in MySQL with severity levels
-- **Persistent Storage**: All logs and alerts stored in MySQL (not mock data)
-
-### SOAR Playbooks (Manual Actions)
-
-All response actions are **MANUAL** - no automatic responses. Admin must click buttons:
-
-1. **🚫 Block Attacker IP**
-   - Quarantines an IP address
-   - Prevents further access from that IP
-   - Can be released manually later
-
-2. **🔌 Terminate User Session**
-   - Terminates active user sessions
-   - Useful for compromised accounts
-
-3. **📁 Quarantine File**
-   - Quarantines suspicious files
-   - Prevents file access
-
-4. **🔓 Release IP**
-   - Releases a quarantined IP address
-
-### Dashboard Features
-
-- **Real-time Statistics**: Critical events, high severity, quarantined IPs, new alerts
-- **Security Logs Table**: Last 20 security events with full details
-- **Active Alerts**: Recent alerts with playbook action buttons
-- **Quarantined Items**: View and manage quarantined IPs and files
-- **Professional UI**: Clean, modern interface with responsive design
-
-## 📡 API Endpoints
-
-### Ingest Log
+### Log Ingestion (for teammates)
 
 ```bash
 POST /api/ingest_log
+Header: X-API-Key: your_api_key
 Content-Type: application/json
-Authorization: Required (session cookie)
 
 {
-  "timestamp": "2026-01-24T12:00:00",
-  "log_source": "file_transfer_server",
   "event_type": "file_download",
-  "description": "File downloaded by user",
-  "severity": "Info",
-  "user_id": "user123",
+  "user_id": "john",
   "ip_address": "192.168.1.100",
   "file_name": "document.pdf",
-  "user_role": "standard",
-  "file_size": 1048576,
+  "file_size": 1024000,
   "result": "success"
 }
 ```
 
-### Playbook Actions
+### Health Check
 
-All playbook endpoints require authentication and return JSON responses.
-
-- `POST /api/playbook/block_ip` - Block an IP address
-- `POST /api/playbook/terminate_session` - Terminate user session
-- `POST /api/playbook/quarantine_file` - Quarantine a file
-- `POST /api/playbook/release_ip` - Release quarantined IP
-
-## 🔐 Database Schema
-
-The system uses MySQL with the following tables:
-
-- `users` - Admin user accounts
-- `security_logs` - All ingested security events
-- `alerts` - SIEM-generated alerts
-- `quarantined_ips` - Blocked IP addresses
-- `quarantined_files` - Quarantined files
-- `active_sessions` - Active user sessions
-
-## 🎯 Usage Example
-
-### Ingest a Security Event
-
-```python
-import requests
-
-session = requests.Session()
-
-# Login
-session.post('http://localhost:5000/login', data={
-    'username': 'admin',
-    'password': 'admin123'
-})
-
-# Ingest a log
-log_data = {
-    'log_source': 'file_transfer_server',
-    'event_type': 'file_download',
-    'description': 'File downloaded',
-    'user_id': 'user123',
-    'ip_address': '192.168.1.100',
-    'file_name': 'document.pdf',
-    'user_role': 'standard',
-    'file_size': 1048576,
-    'result': 'success'
-}
-
-response = session.post('http://localhost:5000/api/ingest_log', json=log_data)
-print(response.json())
+```bash
+GET /health
+# Returns: {"status": "healthy", "database": "connected"}
 ```
 
-### Trigger an Alert (Suspicious Volume)
+### API Key Management
 
-```python
-# Send 11 file downloads rapidly to trigger suspicious volume alert
-for i in range(11):
-    log_data = {
-        'log_source': 'file_transfer_server',
-        'event_type': 'file_download',
-        'description': f'File {i+1} downloaded',
-        'user_id': 'user123',
-        'ip_address': '192.168.1.100',
-        'result': 'success'
-    }
-    session.post('http://localhost:5000/api/ingest_log', json=log_data)
+```bash
+POST /api/keys          # Create new API key
+GET /api/keys           # List API keys
+DELETE /api/keys/{id}   # Revoke API key
 ```
 
-## 🔧 Configuration
+### Honeytoken Management
 
-Database configuration can be set via environment variables:
+```bash
+POST /api/honeytokens   # Create decoy file tracker
+GET /api/honeytokens    # List active honeytokens
+```
 
-- `MYSQL_HOST` - Database host (default: localhost)
-- `MYSQL_PORT` - Database port (default: 3306)
-- `MYSQL_USER` - Database user (default: root)
-- `MYSQL_PASSWORD` - Database password (default: your_secure_password)
-- `MYSQL_DATABASE` - Database name (default: siem_db)
-- `SECRET_KEY` - Flask secret key (default: random)
+## Environment Variables
 
-## 📝 Notes
+| Variable | Default | Description |
+|----------|---------|-------------|
+| MYSQL_HOST | localhost (or `db` in Docker) | MySQL host |
+| MYSQL_PORT | 3306 | MySQL port |
+| MYSQL_PASSWORD | your_secure_password | MySQL password |
+| MYSQL_DATABASE | siem_db | Database name |
+| SECRET_KEY | random | Flask session key |
 
-- All SOAR actions are **MANUAL** - nothing is automatic
-- The system uses **real MySQL storage** - no mock data
-- The dashboard provides playbook buttons for each alert
-- All actions are logged in the security_logs table
-- The system tracks user sessions for termination capabilities
+## For Teammates
 
-## 🛡️ Security Considerations
+1. Get `siem_logger.py` and `INTEGRATION_GUIDE.md`
+2. Copy `siem_logger.py` into your project
+3. Follow the examples in the integration guide
 
-- Change default admin credentials in production
+## Testing
+
+See `TESTING.md` for how to inject sample data and trigger alerts.
+
+## Security Notes
+
+- Change default admin password in production
 - Use strong database passwords
-- Set a secure Flask SECRET_KEY
-- Consider implementing rate limiting
+- Generate secure API keys for service-to-service auth
 - Use HTTPS in production
-- Regularly review and update detection rules
-
-## 📚 Based on MoveIT Analysis
-
-This SIEM/SOAR system was built specifically to monitor the MoveIT file transfer system (Ayden branch), tracking:
-
-- Authentication events (login attempts, failures)
-- File transfer events (downloads, uploads, access attempts)
-- User role-based access control violations
-- Suspicious activity patterns
-
-All detection rules are based on the actual logic and event types found in the MoveIT repository.
