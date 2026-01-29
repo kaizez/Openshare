@@ -1,15 +1,23 @@
 import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
-import json
-from config import Config
+import os
+
+# Check if dual DB mode is enabled
+DUAL_DB_ENABLED = os.environ.get('DUAL_DB_ENABLED', 'false').lower() == 'true'
+
 
 class Database:
-    """Database handler for MySQL operations"""
+    """Database handler for MySQL operations - Working DB only"""
 
     def __init__(self):
         """Initialize database connection"""
         self.connection = None
+        self.host = os.environ.get('WORKING_DB_HOST', 'working-db')
+        self.user = os.environ.get('WORKING_DB_USER', 'working_user')
+        self.password = os.environ.get('WORKING_DB_PASSWORD', 'working_pass_2024')
+        self.database = os.environ.get('WORKING_DB_NAME', 'workingdb')
+        self.port = int(os.environ.get('WORKING_DB_PORT', 3306))
         self.connect()
         self.create_tables()
 
@@ -17,24 +25,32 @@ class Database:
         """Establish connection to MySQL database"""
         try:
             self.connection = mysql.connector.connect(
-                host=Config.DB_HOST,
-                user=Config.DB_USER,
-                password=Config.DB_PASSWORD,
-                database=Config.DB_NAME,
-                port=Config.DB_PORT
+                host=self.host,
+                user=self.user,
+                password=self.password,
+                database=self.database,
+                port=self.port
             )
             if self.connection.is_connected():
-                print(f"Connected to MySQL database at {Config.DB_HOST}")
+                print(f"Connected to MySQL database at {self.host}:{self.port}")
         except Error as e:
             print(f"Error connecting to MySQL: {e}")
             raise
 
+    def ensure_connection(self):
+        """Ensure database connection is active"""
+        try:
+            if self.connection is None or not self.connection.is_connected():
+                self.connect()
+        except Error:
+            self.connect()
+
     def create_tables(self):
         """Create tables if they don't exist"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor()
 
-            # Create file_metadata table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS file_metadata (
                     file_id VARCHAR(255) PRIMARY KEY,
@@ -50,13 +66,14 @@ class Database:
                     otp_generated_at DATETIME,
                     otp_expires_at DATETIME,
                     otp_used BOOLEAN DEFAULT FALSE,
-                    file_content LONGBLOB NOT NULL,
+                    is_archived BOOLEAN DEFAULT FALSE,
+                    file_content LONGBLOB,
                     INDEX idx_otp_code (current_otp_code),
-                    INDEX idx_upload_time (upload_time)
+                    INDEX idx_upload_time (upload_time),
+                    INDEX idx_archived (is_archived)
                 )
             """)
 
-            # Create access_logs table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS access_logs (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -80,23 +97,21 @@ class Database:
             cursor.close()
 
     def get_all_metadata(self):
-        """Get all file metadata as a dictionary (replacement for load_metadata)"""
+        """Get all file metadata as a dictionary"""
         cursor = None
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor(dictionary=True, buffered=True)
             cursor.execute("SELECT * FROM file_metadata")
             rows = cursor.fetchall()
-            # Close cursor before making additional queries
             cursor.close()
             cursor = None
 
             result = {}
             for row in rows:
                 file_id = row['file_id']
-                # Get access logs for this file
                 access_logs = self.get_access_logs(file_id)
 
-                # Convert datetime objects to ISO format strings
                 result[file_id] = {
                     'original_filename': row['original_filename'],
                     'stored_filename': row['stored_filename'],
@@ -110,9 +125,9 @@ class Database:
                     'otp_generated_at': row['otp_generated_at'].isoformat() if row['otp_generated_at'] else None,
                     'otp_expires_at': row['otp_expires_at'].isoformat() if row['otp_expires_at'] else None,
                     'otp_used': bool(row['otp_used']),
+                    'is_archived': bool(row.get('is_archived', False)),
                     'access_logs': access_logs
                 }
-
             return result
         except Error as e:
             print(f"Error fetching all metadata: {e}")
@@ -122,24 +137,19 @@ class Database:
                 cursor.close()
 
     def get_file_metadata(self, file_id, include_content=False):
-        """Get metadata for a specific file
-
-        Args:
-            file_id: The file ID
-            include_content: If True, includes the file_content BLOB (default False for performance)
-        """
+        """Get metadata for a specific file"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor(dictionary=True, buffered=True)
 
             if include_content:
                 cursor.execute("SELECT * FROM file_metadata WHERE file_id = %s", (file_id,))
             else:
-                # Exclude file_content for performance when just getting metadata
                 cursor.execute("""
                     SELECT file_id, original_filename, stored_filename, file_size,
                            file_hash, upload_time, download_count, classification,
                            detected_mime, current_otp_code, otp_generated_at,
-                           otp_expires_at, otp_used
+                           otp_expires_at, otp_used, is_archived
                     FROM file_metadata WHERE file_id = %s
                 """, (file_id,))
 
@@ -148,7 +158,6 @@ class Database:
             if not row:
                 return None
 
-            # Get access logs
             access_logs = self.get_access_logs(file_id)
 
             result = {
@@ -164,6 +173,7 @@ class Database:
                 'otp_generated_at': row['otp_generated_at'].isoformat() if row['otp_generated_at'] else None,
                 'otp_expires_at': row['otp_expires_at'].isoformat() if row['otp_expires_at'] else None,
                 'otp_used': bool(row['otp_used']),
+                'is_archived': bool(row.get('is_archived', False)),
                 'access_logs': access_logs
             }
 
@@ -178,23 +188,16 @@ class Database:
             cursor.close()
 
     def save_file_metadata(self, file_id, metadata, file_content=None):
-        """Save or update file metadata
-
-        Args:
-            file_id: The file ID
-            metadata: Dict containing file metadata
-            file_content: Binary file content (bytes), required for new files
-        """
+        """Save or update file metadata"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor()
 
-            # Convert ISO datetime strings to datetime objects
             upload_time = datetime.fromisoformat(metadata['upload_time']) if isinstance(metadata['upload_time'], str) else metadata['upload_time']
             otp_generated_at = datetime.fromisoformat(metadata['otp_generated_at']) if isinstance(metadata.get('otp_generated_at'), str) else metadata.get('otp_generated_at')
             otp_expires_at = datetime.fromisoformat(metadata['otp_expires_at']) if isinstance(metadata.get('otp_expires_at'), str) else metadata.get('otp_expires_at')
 
             if file_content is not None:
-                # New file with content
                 cursor.execute("""
                     INSERT INTO file_metadata
                     (file_id, original_filename, stored_filename, file_size, file_hash,
@@ -232,7 +235,6 @@ class Database:
                     file_content
                 ))
             else:
-                # Update without changing file content
                 cursor.execute("""
                     UPDATE file_metadata SET
                     original_filename = %s,
@@ -276,6 +278,7 @@ class Database:
     def delete_file_metadata(self, file_id):
         """Delete file metadata and associated access logs"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor()
             cursor.execute("DELETE FROM file_metadata WHERE file_id = %s", (file_id,))
             self.connection.commit()
@@ -290,6 +293,7 @@ class Database:
     def get_access_logs(self, file_id):
         """Get access logs for a specific file"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor(dictionary=True, buffered=True)
             cursor.execute("""
                 SELECT timestamp, status, details, ip_address
@@ -300,7 +304,6 @@ class Database:
 
             logs = cursor.fetchall()
 
-            # Convert datetime objects to ISO format strings
             return [
                 {
                     'timestamp': log['timestamp'].isoformat() if log['timestamp'] else None,
@@ -319,6 +322,7 @@ class Database:
     def add_access_log(self, file_id, status, details, ip_address):
         """Add an access log entry"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor()
             cursor.execute("""
                 INSERT INTO access_logs (file_id, timestamp, status, details, ip_address)
@@ -337,6 +341,7 @@ class Database:
     def find_file_by_otp(self, otp_code):
         """Find file by OTP code"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor(dictionary=True, buffered=True)
             cursor.execute("""
                 SELECT file_id FROM file_metadata
@@ -354,6 +359,7 @@ class Database:
     def update_download_count(self, file_id):
         """Increment download count for a file"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor()
             cursor.execute("""
                 UPDATE file_metadata
@@ -373,6 +379,7 @@ class Database:
     def update_otp(self, file_id, otp_code, generated_at, expires_at, otp_used=False):
         """Update OTP information for a file"""
         try:
+            self.ensure_connection()
             cursor = self.connection.cursor()
             cursor.execute("""
                 UPDATE file_metadata
@@ -398,8 +405,10 @@ class Database:
             self.connection.close()
             print("MySQL connection closed")
 
+
 # Global database instance
 db = None
+
 
 def get_db():
     """Get or create database instance"""

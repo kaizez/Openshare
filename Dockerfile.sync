@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install MySQL client
+RUN apt-get update && apt-get install -y \
+    default-mysql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install mysql-connector-python==8.2.0 Flask==3.0.0
+
+# Copy sync script
+COPY sync_service.py .
+
+CMD ["python", "-u", "sync_service.py"]

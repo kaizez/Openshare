@@ -1,19 +1,137 @@
 version: "3.9"
 
+# ============================================
+# MoveIT - Dual Database with Isolated Storage
+# ============================================
+# App        → Working DB only
+# Working DB → Storage DB (via sync service)
+# App CANNOT reach Storage DB directly
+# ============================================
+
 services:
-  mysql:
+  # ============================================
+  # Working Database (DB1)
+  # ============================================
+  working-db:
     image: mysql:8.0
-    container_name: mysql-db
+    container_name: moveit-working-db
     restart: always
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: ISSPJ12345!
-      MYSQL_DATABASE: storagedb
-      MYSQL_USER: user1
-      MYSQL_PASSWORD: mypassword
+      MYSQL_ROOT_PASSWORD: ${WORKING_DB_ROOT_PASSWORD:-WorkingRoot2024!}
+      MYSQL_DATABASE: ${WORKING_DB_NAME:-workingdb}
+      MYSQL_USER: ${WORKING_DB_USER:-working_user}
+      MYSQL_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - working_db_data:/var/lib/mysql
+    networks:
+      - app_network
+      - sync_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ============================================
+  # Storage Database (DB2) - ISOLATED
+  # ============================================
+  # Only on sync_network - App CANNOT reach this
+  storage-db:
+    image: mysql:8.0
+    container_name: moveit-storage-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${STORAGE_DB_ROOT_PASSWORD:-StorageRoot2024!}
+      MYSQL_DATABASE: ${STORAGE_DB_NAME:-storagedb}
+      MYSQL_USER: ${STORAGE_DB_USER:-storage_user}
+      MYSQL_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
+    volumes:
+      - storage_db_data:/var/lib/mysql
+    networks:
+      - sync_network  # ONLY sync network - isolated from app
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Sync Service - Bridges Working DB to Storage DB
+  # ============================================
+  # Only this service can talk to both databases
+  sync-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.sync
+    container_name: moveit-sync
+    restart: always
+    environment:
+      WORKING_DB_HOST: working-db
+      WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      WORKING_DB_PORT: 3306
+      STORAGE_DB_HOST: storage-db
+      STORAGE_DB_USER: ${STORAGE_DB_USER:-storage_user}
+      STORAGE_DB_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
+      STORAGE_DB_NAME: ${STORAGE_DB_NAME:-storagedb}
+      STORAGE_DB_PORT: 3306
+      SYNC_INTERVAL_SECONDS: ${SYNC_INTERVAL_SECONDS:-3600}
+      DELETE_FILES_OLDER_THAN_SECONDS: ${DELETE_FILES_OLDER_THAN_SECONDS:-0}
+    ports:
+      - "8080:8080"
+    networks:
+      - sync_network  # Can reach both DBs
+      - app_network  # Can receive requests from app
+    depends_on:
+      working-db:
+        condition: service_healthy
+      storage-db:
+        condition: service_healthy
+
+  # ============================================
+  # Flask Application
+  # ============================================
+  # ONLY on app_network - cannot reach Storage DB
+  app:
+    build: .
+    container_name: moveit-app
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      WORKING_DB_HOST: working-db
+      WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      WORKING_DB_PORT: 3306
+      # No Storage DB config - app can't access it
+      DUAL_DB_ENABLED: "false"
+      SECRET_KEY: ${SECRET_KEY:-change_this_secret_key}
+      DEBUG: ${DEBUG:-false}
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - app_network  # ONLY app_network - cannot reach storage-db
+    depends_on:
+      working-db:
+        condition: service_healthy
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  app_network:
+    driver: bridge
+  sync_network:
+    driver: bridge
+    internal: true  # Isolated - no external access
+
+# ============================================
+# Volumes
+# ============================================
 volumes:
-  mysql_data:
+  working_db_data:
+  storage_db_data:

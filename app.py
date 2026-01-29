@@ -424,14 +424,44 @@ def get_file(file_id):
     if f'verified_{file_id}' not in session:
         return jsonify({'error': 'Access denied. Please enter your access code first.'}), 403
 
-    # Get file metadata and content from database
-    file_info = db.get_file_metadata(file_id, include_content=True)
+    # Get file metadata from database
+    file_info = db.get_file_metadata(file_id, include_content=False)
 
     if not file_info:
         return jsonify({'error': 'File not found'}), 404
 
-    if 'file_content' not in file_info:
-        return jsonify({'error': 'File content not found in database'}), 404
+    # Check if file is archived (content moved to Storage DB)
+    file_content = None
+    
+    if file_info.get('is_archived', False):
+        # File is archived - retrieve from sync service
+        print(f"[App] File {file_id} is archived, retrieving from Storage DB via sync service...")
+        
+        try:
+            import requests
+            response = requests.get(f'http://sync-service:8080/retrieve/{file_id}', timeout=30)
+            
+            if response.status_code == 200:
+                file_content = response.content
+                print(f"[App] Successfully retrieved archived file {file_id} ({len(file_content)} bytes)")
+            else:
+                print(f"[App] Failed to retrieve archived file: {response.status_code}")
+                return jsonify({'error': 'Failed to retrieve archived file from storage'}), 500
+                
+        except Exception as e:
+            print(f"[App] Error retrieving archived file: {e}")
+            return jsonify({'error': 'Could not connect to storage service'}), 500
+    else:
+        # File is in Working DB - get content directly
+        file_info_with_content = db.get_file_metadata(file_id, include_content=True)
+        
+        if not file_info_with_content or 'file_content' not in file_info_with_content:
+            return jsonify({'error': 'File content not found in database'}), 404
+            
+        file_content = file_info_with_content['file_content']
+
+    if not file_content:
+        return jsonify({'error': 'File content not available'}), 404
 
     # Log successful download
     log_access_attempt(file_id, 'success', 'File downloaded successfully')
@@ -445,7 +475,7 @@ def get_file(file_id):
     # Send file from memory
     from io import BytesIO
     return send_file(
-        BytesIO(file_info['file_content']),
+        BytesIO(file_content),
         as_attachment=True,
         download_name=file_info['original_filename'],
         mimetype=file_info.get('detected_mime', 'application/octet-stream')
@@ -543,6 +573,10 @@ def delete_file(file_id):
 
     except Exception as e:
         return jsonify({'error': f'Deletion failed: {str(e)}'}), 500
+
+# ============================================
+# Error Handlers
+# ============================================
 
 @app.errorhandler(413)
 def too_large(e):
