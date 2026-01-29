@@ -159,3 +159,51 @@ See `TESTING.md` for how to inject sample data and trigger alerts.
 - Use strong database passwords
 - Generate secure API keys for service-to-service auth
 - Use HTTPS in production
+
+## Python Virtual Environment Setup
+
+### Create a Virtual Environment
+
+```bash
+# Navigate to project directory
+cd /path/to/MoveIT
+
+# Create venv (do this once)
+python3 -m venv venv
+```
+
+### Activate the Virtual Environment
+
+**macOS/Linux:**
+```bash
+source venv/bin/activate
+```
+
+**Windows (Command Prompt):**
+```cmd
+venv\Scripts\activate.bat
+```
+
+**Windows (PowerShell):**
+```powershell
+venv\Scripts\Activate.ps1
+```
+
+### Install Dependencies (after activating)
+
+```bash
+pip install -r requirements.txt
+```
+
+### Deactivate When Done
+
+```bash
+deactivate
+```
+
+### How to Tell if venv is Active
+
+When activated, your terminal prompt will show `(venv)` at the beginning:
+```
+(venv) ayden@mac MoveIT %
+```
