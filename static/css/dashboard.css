@@ -6,15 +6,15 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f5f5;
+    background: #f8faf8;
     color: #333;
 }
 
 .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #5B7553;
     color: white;
     padding: 20px 30px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(91, 117, 83, 0.15);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -35,9 +35,9 @@ body {
 }
 
 .nav-btn, .logout-btn {
-    background: rgba(255, 255, 255, 0.2);
+    background: #8EB897;
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid #9DDBAD;
     padding: 8px 16px;
     border-radius: 5px;
     text-decoration: none;
@@ -47,7 +47,7 @@ body {
 }
 
 .nav-btn:hover, .logout-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: #9DDBAD;
 }
 
 .container {
@@ -66,29 +66,29 @@ body {
 
 .stat-card {
     background: white;
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     display: flex;
     align-items: center;
     gap: 15px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #8EB897;
 }
 
 .stat-card.stat-critical {
-    border-left-color: #dc3545;
+    border-left-color: #c85a54;
 }
 
 .stat-card.stat-high {
-    border-left-color: #ffc107;
+    border-left-color: #d4a44f;
 }
 
 .stat-card.stat-quarantine {
-    border-left-color: #6c757d;
+    border-left-color: #5B7553;
 }
 
 .stat-card.stat-alerts {
-    border-left-color: #17a2b8;
+    border-left-color: #9DDBAD;
 }
 
 .stat-icon {
@@ -122,9 +122,9 @@ body {
 
 .card {
     background: white;
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 25px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .card-large {
@@ -132,10 +132,10 @@ body {
 }
 
 .card h2 {
-    color: #333;
+    color: #5B7553;
     margin-bottom: 20px;
     font-size: 20px;
-    border-bottom: 2px solid #667eea;
+    border-bottom: 2px solid #C3E8BD;
     padding-bottom: 10px;
 }
 
@@ -157,15 +157,15 @@ body {
 }
 
 .log-table th {
-    background: #f8f9fa;
+    background: #C3E8BD;
     font-weight: 600;
-    color: #555;
+    color: #5B7553;
     font-size: 12px;
     text-transform: uppercase;
 }
 
 .log-table tr:hover {
-    background: #f8f9fa;
+    background: #f8fdf8;
 }
 
 /* Severity Badges */
@@ -178,28 +178,28 @@ body {
 }
 
 .severity-critical {
-    background: #fee;
-    color: #c33;
+    background: #f5dbd9;
+    color: #a84340;
 }
 
 .severity-high {
-    background: #ffe6cc;
-    color: #d68910;
+    background: #faecd0;
+    color: #b8833d;
 }
 
 .severity-medium {
-    background: #fff3cd;
-    color: #856404;
+    background: #fff8e1;
+    color: #9a7b3a;
 }
 
 .severity-low {
-    background: #d1ecf1;
-    color: #0c5460;
+    background: #C3E8BD;
+    color: #5B7553;
 }
 
 .severity-info {
-    background: #e7e7e7;
-    color: #555;
+    background: #e8f0e6;
+    color: #5B7553;
 }
 
 /* Alerts */
@@ -210,22 +210,22 @@ body {
 }
 
 .alert-item {
-    background: #f8f9fa;
+    background: #f8fdf8;
     padding: 15px;
     border-radius: 5px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #8EB897;
 }
 
 .alert-item.alert-critical {
-    border-left-color: #dc3545;
+    border-left-color: #c85a54;
 }
 
 .alert-item.alert-high {
-    border-left-color: #ffc107;
+    border-left-color: #d4a44f;
 }
 
 .alert-item.alert-medium {
-    border-left-color: #ffc107;
+    border-left-color: #9DDBAD;
 }
 
 .alert-header {
@@ -269,51 +269,51 @@ body {
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
-    transition: all 0.3s;
+    transition: all 0.2s;
 }
 
 .btn-block-ip {
-    background: #dc3545;
+    background: #c85a54;
     color: white;
 }
 
 .btn-block-ip:hover {
-    background: #c82333;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+    background: #b44a45;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(200, 90, 84, 0.2);
 }
 
 .btn-terminate-session {
-    background: #ffc107;
-    color: #333;
+    background: #d4a44f;
+    color: white;
 }
 
 .btn-terminate-session:hover {
-    background: #e0a800;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+    background: #c09340;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(212, 164, 79, 0.2);
 }
 
 .btn-quarantine-file {
-    background: #17a2b8;
+    background: #5B7553;
     color: white;
 }
 
 .btn-quarantine-file:hover {
-    background: #138496;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+    background: #4d6347;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(91, 117, 83, 0.2);
 }
 
 .btn-release-ip {
-    background: #28a745;
+    background: #8EB897;
     color: white;
 }
 
 .btn-release-ip:hover {
-    background: #218838;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    background: #7ba788;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(142, 184, 151, 0.2);
 }
 
 /* Quarantine Lists */
@@ -324,10 +324,10 @@ body {
 }
 
 .quarantine-item {
-    background: #f8f9fa;
+    background: #f8fdf8;
     padding: 15px;
     border-radius: 5px;
-    border-left: 4px solid #dc3545;
+    border-left: 4px solid #c85a54;
 }
 
 .quarantine-header {
@@ -339,7 +339,7 @@ body {
 
 .ip-address, .file-name {
     font-weight: 600;
-    color: #dc3545;
+    color: #c85a54;
     font-family: 'Courier New', monospace;
 }
 
@@ -389,10 +389,11 @@ body {
     background-color: white;
     margin: 10% auto;
     padding: 30px;
-    border-radius: 10px;
+    border-radius: 8px;
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border-top: 4px solid #8EB897;
 }
 
 .close {
@@ -409,7 +410,7 @@ body {
 
 .modal-content h2 {
     margin-bottom: 20px;
-    color: #333;
+    color: #5B7553;
 }
 
 .modal-content .form-group {
@@ -420,20 +421,27 @@ body {
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
-    color: #333;
+    color: #5B7553;
 }
 
 .modal-content input[type="text"],
 .modal-content textarea {
     width: 100%;
     padding: 10px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid #C3E8BD;
     border-radius: 5px;
     font-size: 14px;
 }
 
 .modal-content input[readonly] {
-    background: #f8f9fa;
+    background: #f8fdf8;
+}
+
+.modal-content input[type="text"]:focus,
+.modal-content textarea:focus {
+    outline: none;
+    border-color: #8EB897;
+    box-shadow: 0 0 0 3px rgba(142, 184, 151, 0.1);
 }
 
 .modal-content textarea {
