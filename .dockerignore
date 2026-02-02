@@ -1,6 +1,4 @@
-# Ignore SSL certificates (not needed in Docker)
-certs/
-*.pem
+# Keep SSL certificates for HTTPS in Docker
 
 # Ignore git
 .git/

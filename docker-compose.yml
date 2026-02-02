@@ -1,5 +1,5 @@
 services:
-  # MySQL Database (shared by SIEM)
+  # MySQL Database (shared by SIEM and Auth)
   db:
     image: mysql:latest
     container_name: moveit-mysql
@@ -11,6 +11,7 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-your_secure_password}"]
       interval: 10s
@@ -53,26 +54,34 @@ services:
       - "5000:5000"
     environment:
       DOCKER_ENV: "true"
-      URL_SCHEME: "http"
+      URL_SCHEME: "https"
       SECRET_KEY: ${AUTH_SECRET_KEY:-your-auth-secret-key}
       SIEM_URL: "http://siem:5001"
-      # Email configuration (optional)
+      # MySQL Database
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_secure_password}
+      MYSQL_DATABASE: auth_db
+      # Email configuration
       MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USE_TLS: ${MAIL_USE_TLS:-True}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_DEFAULT_SENDER: ${MAIL_DEFAULT_SENDER:-noreply@moveit.com}
-      # reCAPTCHA (optional)
+      # reCAPTCHA
       RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY:-}
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
-      # Google OAuth (optional)
+      # Google OAuth
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     depends_on:
-      - siem
+      db:
+        condition: service_healthy
+      siem:
+        condition: service_started
     volumes:
       - ./app:/app/app
-      - auth_data:/app/instance
     networks:
       - moveit-network
 
@@ -80,8 +89,6 @@ volumes:
   mysql_data:
     driver: local
   siem_logs:
-    driver: local
-  auth_data:
     driver: local
 
 networks:

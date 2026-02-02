@@ -25,10 +25,19 @@ security_middleware = SecurityMiddleware()
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'your-secret-key-here'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
-    # Database Configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+    # Database Configuration - Use MySQL in Docker, SQLite locally
+    if os.environ.get('DOCKER_ENV') == 'true':
+        from urllib.parse import quote_plus
+        mysql_host = os.environ.get('MYSQL_HOST', 'db')
+        mysql_port = os.environ.get('MYSQL_PORT', '3306')
+        mysql_user = os.environ.get('MYSQL_USER', 'root')
+        mysql_password = quote_plus(os.environ.get('MYSQL_PASSWORD', 'your_secure_password'))
+        mysql_database = os.environ.get('MYSQL_DATABASE', 'auth_db')
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}'
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # Email Configuration

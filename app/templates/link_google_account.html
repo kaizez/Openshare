@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Link Google Account - MoveIt{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <h2 class="brand-name">MoveIt</h2>
+        </div>
+
+        <div class="peek-character">
+            <div class="welcome-message">Account Found!</div>
+            <div class="character-head">
+                <div class="sunglasses"></div>
+                <div class="sunglasses-bridge"></div>
+                <div class="eyes">
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                </div>
+                <div class="mouth"></div>
+            </div>
+            <div class="hand hand-left"></div>
+            <div class="hand hand-right"></div>
+        </div>
+
+        <h1 class="auth-title">Link Your Google Account</h1>
+
+        <div class="oauth-confirm-info">
+            <p class="oauth-confirm-text">
+                An account already exists with this email:
+            </p>
+
+            <div class="oauth-user-info">
+                <strong>{{ username }}</strong>
+                <br>
+                <span class="oauth-email-display">{{ email }}</span>
+            </div>
+
+            <p class="oauth-confirm-description">
+                This account was created manually. To sign in with Google in the future,
+                you can link your Google account to this existing account.
+            </p>
+
+            <div class="oauth-confirm-notice">
+                Enter your password to verify ownership and link your Google account.
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('main.link_google_account') }}" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control"
+                       placeholder="Enter your account password" required>
+            </div>
+
+            <div class="oauth-confirm-buttons">
+                <button type="submit" name="action" value="link" class="btn btn-primary btn-confirm">
+                    Link Google Account
+                </button>
+                <button type="submit" name="action" value="cancel" class="btn btn-secondary btn-cancel">
+                    Cancel
+                </button>
+            </div>
+        </form>
+
+        <div class="auth-footer">
+            <p>Want to sign in normally instead? <a href="{{ url_for('main.login') }}">Login here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

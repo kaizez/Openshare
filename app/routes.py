@@ -705,7 +705,12 @@ def register():
                 ).first()
 
                 if existing_user:
-                    flash('Username or email already exists', 'error')
+                    if existing_user.email == email and existing_user.oauth_provider == 'google':
+                        flash('This email is linked to a Google account. Please sign in with Google instead.', 'error')
+                    elif existing_user.username == username:
+                        flash('Username already exists. Please choose another.', 'error')
+                    else:
+                        flash('Email already exists. Please sign in or use a different email.', 'error')
                 else:
                     # Get IP and location
                     ip_address = get_client_ip()
@@ -848,10 +853,73 @@ def oauth_signup():
 
     return render_template('oauth_signup.html', recaptcha_site_key=current_app.config.get('RECAPTCHA_SITE_KEY'))
 
+@bp.route('/link-google-account', methods=['GET', 'POST'])
+def link_google_account():
+    """Link Google account to existing manual account"""
+    # Check if user came from Google OAuth flow with existing manual account
+    if 'link_oauth_email' not in session or 'link_user_id' not in session:
+        flash('Please sign in with Google first', 'error')
+        return redirect(url_for('main.login'))
+
+    user = User.query.get(session['link_user_id'])
+    if not user:
+        flash('Account not found', 'error')
+        return redirect(url_for('main.login'))
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'link':
+            password = request.form.get('password')
+
+            if not password:
+                flash('Please enter your password to link your Google account', 'error')
+            elif not user.verify_password(password):
+                flash('Incorrect password. Please try again.', 'error')
+            else:
+                # Password verified, link Google account
+                user.oauth_provider = 'google'
+                user.oauth_id = session.get('link_oauth_id')
+                user.profile_picture_url = session.get('link_oauth_picture')
+
+                # Update last login info
+                user.last_login_ip = get_client_ip()
+                user.last_login_location = get_location_from_ip(user.last_login_ip)
+                db.session.commit()
+
+                # Clear link session data
+                session.pop('link_oauth_email', None)
+                session.pop('link_oauth_id', None)
+                session.pop('link_oauth_picture', None)
+                session.pop('link_user_id', None)
+
+                # Log the user in
+                session['user'] = user.username
+                session['user_id'] = user.id
+                session['email'] = user.email
+                session['picture'] = user.profile_picture_url
+
+                flash(f'Google account linked successfully! Welcome back, {user.username}!', 'success')
+                return redirect(url_for('main.index'))
+
+        elif action == 'cancel':
+            # Clear link session data
+            session.pop('link_oauth_email', None)
+            session.pop('link_oauth_id', None)
+            session.pop('link_oauth_picture', None)
+            session.pop('link_user_id', None)
+            flash('Google account linking cancelled', 'info')
+            return redirect(url_for('main.login'))
+
+    return render_template('link_google_account.html',
+                           email=session.get('link_oauth_email'),
+                           username=user.username)
+
 @bp.route('/google-login')
 def google_login():
     # Use the /auth/google/authorized endpoint as the callback URL
-    redirect_uri = url_for('main.google_callback', _external=True, _scheme='https')
+    scheme = os.environ.get('URL_SCHEME', 'https')
+    redirect_uri = url_for('main.google_callback', _external=True, _scheme=scheme)
     print(f"DEBUG: Redirect URI being sent to Google: {redirect_uri}")
     return oauth.google.authorize_redirect(redirect_uri)
 
@@ -872,19 +940,29 @@ def google_callback():
             existing_user = User.query.filter_by(email=oauth_email).first()
 
             if existing_user:
-                # User exists, log them in
-                session['user'] = existing_user.username
-                session['user_id'] = existing_user.id
-                session['email'] = existing_user.email
-                session['picture'] = existing_user.profile_picture_url or oauth_picture
+                # Check if user was created via Google OAuth
+                if existing_user.oauth_provider == 'google':
+                    # User exists and was created via Google, log them in
+                    session['user'] = existing_user.username
+                    session['user_id'] = existing_user.id
+                    session['email'] = existing_user.email
+                    session['picture'] = existing_user.profile_picture_url or oauth_picture
 
-                # Update last login info
-                existing_user.last_login_ip = get_client_ip()
-                existing_user.last_login_location = get_location_from_ip(existing_user.last_login_ip)
-                db.session.commit()
+                    # Update last login info
+                    existing_user.last_login_ip = get_client_ip()
+                    existing_user.last_login_location = get_location_from_ip(existing_user.last_login_ip)
+                    db.session.commit()
 
-                flash(f'Welcome back, {existing_user.username}!', 'success')
-                return redirect(url_for('main.index'))
+                    flash(f'Welcome back, {existing_user.username}!', 'success')
+                    return redirect(url_for('main.index'))
+                else:
+                    # User was created manually - prompt to link Google account
+                    session['link_oauth_email'] = oauth_email
+                    session['link_oauth_id'] = oauth_id
+                    session['link_oauth_picture'] = oauth_picture
+                    session['link_user_id'] = existing_user.id
+
+                    return redirect(url_for('main.link_google_account'))
             else:
                 # New user, redirect to OAuth confirmation page
                 session['oauth_email'] = oauth_email
