@@ -1,0 +1,5 @@
+<nav>
+    <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Upload</a>
+    <a href="/download" class="nav-link {% if request.path == '/download' %}active{% endif %}">Download</a>
+    <a href="/files" class="nav-link {% if request.path == '/files' %}active{% endif %}">My Files</a>
+</nav>

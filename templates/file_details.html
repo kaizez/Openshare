@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Download - {{ file_info.original_filename }}{% endblock %}
+
+{% block content %}
+            <div class="download-section">
+                <div class="download-card">
+                    <div class="download-icon">
+                        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                            <circle cx="40" cy="40" r="40" fill="#C6F6D5"/>
+                            <path d="M40 25V45M40 45L32 37M40 45L48 37" stroke="#38A169" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M28 52H52" stroke="#38A169" stroke-width="4" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+
+                    <h2>File Ready for Download</h2>
+
+                    <div class="file-info-card">
+                        <div class="file-details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Filename:</span>
+                                <span class="detail-value">{{ file_info.original_filename }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">File Size:</span>
+                                <span class="detail-value">{{ file_info.formatted_size }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Classification:</span>
+                                <span class="detail-value classification-badge classification-{{ file_info.classification.lower().replace(' ', '-') }}">
+                                    {{ file_info.classification }}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Uploaded:</span>
+                                <span class="detail-value">{{ file_info.upload_time.split('T')[0] }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Downloads:</span>
+                                <span class="detail-value">{{ file_info.download_count }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="{{ url_for('get_file', file_id=file_info.file_id) }}" class="btn-download">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 4V16M12 16L8 12M12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M4 17V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        Download File
+                    </a>
+
+                    <div class="security-info">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 2L3 5V9C3 13.5 6 17.5 10 19C14 17.5 17 13.5 17 9V5L10 2Z"/>
+                        </svg>
+                        <p>This file is securely stored and verified for integrity</p>
+                    </div>
+
+                    <div class="action-links">
+                        <a href="/" class="text-link">Upload a file</a>
+                        <span>•</span>
+                        <a href="/files" class="text-link">View all files</a>
+                    </div>
+                </div>
+            </div>
+{% endblock %}

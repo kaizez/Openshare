@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}MoveIt - Secure File Sharing{% endblock %}
+
+{% block content %}
+            <div class="upload-section">
+                <div class="upload-header">
+                    <h2>Share Files Securely</h2>
+                    <p>Upload files up to 500MB and share them with a secure link</p>
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <svg class="upload-icon" width="80" height="80" viewBox="0 0 80 80" fill="none">
+                        <circle cx="40" cy="40" r="40" fill="#C6F6D5"/>
+                        <path d="M40 25L50 35H45V50H35V35H30L40 25Z" fill="#38A169"/>
+                        <path d="M28 52H52V56H28V52Z" fill="#38A169"/>
+                    </svg>
+                    <h3>Drag & Drop Files Here</h3>
+                    <p>or</p>
+                    <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+                        Browse Files
+                    </button>
+                    <input type="file" id="fileInput" style="display: none;">
+                    <p class="file-info">Supports documents, images, videos, archives (max 500MB)</p>
+
+                    <div class="classification-section">
+                        <label for="dataClassification" class="classification-label">Data Classification:</label>
+                        <select id="dataClassification" class="classification-select">
+                            <option value="Public">Public</option>
+                            <option value="Internal Use">Internal Use</option>
+                            <option value="Classified">Classified</option>
+                        </select>
+                        <p class="classification-info">Select the security level for this file</p>
+                    </div>
+                </div>
+
+                <div class="progress-section" id="progressSection" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p class="progress-text" id="progressText">Uploading...</p>
+                </div>
+
+                <div class="success-section" id="successSection" style="display: none;">
+                    <div class="success-icon">
+                        <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                            <circle cx="30" cy="30" r="30" fill="#38A169"/>
+                            <path d="M18 30L26 38L42 22" stroke="white" stroke-width="4" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h3>Upload Successful!</h3>
+                    <div class="file-details">
+                        <p><strong>File:</strong> <span id="fileName"></span></p>
+                        <p><strong>Size:</strong> <span id="fileSize"></span></p>
+                        <p><strong>Expires:</strong> <span id="expiresAt"></span></p>
+                    </div>
+
+                    <div class="otp-section">
+                        <h4>Access Code</h4>
+                        <p class="otp-hint">Share this secure code with your recipient. They can enter it on the Download page.</p>
+                        <div class="otp-code-container">
+                            <code id="otpCode" class="otp-code">Loading...</code>
+                            <button class="btn-copy" onclick="copyOTP()">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                                </svg>
+                                Copy Code
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="security-reminder">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 2L4 5V9C4 13 6.5 16.5 10 18C13.5 16.5 16 13 16 9V5L10 2Z"/>
+                        </svg>
+                        <div>
+                            <strong>Security Notice:</strong> This code is valid for 24 hours and can only be used once. A new code will be generated automatically after each download.
+                        </div>
+                    </div>
+
+                    <button class="btn-secondary" onclick="resetUpload()">Upload Another File</button>
+                </div>
+            </div>
+
+            <!-- Custom Error Modal -->
+            <div class="error-modal" id="errorModal">
+                <div class="error-modal-content">
+                    <div class="error-icon">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                            <circle cx="24" cy="24" r="24" fill="#FEE2E2"/>
+                            <path d="M24 14V26M24 30V34" stroke="#EF4444" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h3 id="errorTitle">Upload Failed</h3>
+                    <p id="errorMessage">An error occurred while uploading your file.</p>
+                    <button class="btn-primary" onclick="closeErrorModal()">Got it</button>
+                </div>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon secure">
+                        <svg width="30" height="30" viewBox="0 0 30 30" fill="currentColor">
+                            <path d="M15 2L5 7V13C5 20 10 26 15 28C20 26 25 20 25 13V7L15 2ZM15 14H23C22.5 18.5 19.5 22.5 15 24.5V14H7V8L15 4.5V14Z"/>
+                        </svg>
+                    </div>
+                    <h4>Secure Storage</h4>
+                    <p>Files are encrypted and stored securely with unique identifiers</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon fast">
+                        <svg width="30" height="30" viewBox="0 0 30 30" fill="currentColor">
+                            <path d="M16 3L4 14H11V27H21V14H28L16 3Z"/>
+                        </svg>
+                    </div>
+                    <h4>Fast Transfer</h4>
+                    <p>High-speed upload and download with progress tracking</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon share">
+                        <svg width="30" height="30" viewBox="0 0 30 30" fill="currentColor">
+                            <path d="M23 16C21.5 16 20.2 16.7 19.3 17.8L12.4 13.9C12.5 13.6 12.5 13.3 12.5 13C12.5 12.7 12.5 12.4 12.4 12.1L19.2 8.2C20.1 9.3 21.5 10 23 10C25.8 10 28 7.8 28 5C28 2.2 25.8 0 23 0C20.2 0 18 2.2 18 5C18 5.3 18 5.6 18.1 5.9L11.3 9.8C10.4 8.7 9 8 7.5 8C4.7 8 2.5 10.2 2.5 13C2.5 15.8 4.7 18 7.5 18C9 18 10.4 17.3 11.3 16.2L18.2 20.1C18.1 20.4 18 20.7 18 21C18 23.8 20.2 26 23 26C25.8 26 28 23.8 28 21C28 18.2 25.8 16 23 16Z"/>
+                        </svg>
+                    </div>
+                    <h4>Easy Sharing</h4>
+                    <p>Generate shareable links instantly for quick file distribution</p>
+                </div>
+            </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}
