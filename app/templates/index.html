@@ -29,7 +29,53 @@
             <div class="nav-links">
                 {% if 'user' in session %}
                     <span class="welcome-text">Welcome, {{ session['user'] }}!</span>
-                    <a href="{{ url_for('main.logout') }}" class="nav-btn btn-outline">Logout</a>
+                    <div class="user-dropdown">
+                        <button class="nav-btn btn-outline dropdown-toggle" onclick="toggleDropdown()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px;">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            Account
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-left: 5px;">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="dropdown-menu" id="userDropdown">
+                            {% if user and user.is_admin %}
+                            <a href="{{ url_for('main.admin_dashboard') }}" class="dropdown-item admin-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                                Admin Dashboard
+                            </a>
+                            <hr class="dropdown-divider">
+                            {% endif %}
+                            <a href="{{ url_for('main.profile') }}" class="dropdown-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                Profile
+                            </a>
+                            <a href="{{ url_for('main.settings') }}" class="dropdown-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M12 1v6m0 6v6m-9-9h6m6 0h6"></path>
+                                    <path d="M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24m0-12.73l-4.24 4.24m-5.66 5.66L4.93 19.07"></path>
+                                </svg>
+                                Settings
+                            </a>
+                            <hr class="dropdown-divider">
+                            <a href="{{ url_for('main.logout') }}" class="dropdown-item logout-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
                 {% else %}
                     <a href="{{ url_for('main.login') }}" class="nav-btn btn-outline">Login</a>
                     <a href="{{ url_for('main.register') }}" class="nav-btn btn-primary">Sign Up</a>
@@ -132,4 +178,92 @@
         </div>
     </footer>
 </div>
+
+<style>
+.user-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 8px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    color: #2d3748;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item svg {
+    margin-right: 10px;
+}
+
+.dropdown-item:hover {
+    background-color: #f7fafc;
+}
+
+.logout-item {
+    color: #e53e3e;
+}
+
+.logout-item:hover {
+    background-color: #fff5f5;
+}
+
+.admin-item {
+    color: #805ad5;
+    font-weight: 600;
+}
+
+.admin-item:hover {
+    background-color: #faf5ff;
+}
+
+.dropdown-divider {
+    margin: 0;
+    border: none;
+    border-top: 1px solid #e2e8f0;
+}
+</style>
+
+<script>
+function toggleDropdown() {
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.classList.toggle('show');
+}
+
+// Close dropdown when clicking outside
+window.addEventListener('click', function(e) {
+    if (!e.target.matches('.dropdown-toggle') && !e.target.closest('.dropdown-toggle')) {
+        const dropdown = document.getElementById('userDropdown');
+        if (dropdown && dropdown.classList.contains('show')) {
+            dropdown.classList.remove('show');
+        }
+    }
+});
+</script>
 {% endblock %}

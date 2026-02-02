@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - MoveIt{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('main.index') }}" class="home-button">
+    <svg class="home-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+    </svg>
+    <span class="home-text">Back to Home</span>
+</a>
+
+<div class="auth-container" style="margin-top: 50px;">
+    <div class="auth-card" style="max-width: 700px;">
+        <h1 class="auth-title">My Profile</h1>
+
+        <div style="background: white; border-radius: 8px; padding: 30px; margin-top: 20px;">
+            {% if user.profile_picture_url %}
+            <div style="text-align: center; margin-bottom: 30px;">
+                <img src="{{ user.profile_picture_url }}" alt="Profile Picture" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid #48bb78;">
+            </div>
+            {% endif %}
+
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Username</h3>
+                <p style="font-size: 18px; color: #2d3748; margin: 0;">{{ user.username }}</p>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Email</h3>
+                <p style="font-size: 18px; color: #2d3748; margin: 0;">{{ user.email }}</p>
+            </div>
+
+            {% if user.oauth_provider %}
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Sign-in Method</h3>
+                <p style="font-size: 18px; color: #2d3748; margin: 0;">
+                    <span style="background-color: #e6fffa; color: #047857; padding: 5px 12px; border-radius: 20px; display: inline-block;">
+                        {{ user.oauth_provider.title() }} OAuth
+                    </span>
+                </p>
+            </div>
+            {% endif %}
+
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Account Created</h3>
+                <p style="font-size: 18px; color: #2d3748; margin: 0;">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</p>
+            </div>
+
+            {% if user.last_login_ip %}
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Last Login From</h3>
+                <p style="font-size: 18px; color: #2d3748; margin: 0;">
+                    {{ user.last_login_location or 'Unknown' }}
+                    <span style="color: #718096; font-size: 14px;">({{ user.last_login_ip }})</span>
+                </p>
+            </div>
+            {% endif %}
+
+            <div style="margin-bottom: 25px;">
+                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Two-Factor Authentication</h3>
+                <p style="font-size: 18px; color: #2d3748; margin: 0;">
+                    {% if user.mfa_enabled %}
+                    <span style="background-color: #c6f6d5; color: #276749; padding: 5px 12px; border-radius: 20px; display: inline-block;">
+                        ✓ Enabled
+                    </span>
+                    {% else %}
+                    <span style="background-color: #fff5f5; color: #742a2a; padding: 5px 12px; border-radius: 20px; display: inline-block;">
+                        ✗ Disabled
+                    </span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="{{ url_for('main.settings') }}" class="btn btn-primary">Edit Settings</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

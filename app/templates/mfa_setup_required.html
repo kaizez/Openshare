@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Two-Factor Authentication - MoveIt{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card" style="max-width: 600px;">
+        <div class="auth-logo">
+            <h2 class="brand-name">MoveIt</h2>
+        </div>
+
+        <h1 class="auth-title">Setup Two-Factor Authentication</h1>
+        <p style="text-align: center; color: #718096; margin-bottom: 20px;">
+            For your security, MFA is required for all accounts. Please complete the setup below.
+        </p>
+
+        <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #c53030;">Step 1: Download Authenticator App</h3>
+            <p style="margin: 5px 0; color: #742a2a;">
+                Download <strong>Microsoft Authenticator</strong> or <strong>Google Authenticator</strong> on your phone from the App Store or Google Play.
+            </p>
+        </div>
+
+        <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #c53030;">Step 2: Scan QR Code</h3>
+            <p style="margin: 5px 0; color: #742a2a;">
+                Open the app and scan this QR code:
+            </p>
+            <div style="text-align: center; margin: 20px 0;">
+                <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" style="max-width: 300px; border: 2px solid #e2e8f0; padding: 10px; background: white;">
+            </div>
+            <p style="margin: 10px 0; color: #742a2a; font-size: 12px;">
+                <strong>Can't scan?</strong> Enter this code manually: <code style="background: #f7fafc; padding: 2px 6px; border-radius: 3px;">{{ secret_key }}</code>
+            </p>
+        </div>
+
+        <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #c53030;">Step 3: Verify Code</h3>
+            <p style="margin: 5px 0; color: #742a2a;">
+                Enter the 6-digit code from your authenticator app to complete setup:
+            </p>
+        </div>
+
+        <form method="POST" action="{{ url_for('main.mfa_setup_required') }}" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="verification_code">Verification Code</label>
+                <input
+                    type="text"
+                    id="verification_code"
+                    name="verification_code"
+                    class="form-control"
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                    placeholder="000000"
+                    style="text-align: center; font-size: 24px; letter-spacing: 8px;"
+                    required
+                    autofocus
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary">Complete Setup</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Only allow numbers
+document.getElementById('verification_code').addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+</script>
+{% endblock %}

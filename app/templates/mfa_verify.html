@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Two-Factor Authentication - MoveIt{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <h2 class="brand-name">MoveIt</h2>
+        </div>
+
+        <div class="peek-character">
+            <div class="welcome-message">Verify Your Identity</div>
+            <div class="character-head">
+                <div class="sunglasses"></div>
+                <div class="sunglasses-bridge"></div>
+                <div class="eyes">
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                    <div class="eye">
+                        <div class="pupil"></div>
+                    </div>
+                </div>
+                <div class="mouth"></div>
+            </div>
+            <div class="hand hand-left"></div>
+            <div class="hand hand-right"></div>
+        </div>
+
+        <h1 class="auth-title">Two-Factor Authentication</h1>
+        <p style="text-align: center; color: #718096; margin-bottom: 20px;">
+            Enter the 6-digit code from your Microsoft Authenticator app
+        </p>
+
+        <form method="POST" action="{{ url_for('main.mfa_verify') }}" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="verification_code">Verification Code</label>
+                <input
+                    type="text"
+                    id="verification_code"
+                    name="verification_code"
+                    class="form-control"
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                    placeholder="000000"
+                    style="text-align: center; font-size: 24px; letter-spacing: 8px;"
+                    required
+                    autofocus
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary">Verify</button>
+        </form>
+
+        <div class="auth-footer">
+            <p><a href="{{ url_for('main.login') }}">Back to Login</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus on the verification code input
+document.getElementById('verification_code').focus();
+
+// Only allow numbers
+document.getElementById('verification_code').addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+</script>
+{% endblock %}

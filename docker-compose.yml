@@ -1,0 +1,89 @@
+services:
+  # MySQL Database (shared by SIEM)
+  db:
+    image: mysql:latest
+    container_name: moveit-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_secure_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-siem_db}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-your_secure_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - moveit-network
+
+  # SIEM/SOAR Flask Application (Ayden's system)
+  siem:
+    build: ./MoveIT
+    container_name: moveit-siem
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_secure_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-siem_db}
+      SECRET_KEY: ${SECRET_KEY:-change_this_in_production}
+      FLASK_DEBUG: 1
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./MoveIT:/app
+      - siem_logs:/app/logs:rw
+    networks:
+      - moveit-network
+
+  # Authentication Flask Application (Jun-Hao's system)
+  auth:
+    build: .
+    container_name: moveit-auth
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      DOCKER_ENV: "true"
+      URL_SCHEME: "http"
+      SECRET_KEY: ${AUTH_SECRET_KEY:-your-auth-secret-key}
+      SIEM_URL: "http://siem:5001"
+      # Email configuration (optional)
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USE_TLS: ${MAIL_USE_TLS:-True}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_DEFAULT_SENDER: ${MAIL_DEFAULT_SENDER:-noreply@moveit.com}
+      # reCAPTCHA (optional)
+      RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY:-}
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
+      # Google OAuth (optional)
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      - siem
+    volumes:
+      - ./app:/app/app
+      - auth_data:/app/instance
+    networks:
+      - moveit-network
+
+volumes:
+  mysql_data:
+    driver: local
+  siem_logs:
+    driver: local
+  auth_data:
+    driver: local
+
+networks:
+  moveit-network:
+    driver: bridge

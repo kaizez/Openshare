@@ -196,12 +196,27 @@ body {
     justify-content: center;
     gap: 10px;
     margin-top: 15px;
+    text-decoration: none;
 }
 
 .btn-google:hover {
     background: #f8f8f8;
     border-color: #48bb78;
     box-shadow: 0 2px 10px rgba(72, 187, 120, 0.2);
+    text-decoration: none;
+}
+
+/* reCAPTCHA Container */
+.g-recaptcha {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.recaptcha-container {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
 }
 
 .google-icon {

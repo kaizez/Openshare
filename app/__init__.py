@@ -1,15 +1,27 @@
-from flask import Flask
+from flask import Flask, request
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 import os
 from dotenv import load_dotenv
 from app.models import db
+from app.security_middleware import SecurityMiddleware, setup_security_logging
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file (use explicit path)
+basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+load_dotenv(os.path.join(basedir, '.env'))
 
 oauth = OAuth()
 mail = Mail()
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+csrf = CSRFProtect()
+security_middleware = SecurityMiddleware()
 
 def create_app():
     app = Flask(__name__)
@@ -25,16 +37,18 @@ def create_app():
     app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True') == 'True'
     app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
-    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@moveit.com')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'MoveIT <noreply@moveit.com>')
 
     # reCAPTCHA Configuration
     app.config['RECAPTCHA_SITE_KEY'] = os.environ.get('RECAPTCHA_SITE_KEY', '')
     app.config['RECAPTCHA_SECRET_KEY'] = os.environ.get('RECAPTCHA_SECRET_KEY', '')
 
     # Server configuration for OAuth callbacks
-    app.config['SERVER_NAME'] = '127.0.0.1:5000'
-    # Force HTTPS URL scheme for OAuth redirects
-    app.config['PREFERRED_URL_SCHEME'] = 'https'
+    # Only set SERVER_NAME if not in Docker (it can cause issues with URL generation in Docker)
+    if os.environ.get('DOCKER_ENV') != 'true':
+        app.config['SERVER_NAME'] = '127.0.0.1:5000'
+    # Force HTTPS URL scheme for OAuth redirects (when not in Docker)
+    app.config['PREFERRED_URL_SCHEME'] = os.environ.get('URL_SCHEME', 'https')
 
     # Google OAuth Configuration
     app.config['GOOGLE_CLIENT_ID'] = '1030772732738-7e4iq8jseiea8n418m2blvm22dqt0lrf.apps.googleusercontent.com'
@@ -45,6 +59,18 @@ def create_app():
 
     # Initialize email
     mail.init_app(app)
+
+    # Initialize rate limiter
+    limiter.init_app(app)
+
+    # Initialize CSRF protection
+    csrf.init_app(app)
+
+    # Initialize security middleware (WAF)
+    security_middleware.init_app(app)
+
+    # Setup security logging
+    setup_security_logging()
 
     oauth.init_app(app)
 

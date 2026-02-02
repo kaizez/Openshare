@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Settings - MoveIt{% endblock %}
+
+{% block content %}
+<style>
+.admin-container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.admin-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.admin-header h1 {
+    color: #000;
+    font-size: 32px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+}
+
+.admin-header p {
+    color: #8e8e93;
+    font-size: 16px;
+    margin: 0;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    color: #000;
+    text-decoration: none;
+    font-size: 17px;
+    margin-bottom: 20px;
+    transition: opacity 0.2s;
+}
+
+.back-button:hover {
+    opacity: 0.8;
+}
+
+.back-button svg {
+    margin-right: 8px;
+}
+
+.admin-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.admin-section {
+    padding: 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.admin-section:last-child {
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 16px 0;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 17px;
+    font-weight: 500;
+    color: #000;
+}
+
+.info-value {
+    font-size: 15px;
+    color: #8e8e93;
+    font-family: monospace;
+}
+
+.security-notice {
+    background: #fff5f5;
+    border-left: 4px solid #fc8181;
+    padding: 16px;
+    margin-bottom: 24px;
+    border-radius: 8px;
+}
+
+.security-notice.info {
+    background: #ebf8ff;
+    border-left-color: #63b3ed;
+}
+
+.security-notice.success {
+    background: #f0fff4;
+    border-left-color: #68d391;
+}
+
+.security-notice h3 {
+    color: #c53030;
+    font-size: 16px;
+    margin: 0 0 8px 0;
+}
+
+.security-notice.info h3 {
+    color: #2b6cb0;
+}
+
+.security-notice.success h3 {
+    color: #276749;
+}
+
+.security-notice p {
+    font-size: 14px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.security-notice.info p {
+    color: #2c5282;
+}
+
+.security-notice.success p {
+    color: #22543d;
+}
+
+.register-form {
+    background: #f7fafc;
+    padding: 24px;
+    border-radius: 12px;
+    margin-top: 16px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 16px;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+    font-family: monospace;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #af52de;
+}
+
+.form-group .help-text {
+    font-size: 13px;
+    color: #8e8e93;
+    margin-top: 6px;
+}
+
+.register-btn {
+    background: #af52de;
+    color: white;
+    border: none;
+    padding: 14px 30px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+}
+
+.register-btn:hover {
+    background: #9b3ccd;
+}
+
+.detect-btn {
+    background: #007aff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 12px;
+}
+
+.detect-btn:hover {
+    background: #0066d6;
+}
+
+.detected-mac {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f0fff4;
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    border: 2px solid #68d391;
+}
+
+.detected-mac svg {
+    color: #38a169;
+    flex-shrink: 0;
+}
+
+.detected-mac-info {
+    flex: 1;
+}
+
+.detected-mac-label {
+    font-size: 13px;
+    color: #276749;
+    margin-bottom: 4px;
+}
+
+.detected-mac-value {
+    font-size: 18px;
+    font-weight: 600;
+    font-family: monospace;
+    color: #22543d;
+}
+
+.not-detected {
+    background: #fffaf0;
+    border-color: #ed8936;
+}
+
+.not-detected svg {
+    color: #dd6b20;
+}
+
+.not-detected .detected-mac-label {
+    color: #c05621;
+}
+
+.not-detected .detected-mac-value {
+    color: #7b341e;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-registered {
+    background: rgba(52, 199, 89, 0.15);
+    color: #34c759;
+}
+
+.status-not-registered {
+    background: rgba(255, 149, 0, 0.15);
+    color: #ff9500;
+}
+
+.flash-message {
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.flash-success {
+    background: rgba(52, 199, 89, 0.15);
+    color: #2ea44f;
+    border-left: 4px solid #34c759;
+}
+
+.flash-error {
+    background: rgba(255, 59, 48, 0.15);
+    color: #d62d23;
+    border-left: 4px solid #ff3b30;
+}
+
+.flash-info {
+    background: rgba(0, 122, 255, 0.15);
+    color: #0066d6;
+    border-left: 4px solid #007aff;
+}
+
+.super-admin-notice {
+    text-align: center;
+    padding: 40px;
+    color: #ff9500;
+}
+
+.super-admin-notice svg {
+    margin-bottom: 16px;
+}
+
+.super-admin-notice h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+}
+
+.super-admin-notice p {
+    margin: 0;
+    color: #8e8e93;
+}
+</style>
+
+<div class="admin-container">
+    <a href="{{ url_for('main.admin_dashboard') }}" class="back-button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Dashboard
+    </a>
+
+    <div class="admin-header">
+        <h1>Admin Settings</h1>
+        <p>Configure your admin security settings</p>
+    </div>
+
+    <!-- Super Admin Notice -->
+    {% if user.is_super_admin %}
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="super-admin-notice">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <h3>Super Admin Account</h3>
+                <p>As the super admin, you are not required to set up MAC address verification. Your account has elevated privileges.</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- MAC Address Security Info -->
+    <div class="security-notice info">
+        <h3>MAC Address Verification</h3>
+        <p>Register your computer's MAC address for additional security. After registration, you'll need to verify your MAC address each time you log in as an admin.</p>
+    </div>
+
+    <!-- Current Status -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">Current Status</div>
+
+            <div class="info-item">
+                <div class="info-label">MAC Verification</div>
+                {% if user.mac_address_registered %}
+                <span class="status-badge status-registered">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    Enabled
+                </span>
+                {% else %}
+                <span class="status-badge status-not-registered">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Not Set Up
+                </span>
+                {% endif %}
+            </div>
+
+            {% if user.registered_mac_address %}
+            <div class="info-item">
+                <div class="info-label">Registered MAC</div>
+                <div class="info-value">{{ user.registered_mac_address }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Detected MAC Address -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">Your System's MAC Address</div>
+
+            {% if detected_mac %}
+            <div class="detected-mac">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <div class="detected-mac-info">
+                    <div class="detected-mac-label">Detected MAC Address</div>
+                    <div class="detected-mac-value">{{ detected_mac }}</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="detected-mac not-detected">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <div class="detected-mac-info">
+                    <div class="detected-mac-label">Unable to Auto-Detect</div>
+                    <div class="detected-mac-value">MAC address cannot be detected automatically. This may happen if you're not on the same network as the server. Please enter your MAC address manually below.</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="security-notice" style="margin-top: 16px;">
+                <h3>How to Find Your MAC Address</h3>
+                <p><strong>Windows:</strong> Open Command Prompt and run: <code>ipconfig /all</code> - Look for "Physical Address"</p>
+                <p style="margin-top: 8px;"><strong>Mac:</strong> System Preferences > Network > Advanced > Hardware</p>
+                <p style="margin-top: 8px;"><strong>Linux:</strong> Open Terminal and run: <code>ip link show</code> or <code>ifconfig</code></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register MAC Address -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">{{ 'Update MAC Address' if user.mac_address_registered else 'Register MAC Address' }}</div>
+
+            <form method="POST" action="{{ url_for('main.register_mac') }}" class="register-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label for="mac_address">MAC Address</label>
+                    <input type="text" id="mac_address" name="mac_address"
+                           placeholder="XX:XX:XX:XX:XX:XX"
+                           value="{{ detected_mac or '' }}"
+                           pattern="^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
+                           required>
+                    <div class="help-text">Format: XX:XX:XX:XX:XX:XX (e.g., 00:1A:2B:3C:4D:5E)</div>
+                </div>
+
+                {% if user.mfa_enabled %}
+                <div class="form-group">
+                    <label for="mfa_code">MFA Verification Code</label>
+                    <input type="text" id="mfa_code" name="mfa_code"
+                           placeholder="Enter 6-digit code from authenticator app"
+                           pattern="[0-9]{6}"
+                           maxlength="6"
+                           autocomplete="one-time-code"
+                           required>
+                    <div class="help-text">Enter the code from your authenticator app to confirm this change</div>
+                </div>
+                {% endif %}
+
+                <button type="submit" class="register-btn">
+                    {{ 'Update MAC Address' if user.mac_address_registered else 'Register MAC Address' }}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+
+<script>
+// Auto-format MAC address input
+document.getElementById('mac_address')?.addEventListener('input', function(e) {
+    let value = e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+    let formatted = '';
+    for (let i = 0; i < value.length && i < 12; i++) {
+        if (i > 0 && i % 2 === 0) {
+            formatted += ':';
+        }
+        formatted += value[i];
+    }
+    e.target.value = formatted;
+});
+</script>
+{% endblock %}

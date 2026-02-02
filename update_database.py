@@ -1,5 +1,5 @@
 """
-Database migration script to add password reset and 2FA OTP columns to User table.
+Database migration script to add password reset, 2FA OTP, MFA TOTP, admin security, and account lockout columns to User table.
 Run this script once to update the existing database schema.
 """
 
@@ -32,7 +32,19 @@ def update_database():
         ('reset_token', 'VARCHAR(100)'),
         ('reset_token_expiry', 'DATETIME'),
         ('otp_secret', 'VARCHAR(10)'),
-        ('otp_expiry', 'DATETIME')
+        ('otp_expiry', 'DATETIME'),
+        ('mfa_enabled', 'BOOLEAN DEFAULT 0'),
+        ('mfa_secret', 'VARCHAR(32)'),
+        ('is_admin', 'BOOLEAN DEFAULT 0'),
+        ('is_super_admin', 'BOOLEAN DEFAULT 0'),
+        ('whitelisted_devices', 'TEXT'),
+        ('whitelisted_ips', 'TEXT'),
+        ('registered_mac_address', 'VARCHAR(17)'),
+        ('mac_address_registered', 'BOOLEAN DEFAULT 0'),
+        ('failed_login_attempts', 'INTEGER DEFAULT 0'),
+        ('account_locked', 'BOOLEAN DEFAULT 0'),
+        ('locked_until', 'DATETIME'),
+        ('last_failed_login', 'DATETIME')
     ]
 
     # Add missing columns
@@ -58,9 +70,9 @@ def update_database():
         print("\n[SUCCESS] Database schema is already up to date.")
 
 if __name__ == '__main__':
-    print("=" * 60)
-    print("Database Migration Script - Adding Password Reset & 2FA Columns")
-    print("=" * 60)
+    print("=" * 70)
+    print("Database Migration Script - Adding Security & Account Lockout Columns")
+    print("=" * 70)
     print()
     update_database()
     print()

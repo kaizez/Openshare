@@ -1,0 +1,673 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - MoveIt{% endblock %}
+
+{% block content %}
+<style>
+.admin-container {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.admin-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.admin-header h1 {
+    color: #000;
+    font-size: 32px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+}
+
+.admin-header p {
+    color: #8e8e93;
+    font-size: 16px;
+    margin: 0;
+}
+
+.admin-nav {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.nav-btn-primary {
+    background: #007aff;
+    color: white;
+}
+
+.nav-btn-primary:hover {
+    background: #0066d6;
+}
+
+.nav-btn-secondary {
+    background: #f7fafc;
+    color: #2d3748;
+    border: 1px solid #e2e8f0;
+}
+
+.nav-btn-secondary:hover {
+    background: #edf2f7;
+}
+
+.admin-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.admin-section {
+    padding: 24px;
+}
+
+.section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 16px 0;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: #f7fafc;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #8e8e93;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.user-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: #f7fafc;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8e8e93;
+}
+
+.user-table td {
+    padding: 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    vertical-align: middle;
+}
+
+.user-table tr:last-child td {
+    border-bottom: none;
+}
+
+.user-table tr:hover td {
+    background: #f7fafc;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 16px;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-name {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.user-email {
+    font-size: 13px;
+    color: #8e8e93;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-admin {
+    background: rgba(52, 199, 89, 0.15);
+    color: #34c759;
+}
+
+.badge-super-admin {
+    background: rgba(255, 149, 0, 0.15);
+    color: #ff9500;
+}
+
+.badge-user {
+    background: rgba(142, 142, 147, 0.15);
+    color: #8e8e93;
+}
+
+.badge-mfa {
+    background: rgba(0, 122, 255, 0.15);
+    color: #007aff;
+}
+
+.badge-mac {
+    background: rgba(175, 82, 222, 0.15);
+    color: #af52de;
+}
+
+.toggle-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.toggle-btn-promote {
+    background: #34c759;
+    color: white;
+}
+
+.toggle-btn-promote:hover {
+    background: #2ea44f;
+}
+
+.toggle-btn-demote {
+    background: #ff3b30;
+    color: white;
+}
+
+.toggle-btn-demote:hover {
+    background: #d62d23;
+}
+
+.toggle-btn:disabled {
+    background: #e2e8f0;
+    color: #8e8e93;
+    cursor: not-allowed;
+}
+
+.toggle-btn-delete {
+    background: #1a1a1a;
+    color: white;
+}
+
+.toggle-btn-delete:hover {
+    background: #333;
+}
+
+.flash-message {
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.flash-success {
+    background: rgba(52, 199, 89, 0.15);
+    color: #2ea44f;
+    border-left: 4px solid #34c759;
+}
+
+.flash-error {
+    background: rgba(255, 59, 48, 0.15);
+    color: #d62d23;
+    border-left: 4px solid #ff3b30;
+}
+
+.current-user-badge {
+    background: rgba(0, 122, 255, 0.15);
+    color: #007aff;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    margin-left: 8px;
+}
+
+@media (max-width: 768px) {
+    .user-table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    .admin-nav {
+        flex-direction: column;
+    }
+
+    .nav-btn {
+        justify-content: center;
+    }
+}
+</style>
+
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>Admin Dashboard</h1>
+        <p>Manage users and admin privileges</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('main.admin_settings') }}" class="nav-btn nav-btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Admin Settings
+        </a>
+        <a href="{{ url_for('main.admin_devices') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            Device Management
+        </a>
+        <a href="{{ url_for('main.index') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Home
+        </a>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">Overview</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ users|length }}</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ users|selectattr('is_admin')|list|length }}</div>
+                    <div class="stat-label">Admins</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ users|selectattr('mfa_enabled')|list|length }}</div>
+                    <div class="stat-label">MFA Enabled</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ users|selectattr('mac_address_registered')|list|length }}</div>
+                    <div class="stat-label">MAC Registered</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User List -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">All Users</div>
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Security</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">
+                                    {% if user.profile_picture_url %}
+                                    <img src="{{ user.profile_picture_url }}" alt="{{ user.username }}">
+                                    {% else %}
+                                    {{ user.username[0].upper() }}
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="user-name">
+                                        {{ user.username }}
+                                        {% if user.id == current_user.id %}
+                                        <span class="current-user-badge">You</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="user-email">{{ user.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if user.is_super_admin %}
+                            <span class="badge badge-super-admin">Super Admin</span>
+                            {% elif user.is_admin %}
+                            <span class="badge badge-admin">Admin</span>
+                            {% else %}
+                            <span class="badge badge-user">User</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.mfa_enabled %}
+                            <span class="badge badge-mfa">MFA</span>
+                            {% endif %}
+                            {% if user.mac_address_registered %}
+                            <span class="badge badge-mac">MAC</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}
+                        </td>
+                        <td>
+                            {% if user.is_super_admin %}
+                            <button class="toggle-btn" disabled title="Super admin cannot be modified">Protected</button>
+                            {% elif user.id == current_user.id %}
+                            <button class="toggle-btn" disabled title="Cannot modify your own status">Self</button>
+                            {% else %}
+                                <div style="display: flex; gap: 8px;">
+                                    {% if user.is_admin %}
+                                    <button type="button" class="toggle-btn toggle-btn-demote" onclick="openTotpModal({{ user.id }}, '{{ user.username }}', 'demote')">
+                                        Demote
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="toggle-btn toggle-btn-promote" onclick="openTotpModal({{ user.id }}, '{{ user.username }}', 'promote')">
+                                        Promote
+                                    </button>
+                                    {% endif %}
+                                    <button type="button" class="toggle-btn toggle-btn-delete" onclick="openTotpModal({{ user.id }}, '{{ user.username }}', 'delete')">
+                                        Delete
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- TOTP Verification Modal -->
+<div id="totpModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Verify Your Identity</h3>
+            <button type="button" class="modal-close" onclick="closeTotpModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="modalDescription">Enter your authenticator code to confirm this action.</p>
+            <div class="form-group">
+                <label for="totp_code">Authenticator Code</label>
+                <input type="text" id="totp_code" class="form-control" placeholder="Enter 6-digit code"
+                       maxlength="6" pattern="[0-9]{6}" style="text-align: center; font-size: 24px; letter-spacing: 8px;">
+            </div>
+            <p id="modalError" style="color: #ff3b30; display: none; margin-top: 10px;"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-btn modal-btn-cancel" onclick="closeTotpModal()">Cancel</button>
+            <button type="button" class="modal-btn modal-btn-confirm" id="confirmBtn" onclick="confirmAction()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #2d3748;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #8e8e93;
+    cursor: pointer;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-body p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.modal-btn-cancel {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.modal-btn-confirm {
+    background: #007aff;
+    color: white;
+}
+
+.modal-btn-confirm:hover {
+    background: #0066d6;
+}
+
+.modal-btn-confirm:disabled {
+    background: #a0aec0;
+    cursor: not-allowed;
+}
+
+.modal-btn-danger {
+    background: #dc2626;
+    color: white;
+}
+
+.modal-btn-danger:hover {
+    background: #b91c1c;
+}
+</style>
+
+<script>
+let currentUserId = null;
+let currentAction = null;
+const csrfToken = "{{ csrf_token() }}";
+
+function openTotpModal(userId, username, action) {
+    currentUserId = userId;
+    currentAction = action;
+
+    let actionText = action;
+    let description = '';
+    let confirmBtnClass = 'modal-btn-confirm';
+
+    if (action === 'promote') {
+        description = `Enter your authenticator code to promote ${username} to admin.`;
+    } else if (action === 'demote') {
+        description = `Enter your authenticator code to demote ${username} from admin.`;
+    } else if (action === 'delete') {
+        description = `Enter your authenticator code to permanently delete ${username}. This action cannot be undone.`;
+        confirmBtnClass = 'modal-btn-danger';
+    }
+
+    document.getElementById('modalTitle').textContent = `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} User`;
+    document.getElementById('modalDescription').textContent = description;
+    document.getElementById('totp_code').value = '';
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('confirmBtn').className = `modal-btn ${confirmBtnClass}`;
+    document.getElementById('confirmBtn').textContent = action === 'delete' ? 'Delete User' : 'Confirm';
+    document.getElementById('totpModal').style.display = 'flex';
+    document.getElementById('totp_code').focus();
+}
+
+function closeTotpModal() {
+    document.getElementById('totpModal').style.display = 'none';
+    currentUserId = null;
+    currentAction = null;
+}
+
+async function confirmAction() {
+    const totpCode = document.getElementById('totp_code').value;
+
+    if (!totpCode || totpCode.length !== 6) {
+        document.getElementById('modalError').textContent = 'Please enter a valid 6-digit code';
+        document.getElementById('modalError').style.display = 'block';
+        return;
+    }
+
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Verifying...';
+
+    try {
+        const formData = new FormData();
+        formData.append('totp_code', totpCode);
+        formData.append('csrf_token', csrfToken);
+
+        // Choose endpoint based on action
+        let endpoint = '';
+        if (currentAction === 'delete') {
+            endpoint = `/admin/delete-user/${currentUserId}`;
+        } else {
+            endpoint = `/admin/toggle-admin/${currentUserId}`;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeTotpModal();
+            window.location.reload();
+        } else {
+            document.getElementById('modalError').textContent = data.message;
+            document.getElementById('modalError').style.display = 'block';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = currentAction === 'delete' ? 'Delete User' : 'Confirm';
+        }
+    } catch (error) {
+        document.getElementById('modalError').textContent = 'An error occurred. Please try again.';
+        document.getElementById('modalError').style.display = 'block';
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = currentAction === 'delete' ? 'Delete User' : 'Confirm';
+    }
+}
+
+// Allow Enter key to submit
+document.getElementById('totp_code').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        confirmAction();
+    }
+});
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeTotpModal();
+    }
+});
+</script>
+{% endblock %}

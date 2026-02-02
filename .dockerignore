@@ -1,0 +1,45 @@
+# Ignore SSL certificates (not needed in Docker)
+certs/
+*.pem
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Ignore virtual environments
+venv/
+env/
+.env
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore test files
+test_*.py
+*_test.py
+
+# Ignore documentation
+*.md
+!requirements.txt
+
+# Ignore local database
+*.db
+instance/
+
+# Ignore MoveIT (built separately)
+MoveIT/
+
+# Ignore misc
+nul
+*.log

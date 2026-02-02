@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Admin MFA Setup Required - MoveIt{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card" style="max-width: 500px;">
+        <div class="auth-logo">
+            <h2 class="brand-name">MoveIt Admin</h2>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, #f56565 0%, #c53030 100%); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 10px;">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <path d="M12 8v4"></path>
+                    <path d="M12 16h.01"></path>
+                </svg>
+                <h3 style="margin: 0; font-size: 18px;">Security Requirement</h3>
+            </div>
+        </div>
+
+        <h1 class="auth-title" style="font-size: 22px;">Two-Factor Authentication Required</h1>
+
+        <p style="text-align: center; color: #666; margin-bottom: 25px; line-height: 1.6;">
+            As an administrator, you must enable Two-Factor Authentication (2FA) to protect your account and access the admin dashboard.
+        </p>
+
+        <div style="background: #f7fafc; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+            <h3 style="font-size: 16px; color: #2d3748; margin-bottom: 15px; text-align: center;">
+                Step 1: Scan QR Code
+            </h3>
+            <p style="font-size: 14px; color: #666; text-align: center; margin-bottom: 15px;">
+                Use Google Authenticator, Authy, or any TOTP app to scan:
+            </p>
+            <div style="text-align: center; margin-bottom: 15px;">
+                <img src="data:image/png;base64,{{ qr_code }}" alt="MFA QR Code" style="max-width: 200px; border: 3px solid #48bb78; border-radius: 8px;">
+            </div>
+
+            <div style="background: #edf2f7; padding: 12px; border-radius: 6px; text-align: center;">
+                <small style="color: #718096; display: block; margin-bottom: 5px;">Or enter this code manually:</small>
+                <code style="font-size: 14px; color: #2d3748; letter-spacing: 2px; font-weight: 600;">{{ secret_key }}</code>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('main.admin_mfa_setup') }}" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div style="background: #f0fff4; border-left: 4px solid #48bb78; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <h3 style="font-size: 16px; color: #2d3748; margin-bottom: 10px;">
+                    Step 2: Enter Verification Code
+                </h3>
+                <p style="font-size: 13px; color: #666; margin-bottom: 0;">
+                    Enter the 6-digit code from your authenticator app to verify setup.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="verification_code">Verification Code</label>
+                <input type="text" id="verification_code" name="verification_code" class="form-control"
+                       placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]{6}"
+                       style="text-align: center; font-size: 24px; letter-spacing: 8px; font-weight: 600;" required autofocus>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);">
+                Enable MFA & Continue to Dashboard
+            </button>
+        </form>
+
+        <div style="margin-top: 20px; padding: 15px; background: #fffaf0; border-left: 4px solid #ed8936; border-radius: 6px;">
+            <p style="font-size: 13px; color: #c05621; margin: 0;">
+                <strong>Important:</strong> Save your secret key in a secure location. You'll need it if you lose access to your authenticator app.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
