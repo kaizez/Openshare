@@ -3,7 +3,7 @@
 {% block title %}MFA Setup - MoveIt{% endblock %}
 
 {% block content %}
-<a href="{{ url_for('main.index') }}" class="home-button">
+<a href="{{ url_for('filetransfer.index') }}" class="home-button">
     <svg class="home-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
     </svg>
@@ -24,7 +24,7 @@
                 <strong>MFA is already enabled</strong> for your account. If you want to reconfigure it, please disable it first.
             </p>
         </div>
-        <a href="{{ url_for('main.index') }}" class="btn btn-primary">Back to Home</a>
+        <a href="{{ url_for('filetransfer.index') }}" class="btn btn-primary">Back to Home</a>
         {% else %}
         <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <h3 style="margin-top: 0; color: #c53030;">Step 1: Download Authenticator App</h3>
@@ -75,7 +75,7 @@
         </form>
 
         <div class="auth-footer">
-            <p><a href="{{ url_for('main.index') }}">Cancel</a></p>
+            <p><a href="{{ url_for('filetransfer.index') }}">Cancel</a></p>
         </div>
         {% endif %}
     </div>

@@ -26,6 +26,7 @@ security_middleware = SecurityMiddleware()
 def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
+    app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 
     # Database Configuration - Use MySQL in Docker, SQLite locally
     if os.environ.get('DOCKER_ENV') == 'true':

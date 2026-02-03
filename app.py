@@ -1,7 +1,29 @@
-from app import create_app
+from app import create_app, csrf
 import os
+import sys
+from flask import request
+
+# Add FileTransfer to path for blueprint import
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'FileTransfer'))
 
 app = create_app()
+
+# Register FileTransfer blueprint at root (main app)
+from FileTransfer.app import bp as filetransfer_bp
+
+# Exempt FileTransfer blueprint from CSRF BEFORE registering
+csrf.exempt(filetransfer_bp)
+
+app.register_blueprint(filetransfer_bp, url_prefix='')
+
+# Debug: Catch 400 errors to see what's causing them
+@app.errorhandler(400)
+def handle_400(e):
+    print(f"[ERROR 400] Path: {request.path}", flush=True)
+    print(f"[ERROR 400] Method: {request.method}", flush=True)
+    print(f"[ERROR 400] Exception: {e}", flush=True)
+    print(f"[ERROR 400] Description: {e.description if hasattr(e, 'description') else 'N/A'}", flush=True)
+    return {'error': str(e.description) if hasattr(e, 'description') else str(e)}, 400
 
 if __name__ == '__main__':
     is_docker = os.environ.get('DOCKER_ENV') == 'true'

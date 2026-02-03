@@ -1,19 +1,20 @@
 services:
-  # MySQL Database (shared by SIEM and Auth)
-  db:
+  # ============================================
+  # Auth Database (Separate MySQL instance)
+  # ============================================
+  auth-db:
     image: mysql:8.0
-    container_name: moveit-mysql
+    container_name: moveit-auth-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_secure_password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-siem_db}
+      MYSQL_ROOT_PASSWORD: ${AUTH_DB_ROOT_PASSWORD:-your_secure_password}
+      MYSQL_DATABASE: auth_db
     ports:
       - "3307:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - auth_db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-your_secure_password}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,49 +22,85 @@ services:
     networks:
       - moveit-network
 
-  # SIEM/SOAR Flask Application (Ayden's system)
-  siem:
-    build: ./MoveIT
-    container_name: moveit-siem
+  # ============================================
+  # Working Database (FileTransfer primary DB)
+  # ============================================
+  working-db:
+    image: mysql:8.0
+    container_name: moveit-working-db
     restart: always
-    ports:
-      - "5001:5001"
     environment:
-      MYSQL_HOST: db
-      MYSQL_PORT: 3306
-      MYSQL_USER: root
-      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_secure_password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-siem_db}
-      SECRET_KEY: ${SECRET_KEY:-change_this_in_production}
-      FLASK_DEBUG: 1
-    depends_on:
-      db:
-        condition: service_healthy
+      MYSQL_ROOT_PASSWORD: ${WORKING_DB_ROOT_PASSWORD:-WorkingRoot2024!}
+      MYSQL_DATABASE: ${WORKING_DB_NAME:-workingdb}
+      MYSQL_USER: ${WORKING_DB_USER:-working_user}
+      MYSQL_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+    ports:
+      - "3306:3306"
     volumes:
-      - ./MoveIT:/app
-      - siem_logs:/app/logs:rw
+      - working_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
-      - moveit-network
+      - app_network
+      - sync_network
 
-  # Authentication Flask Application (Jun-Hao's system)
-  auth:
+  # ============================================
+  # Storage Database (Isolated - NO external ports)
+  # ============================================
+  storage-db:
+    image: mysql:8.0
+    container_name: moveit-storage-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${STORAGE_DB_ROOT_PASSWORD:-StorageRoot2024!}
+      MYSQL_DATABASE: ${STORAGE_DB_NAME:-storagedb}
+      MYSQL_USER: ${STORAGE_DB_USER:-storage_user}
+      MYSQL_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
+    volumes:
+      - storage_db_data:/var/lib/mysql
+    networks:
+      - sync_network  # ONLY sync_network - isolated
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================
+  # Main Application (Auth + FileTransfer)
+  # ============================================
+  app:
     build: .
-    container_name: moveit-auth
+    container_name: moveit-app
     restart: always
     ports:
       - "5000:5000"
     environment:
       DOCKER_ENV: "true"
       URL_SCHEME: "https"
-      SECRET_KEY: ${AUTH_SECRET_KEY:-your-auth-secret-key}
-      SIEM_URL: "http://siem:5001"
-      # MySQL Database
-      MYSQL_HOST: db
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      # Auth Database (separate MySQL)
+      MYSQL_HOST: auth-db
       MYSQL_PORT: 3306
       MYSQL_USER: root
-      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_secure_password}
+      MYSQL_PASSWORD: ${AUTH_DB_ROOT_PASSWORD:-your_secure_password}
       MYSQL_DATABASE: auth_db
-      # Email configuration
+      # FileTransfer Working Database (separate MySQL)
+      WORKING_DB_HOST: working-db
+      WORKING_DB_PORT: 3306
+      WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      # VirusTotal
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
+      VIRUSTOTAL_ENABLED: ${VIRUSTOTAL_ENABLED:-true}
+      VIRUSTOTAL_TIMEOUT: ${VIRUSTOTAL_TIMEOUT:-60}
+      # Email config
       MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USE_TLS: ${MAIL_USE_TLS:-True}
@@ -75,22 +112,91 @@ services:
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
       # Google OAuth
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # Force Python to not buffer stdout/stderr
+      PYTHONUNBUFFERED: "1"
     depends_on:
-      db:
+      auth-db:
         condition: service_healthy
-      # siem:
-      #   condition: service_started
+      working-db:
+        condition: service_healthy
     volumes:
       - ./app:/app/app
+      - ./FileTransfer:/app/FileTransfer
+      - ./uploads:/app/uploads
     networks:
       - moveit-network
+      - app_network
 
-volumes:
-  mysql_data:
-    driver: local
-  siem_logs:
-    driver: local
+  # ============================================
+  # Sync Service - Bridges Working DB to Storage DB
+  # ============================================
+  sync-service:
+    build:
+      context: ./FileTransfer
+      dockerfile: Dockerfile.sync
+    container_name: moveit-sync
+    restart: always
+    environment:
+      WORKING_DB_HOST: working-db
+      WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      WORKING_DB_PORT: 3306
+      STORAGE_DB_HOST: storage-db
+      STORAGE_DB_USER: ${STORAGE_DB_USER:-storage_user}
+      STORAGE_DB_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
+      STORAGE_DB_NAME: ${STORAGE_DB_NAME:-storagedb}
+      STORAGE_DB_PORT: 3306
+      SYNC_INTERVAL_SECONDS: ${SYNC_INTERVAL_SECONDS:-3600}
+      DELETE_FILES_OLDER_THAN_SECONDS: ${DELETE_FILES_OLDER_THAN_SECONDS:-0}
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8080:8080"
+    networks:
+      - sync_network
+      - app_network
+    depends_on:
+      working-db:
+        condition: service_healthy
+      storage-db:
+        condition: service_healthy
+
+  # ============================================
+  # VirusTotal Background Worker
+  # ============================================
+  vt-worker:
+    build:
+      context: ./FileTransfer
+      dockerfile: Dockerfile
+    container_name: moveit-vt-worker
+    restart: always
+    command: python3 vt_worker.py
+    environment:
+      WORKING_DB_HOST: working-db
+      WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      WORKING_DB_PORT: 3306
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
+      VIRUSTOTAL_ENABLED: ${VIRUSTOTAL_ENABLED:-true}
+      VT_WORKER_INTERVAL: ${VT_WORKER_INTERVAL:-10}
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - app_network
+    depends_on:
+      working-db:
+        condition: service_healthy
 
 networks:
   moveit-network:
     driver: bridge
+  app_network:
+    driver: bridge
+  sync_network:
+    driver: bridge
+    internal: true  # Isolated - no external access
+
+volumes:
+  auth_db_data:
+  working_db_data:
+  storage_db_data:

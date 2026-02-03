@@ -497,15 +497,16 @@ def send_password_reset_email(email, username, otp_code):
         print(f"Error sending password reset email: {str(e)}")
         return False
 
-@bp.route('/')
-def index():
-    user = None
-    # Check if user is logged in and get MFA status
-    if 'user_id' in session:
-        user = User.query.get(session['user_id'])
-        if user:
-            session['mfa_enabled'] = user.mfa_enabled
-    return render_template('index.html', user=user)
+# Index route moved to FileTransfer blueprint
+# @bp.route('/')
+# def index():
+#     user = None
+#     # Check if user is logged in and get MFA status
+#     if 'user_id' in session:
+#         user = User.query.get(session['user_id'])
+#         if user:
+#             session['mfa_enabled'] = user.mfa_enabled
+#     return render_template('index.html', user=user)
 
 @bp.route('/debug-oauth')
 def debug_oauth():
@@ -641,7 +642,7 @@ def login():
                         # Redirect admin to dashboard
                         if user.is_admin:
                             return redirect(url_for('main.admin_dashboard'))
-                        return redirect(url_for('main.index'))
+                        return redirect(url_for('filetransfer.index'))
                 else:
                     # Password incorrect - record failed attempt
                     was_locked_before = user.account_locked
@@ -900,7 +901,7 @@ def link_google_account():
                 session['picture'] = user.profile_picture_url
 
                 flash(f'Google account linked successfully! Welcome back, {user.username}!', 'success')
-                return redirect(url_for('main.index'))
+                return redirect(url_for('filetransfer.index'))
 
         elif action == 'cancel':
             # Clear link session data
@@ -954,7 +955,7 @@ def google_callback():
                     db.session.commit()
 
                     flash(f'Welcome back, {existing_user.username}!', 'success')
-                    return redirect(url_for('main.index'))
+                    return redirect(url_for('filetransfer.index'))
                 else:
                     # User was created manually - prompt to link Google account
                     session['link_oauth_email'] = oauth_email
@@ -1148,7 +1149,7 @@ def mfa_setup_required():
     """Required MFA setup for new users"""
     # Check if user is logged in and needs MFA setup
     if 'user_id' not in session or not session.get('needs_mfa_setup'):
-        return redirect(url_for('main.index'))
+        return redirect(url_for('filetransfer.index'))
 
     user = User.query.get(session['user_id'])
 
@@ -1166,7 +1167,7 @@ def mfa_setup_required():
                 # Code is correct, MFA setup complete
                 session.pop('needs_mfa_setup', None)
                 session['mfa_enabled'] = True
-                return redirect(url_for('main.index'))
+                return redirect(url_for('filetransfer.index'))
 
     # Generate QR code
     totp = pyotp.TOTP(user.mfa_secret)
@@ -1310,7 +1311,7 @@ def mfa_setup():
                 # Clear temporary secret
                 session.pop('temp_mfa_secret', None)
 
-                return redirect(url_for('main.index'))
+                return redirect(url_for('filetransfer.index'))
 
     # Generate new TOTP secret for this user
     if 'temp_mfa_secret' not in session:
@@ -1415,7 +1416,7 @@ def mfa_verify():
                 # Redirect admin to dashboard
                 if user.is_admin:
                     return redirect(url_for('main.admin_dashboard'))
-                return redirect(url_for('main.index'))
+                return redirect(url_for('filetransfer.index'))
             else:
                 # Log MFA failure to SIEM
                 siem.mfa_failed(user_id=user.username, ip=get_client_ip())
@@ -1702,7 +1703,7 @@ def admin_dashboard():
 
     if not user or not user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('filetransfer.index'))
 
     # Get all users
     all_users = User.query.all()
@@ -1836,7 +1837,7 @@ def admin_settings():
 
     if not user or not user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('filetransfer.index'))
 
     # Try to detect MAC address
     detected_mac = get_client_mac_address()
@@ -1856,7 +1857,7 @@ def register_mac():
 
     if not user or not user.is_admin:
         flash('Access denied. Admin privileges required.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('filetransfer.index'))
 
     # Super admin doesn't need MAC registration
     if user.is_super_admin:

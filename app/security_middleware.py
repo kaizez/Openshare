@@ -44,6 +44,9 @@ class SecurityMiddleware:
 
     def before_request(self):
         """Run security checks before each request"""
+        print(f"[SecurityMiddleware] Processing: {request.method} {request.path}", flush=True)
+        print(f"[SecurityMiddleware] Content-Type: {request.content_type}", flush=True)
+
         # SQL Injection Detection
         if self.detect_sql_injection():
             self.log_security_event('SQL_INJECTION_ATTEMPT', severity='CRITICAL')
@@ -68,6 +71,8 @@ class SecurityMiddleware:
         if self.detect_xxe():
             self.log_security_event('XXE_ATTEMPT', severity='HIGH')
             abort(403, 'Forbidden: XXE attempt detected')
+
+        print(f"[SecurityMiddleware] Passed all checks for: {request.path}", flush=True)
 
     def after_request(self, response):
         """Add security headers to all responses"""
