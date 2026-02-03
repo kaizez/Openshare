@@ -1,7 +1,7 @@
 services:
   # MySQL Database (shared by SIEM and Auth)
   db:
-    image: mysql:latest
+    image: mysql:8.0
     container_name: moveit-mysql
     restart: always
     environment:
@@ -78,8 +78,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      siem:
-        condition: service_started
+      # siem:
+      #   condition: service_started
     volumes:
       - ./app:/app/app
     networks:
