@@ -99,12 +99,24 @@ def ensure_tables(conn):
 
 
 def sync_files(working_conn, storage_conn):
-    """Sync file_metadata from Working DB to Storage DB and archive old files"""
+    """
+    Sync file_metadata from Working DB to Storage DB and archive old files.
+    
+    NOTE: This function does NOT delete files from Storage DB. File deletion from 
+    Storage DB only happens when explicitly requested via the DELETE /delete/<file_id> 
+    API endpoint (called by the main app when a user deletes a file).
+    """
     working_cursor = working_conn.cursor(dictionary=True)
     storage_cursor = storage_conn.cursor()
 
     # Get all files from Working DB that aren't archived yet
-    working_cursor.execute("SELECT * FROM file_metadata WHERE is_archived = FALSE OR is_archived IS NULL")
+    # SECURITY: Only sync files with scan_status='clean' or NULL (old files without VT scan)
+    # This prevents 'pending' and 'malicious' files from reaching Storage DB
+    working_cursor.execute("""
+        SELECT * FROM file_metadata 
+        WHERE (is_archived = FALSE OR is_archived IS NULL)
+        AND (scan_status = 'clean' OR scan_status IS NULL)
+    """)
     files = working_cursor.fetchall()
 
     synced = 0
@@ -291,6 +303,53 @@ def retrieve_file(file_id):
             
     except Exception as e:
         print(f"[API] Error retrieving file {file_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@api.route('/delete/<file_id>', methods=['DELETE'])
+def delete_file(file_id):
+    """Delete a file from Storage DB (only when explicitly requested by main app)"""
+    try:
+        print(f"[API] Delete request received for file {file_id}")
+        
+        # Connect to Storage DB
+        storage_conn = get_connection(STORAGE_DB_CONFIG, "Storage DB")
+        if not storage_conn:
+            return jsonify({'error': 'Could not connect to Storage DB'}), 500
+        
+        try:
+            cursor = storage_conn.cursor()
+            
+            # Check if file exists first
+            cursor.execute("SELECT file_id FROM file_metadata WHERE file_id = %s", (file_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                cursor.close()
+                print(f"[API] File {file_id} not found in Storage DB")
+                return jsonify({'error': 'File not found in Storage DB'}), 404
+            
+            # Delete the file (access logs will be cascaded if foreign key exists)
+            cursor.execute("DELETE FROM file_metadata WHERE file_id = %s", (file_id,))
+            
+            # Also delete associated access logs
+            cursor.execute("DELETE FROM access_logs WHERE file_id = %s", (file_id,))
+            
+            storage_conn.commit()
+            cursor.close()
+            
+            print(f"[API] Successfully deleted file {file_id} from Storage DB")
+            return jsonify({'success': True, 'message': 'File deleted from Storage DB'}), 200
+            
+        except Error as e:
+            storage_conn.rollback()
+            print(f"[API] Database error deleting file {file_id}: {e}")
+            return jsonify({'error': f'Database error: {str(e)}'}), 500
+        finally:
+            storage_conn.close()
+            
+    except Exception as e:
+        print(f"[API] Error deleting file {file_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 

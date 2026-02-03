@@ -1146,6 +1146,69 @@ footer p {
     color: #991B1B;
 }
 
+/* Scan status badges */
+.badge-warning {
+    background: #FEF3C7;
+    color: #92400E;
+    animation: pulse-warning 2s infinite;
+}
+
+.badge-danger {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.badge-error {
+    background: #F3F4F6;
+    color: #6B7280;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Scan blocked states */
+.scan-blocked {
+    opacity: 0.7;
+    pointer-events: none;
+    position: relative;
+}
+
+.scan-status-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.scan-pending {
+    background: #FEF3C7;
+    border: 1px solid #F59E0B;
+    color: #92400E;
+}
+
+.scan-malicious {
+    background: #FEE2E2;
+    border: 1px solid #EF4444;
+    color: #991B1B;
+}
+
+.scan-error {
+    background: #F3F4F6;
+    border: 1px solid #D1D5DB;
+    color: #6B7280;
+}
+
+.code-hidden {
+    color: #9CA3AF;
+    letter-spacing: 2px;
+}
+
 /* Download/Claim Page Styles */
 .claim-section {
     max-width: 600px;
@@ -1340,5 +1403,160 @@ footer p {
     to {
         transform: translateY(0);
         opacity: 1;
+    }
+}
+
+/* Virus Scan Result Styles */
+.scan-result {
+    margin: 16px 0 24px 0;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.scan-result-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.scan-result-content.scan-clean {
+    background: linear-gradient(135deg, #C6F6D5 0%, #9AE6B4 100%);
+    color: #22543D;
+    border: 1px solid #68D391;
+}
+
+.scan-result-content.scan-skipped {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    color: #92400E;
+    border: 1px solid #F59E0B;
+}
+
+.scan-result-content .scan-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+/* Toast Notification Styles */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 400px;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateX(120%);
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    opacity: 0;
+    border-left: 4px solid transparent;
+}
+
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-success {
+    border-left-color: var(--success-color);
+    background: linear-gradient(135deg, #FFFFFF 0%, #F0FFF4 100%);
+}
+
+.toast-error {
+    border-left-color: var(--error-color);
+    background: linear-gradient(135deg, #FFFFFF 0%, #FEF2F2 100%);
+}
+
+.toast-warning {
+    border-left-color: var(--warning-color);
+    background: linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%);
+}
+
+.toast-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-success .toast-icon {
+    color: var(--success-color);
+}
+
+.toast-error .toast-icon {
+    color: var(--error-color);
+}
+
+.toast-warning .toast-icon {
+    color: var(--warning-color);
+}
+
+.toast-message {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.toast-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-close:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+}
+
+/* Toast Animation */
+@keyframes toastSlideIn {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive Toast */
+@media (max-width: 480px) {
+    .toast-container {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+
+    .toast {
+        padding: 12px 16px;
+    }
+
+    .toast-message {
+        font-size: 13px;
     }
 }

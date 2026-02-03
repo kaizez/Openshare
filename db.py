@@ -29,7 +29,8 @@ class Database:
                 user=self.user,
                 password=self.password,
                 database=self.database,
-                port=self.port
+                port=self.port,
+                autocommit=True  # Ensure we always see latest committed data
             )
             if self.connection.is_connected():
                 print(f"Connected to MySQL database at {self.host}:{self.port}")
@@ -67,10 +68,20 @@ class Database:
                     otp_expires_at DATETIME,
                     otp_used BOOLEAN DEFAULT FALSE,
                     is_archived BOOLEAN DEFAULT FALSE,
+                    scan_status VARCHAR(20),
+                    vt_analysis_id VARCHAR(255),
+                    vt_scan_method VARCHAR(50),
+                    vt_malicious_count INT DEFAULT 0,
+                    vt_suspicious_count INT DEFAULT 0,
+                    vt_total_engines INT DEFAULT 0,
+                    vt_scan_completed_at DATETIME,
+                    vt_scan_error TEXT,
+                    upload_ip VARCHAR(45),
                     file_content LONGBLOB,
                     INDEX idx_otp_code (current_otp_code),
                     INDEX idx_upload_time (upload_time),
-                    INDEX idx_archived (is_archived)
+                    INDEX idx_archived (is_archived),
+                    INDEX idx_scan_status (scan_status)
                 )
             """)
 
@@ -85,6 +96,42 @@ class Database:
                     FOREIGN KEY (file_id) REFERENCES file_metadata(file_id) ON DELETE CASCADE,
                     INDEX idx_file_id (file_id),
                     INDEX idx_timestamp (timestamp)
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS failed_upload_logs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    timestamp DATETIME NOT NULL,
+                    original_filename VARCHAR(500) NOT NULL,
+                    file_size BIGINT,
+                    file_hash VARCHAR(64),
+                    detected_mime VARCHAR(100),
+                    failure_reason VARCHAR(100) NOT NULL,
+                    failure_details TEXT,
+                    ip_address VARCHAR(45),
+                    classification VARCHAR(50),
+                    INDEX idx_timestamp (timestamp),
+                    INDEX idx_failure_reason (failure_reason)
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS virus_scan_logs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    timestamp DATETIME NOT NULL,
+                    file_id VARCHAR(255),
+                    original_filename VARCHAR(500) NOT NULL,
+                    file_size BIGINT,
+                    file_hash VARCHAR(64),
+                    scan_status VARCHAR(20) NOT NULL,
+                    malicious_count INT DEFAULT 0,
+                    suspicious_count INT DEFAULT 0,
+                    scan_details TEXT,
+                    ip_address VARCHAR(45),
+                    INDEX idx_timestamp (timestamp),
+                    INDEX idx_scan_status (scan_status),
+                    INDEX idx_file_id (file_id)
                 )
             """)
 
@@ -126,6 +173,7 @@ class Database:
                     'otp_expires_at': row['otp_expires_at'].isoformat() if row['otp_expires_at'] else None,
                     'otp_used': bool(row['otp_used']),
                     'is_archived': bool(row.get('is_archived', False)),
+                    'scan_status': row.get('scan_status'),
                     'access_logs': access_logs
                 }
             return result
@@ -149,7 +197,8 @@ class Database:
                     SELECT file_id, original_filename, stored_filename, file_size,
                            file_hash, upload_time, download_count, classification,
                            detected_mime, current_otp_code, otp_generated_at,
-                           otp_expires_at, otp_used, is_archived
+                           otp_expires_at, otp_used, is_archived, scan_status,
+                           vt_analysis_id
                     FROM file_metadata WHERE file_id = %s
                 """, (file_id,))
 
@@ -174,6 +223,8 @@ class Database:
                 'otp_expires_at': row['otp_expires_at'].isoformat() if row['otp_expires_at'] else None,
                 'otp_used': bool(row['otp_used']),
                 'is_archived': bool(row.get('is_archived', False)),
+                'scan_status': row.get('scan_status'),
+                'vt_analysis_id': row.get('vt_analysis_id'),
                 'access_logs': access_logs
             }
 
@@ -202,8 +253,9 @@ class Database:
                     INSERT INTO file_metadata
                     (file_id, original_filename, stored_filename, file_size, file_hash,
                      upload_time, download_count, classification, detected_mime,
-                     current_otp_code, otp_generated_at, otp_expires_at, otp_used, file_content)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     current_otp_code, otp_generated_at, otp_expires_at, otp_used,
+                     scan_status, vt_analysis_id, vt_scan_method, upload_ip, file_content)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
                     original_filename = VALUES(original_filename),
                     stored_filename = VALUES(stored_filename),
@@ -217,6 +269,10 @@ class Database:
                     otp_generated_at = VALUES(otp_generated_at),
                     otp_expires_at = VALUES(otp_expires_at),
                     otp_used = VALUES(otp_used),
+                    scan_status = VALUES(scan_status),
+                    vt_analysis_id = VALUES(vt_analysis_id),
+                    vt_scan_method = VALUES(vt_scan_method),
+                    upload_ip = VALUES(upload_ip),
                     file_content = VALUES(file_content)
                 """, (
                     file_id,
@@ -232,6 +288,10 @@ class Database:
                     otp_generated_at,
                     otp_expires_at,
                     metadata.get('otp_used', False),
+                    metadata.get('scan_status'),
+                    metadata.get('vt_analysis_id'),
+                    metadata.get('vt_scan_method'),
+                    metadata.get('upload_ip'),
                     file_content
                 ))
             else:
@@ -248,7 +308,11 @@ class Database:
                     current_otp_code = %s,
                     otp_generated_at = %s,
                     otp_expires_at = %s,
-                    otp_used = %s
+                    otp_used = %s,
+                    scan_status = %s,
+                    vt_analysis_id = %s,
+                    vt_scan_method = %s,
+                    upload_ip = %s
                     WHERE file_id = %s
                 """, (
                     metadata['original_filename'],
@@ -263,6 +327,10 @@ class Database:
                     otp_generated_at,
                     otp_expires_at,
                     metadata.get('otp_used', False),
+                    metadata.get('scan_status'),
+                    metadata.get('vt_analysis_id'),
+                    metadata.get('vt_scan_method'),
+                    metadata.get('upload_ip'),
                     file_id
                 ))
 
@@ -394,6 +462,261 @@ class Database:
             return True
         except Error as e:
             print(f"Error updating OTP: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+
+    def log_virus_scan(self, file_id, filename, file_size, file_hash, scan_status,
+                       malicious_count=0, suspicious_count=0, scan_details=None, ip_address=None):
+        """Log a virus scan result (both successful and failed)"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO virus_scan_logs
+                (timestamp, file_id, original_filename, file_size, file_hash,
+                 scan_status, malicious_count, suspicious_count, scan_details, ip_address)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                datetime.now(),
+                file_id,
+                filename,
+                file_size,
+                file_hash,
+                scan_status,
+                malicious_count,
+                suspicious_count,
+                scan_details,
+                ip_address
+            ))
+            self.connection.commit()
+            return True
+        except Error as e:
+            print(f"Error logging virus scan: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+
+    def get_virus_scan_logs(self, limit=100):
+        """Get recent virus scan logs"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute("""
+                SELECT * FROM virus_scan_logs
+                ORDER BY timestamp DESC
+                LIMIT %s
+            """, (limit,))
+            logs = cursor.fetchall()
+            return [
+                {
+                    'id': log['id'],
+                    'timestamp': log['timestamp'].isoformat() if log['timestamp'] else None,
+                    'file_id': log['file_id'],
+                    'original_filename': log['original_filename'],
+                    'file_size': log['file_size'],
+                    'file_hash': log['file_hash'],
+                    'scan_status': log['scan_status'],
+                    'malicious_count': log['malicious_count'],
+                    'suspicious_count': log['suspicious_count'],
+                    'scan_details': log['scan_details'],
+                    'ip_address': log['ip_address']
+                }
+                for log in logs
+            ]
+        except Error as e:
+            print(f"Error fetching virus scan logs: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def log_failed_upload(self, filename, file_size, file_hash, detected_mime,
+                          failure_reason, failure_details, ip_address, classification=None):
+        """Log a failed upload attempt (without storing file content)"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO failed_upload_logs
+                (timestamp, original_filename, file_size, file_hash, detected_mime,
+                 failure_reason, failure_details, ip_address, classification)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                datetime.now(),
+                filename,
+                file_size,
+                file_hash,
+                detected_mime,
+                failure_reason,
+                failure_details,
+                ip_address,
+                classification
+            ))
+            self.connection.commit()
+            return True
+        except Error as e:
+            print(f"Error logging failed upload: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+
+    def get_failed_upload_logs(self, limit=100):
+        """Get recent failed upload logs"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute("""
+                SELECT * FROM failed_upload_logs
+                ORDER BY timestamp DESC
+                LIMIT %s
+            """, (limit,))
+            logs = cursor.fetchall()
+            return [
+                {
+                    'id': log['id'],
+                    'timestamp': log['timestamp'].isoformat() if log['timestamp'] else None,
+                    'original_filename': log['original_filename'],
+                    'file_size': log['file_size'],
+                    'file_hash': log['file_hash'],
+                    'detected_mime': log['detected_mime'],
+                    'failure_reason': log['failure_reason'],
+                    'failure_details': log['failure_details'],
+                    'ip_address': log['ip_address'],
+                    'classification': log['classification']
+                }
+                for log in logs
+            ]
+        except Error as e:
+            print(f"Error fetching failed upload logs: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def update_scan_status(self, file_id, scan_status, **kwargs):
+        """
+        Update virus scan status for a file
+        
+        Args:
+            file_id: File ID
+            scan_status: 'clean', 'pending', 'malicious', 'error'
+            **kwargs: Additional fields to update (vt_analysis_id, malicious_count, etc.)
+        """
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+            
+            # Build UPDATE query dynamically based on kwargs
+            updates = ['scan_status = %s']
+            params = [scan_status]
+            
+            if 'vt_analysis_id' in kwargs:
+                updates.append('vt_analysis_id = %s')
+                params.append(kwargs['vt_analysis_id'])
+            
+            if 'vt_scan_method' in kwargs:
+                updates.append('vt_scan_method = %s')
+                params.append(kwargs['vt_scan_method'])
+            
+            if 'malicious_count' in kwargs:
+                updates.append('vt_malicious_count = %s')
+                params.append(kwargs['malicious_count'])
+            
+            if 'suspicious_count' in kwargs:
+                updates.append('vt_suspicious_count = %s')
+                params.append(kwargs['suspicious_count'])
+            
+            if 'total_engines' in kwargs:
+                updates.append('vt_total_engines = %s')
+                params.append(kwargs['total_engines'])
+            
+            if 'scan_completed_at' in kwargs:
+                completed_at = kwargs['scan_completed_at']
+                if isinstance(completed_at, str):
+                    completed_at = datetime.fromisoformat(completed_at)
+                updates.append('vt_scan_completed_at = %s')
+                params.append(completed_at)
+            
+            if 'scan_error' in kwargs:
+                updates.append('vt_scan_error = %s')
+                params.append(kwargs['scan_error'])
+            
+            params.append(file_id)
+            
+            query = f"UPDATE file_metadata SET {', '.join(updates)} WHERE file_id = %s"
+            cursor.execute(query, params)
+            
+            self.connection.commit()
+            return True
+        except Error as e:
+            print(f"Error updating scan status: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+    
+    def get_files_by_scan_status(self, status):
+        """
+        Get all files with given scan_status
+        
+        Args:
+            status: 'pending', 'clean', 'malicious', 'error'
+            
+        Returns:
+            dict: {file_id: metadata} for matching files
+        """
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute("""
+                SELECT file_id, original_filename, file_size, file_hash,
+                       vt_analysis_id, vt_scan_method, upload_ip,
+                       upload_time, scan_status
+                FROM file_metadata
+                WHERE scan_status = %s
+            """, (status,))
+            
+            rows = cursor.fetchall()
+            
+            result = {}
+            for row in rows:
+                result[row['file_id']] = {
+                    'original_filename': row['original_filename'],
+                    'file_size': row['file_size'],
+                    'file_hash': row['file_hash'],
+                    'vt_analysis_id': row['vt_analysis_id'],
+                    'vt_scan_method': row['vt_scan_method'],
+                    'upload_ip': row['upload_ip'],
+                    'upload_time': row['upload_time'].isoformat() if row['upload_time'] else None,
+                    'scan_status': row['scan_status']
+                }
+            
+            return result
+        except Error as e:
+            print(f"Error fetching files by scan status: {e}")
+            return {}
+        finally:
+            cursor.close()
+    
+    def delete_file(self, file_id):
+        """
+        Completely delete a file (for malicious files)
+        This removes all metadata and file content
+        """
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+            
+            # Foreign key constraints will cascade delete access_logs
+            cursor.execute("DELETE FROM file_metadata WHERE file_id = %s", (file_id,))
+            
+            self.connection.commit()
+            print(f"[DB] Deleted file {file_id}")
+            return True
+        except Error as e:
+            print(f"Error deleting file: {e}")
             self.connection.rollback()
             return False
         finally:

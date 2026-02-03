@@ -49,13 +49,25 @@
                         </svg>
                     </div>
                     <h3>Upload Successful!</h3>
+
+                    <!-- Virus Scan Result -->
+                    <div class="scan-result" id="scanResult" style="display: none;">
+                        <div class="scan-result-content" id="scanResultContent">
+                            <svg class="scan-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1ZM10 17L6 13L7.41 11.59L10 14.17L16.59 7.58L18 9L10 17Z"/>
+                            </svg>
+                            <span id="scanStatusText">Virus scan passed</span>
+                        </div>
+                    </div>
+
                     <div class="file-details">
                         <p><strong>File:</strong> <span id="fileName"></span></p>
                         <p><strong>Size:</strong> <span id="fileSize"></span></p>
                         <p><strong>Expires:</strong> <span id="expiresAt"></span></p>
                     </div>
 
-                    <div class="otp-section">
+                    <!-- OTP Section - shown only for clean files -->
+                    <div class="otp-section" id="otpSectionClean">
                         <h4>Access Code</h4>
                         <p class="otp-hint">Share this secure code with your recipient. They can enter it on the Download page.</p>
                         <div class="otp-code-container">
@@ -67,6 +79,21 @@
                                 </svg>
                                 Copy Code
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Pending scan section - shown when file needs scanning -->
+                    <div class="otp-section" id="otpSectionPending" style="display: none;">
+                        <div class="scan-status-banner scan-pending" style="margin-bottom: 16px;">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                            </svg>
+                            <span>Security scan in progress...</span>
+                        </div>
+                        <h4>Access Code</h4>
+                        <p class="otp-hint">The access code will be available once the security scan completes. Check the <a href="/files">My Files</a> page for updates.</p>
+                        <div class="otp-code-container">
+                            <code class="otp-code code-hidden" style="color: #9CA3AF;">················</code>
                         </div>
                     </div>
 

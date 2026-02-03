@@ -9,6 +9,19 @@
                     <p>Manage and share your uploaded files</p>
                 </div>
 
+                {% set pending_count = files | selectattr('scan_status', 'equalto', 'pending') | list | length %}
+                {% if pending_count > 0 %}
+                <div class="pending-scan-notice" style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                    <svg width="24" height="24" viewBox="0 0 20 20" fill="#F59E0B">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                    </svg>
+                    <div style="flex: 1;">
+                        <strong style="color: #92400E;">{{ pending_count }} file(s) being scanned</strong>
+                        <p style="margin: 0; font-size: 13px; color: #B45309;">This page will auto-refresh every 5 seconds until scans complete.</p>
+                    </div>
+                </div>
+                {% endif %}
+
                 {% if files %}
                 <div class="files-grid">
                     {% for file in files %}
@@ -23,7 +36,15 @@
                             </div>
                             <div class="file-card-info">
                                 <h3 class="file-name" title="{{ file.filename }}">{{ file.filename }}</h3>
-                                <p class="file-meta">{{ file.size }} • {{ file.downloads }} downloads • <span class="badge badge-{{ file.classification.lower().replace(' ', '-') }}">{{ file.classification }}</span></p>
+                                <p class="file-meta">{{ file.size }} • {{ file.downloads }} downloads • <span class="badge badge-{{ file.classification.lower().replace(' ', '-') }}">{{ file.classification }}</span>
+                                    {% if file.scan_status == 'pending' %}
+                                        <span class="badge badge-warning">Scanning...</span>
+                                    {% elif file.scan_status == 'malicious' %}
+                                        <span class="badge badge-danger">Malicious</span>
+                                    {% elif file.scan_status == 'error' %}
+                                        <span class="badge badge-error">Scan Error</span>
+                                    {% endif %}
+                                </p>
                             </div>
                         </div>
 
@@ -31,6 +52,59 @@
                             <p class="file-date">Uploaded: {{ file.upload_time.split('T')[0] }}</p>
 
                             <!-- OTP Code Section -->
+                            {% if file.scan_status == 'pending' %}
+                            <!-- File is pending virus scan - show warning and disable interactions -->
+                            <div class="otp-card-section scan-blocked">
+                                <div class="scan-status-banner scan-pending">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>Security scan in progress...</span>
+                                </div>
+                                <div class="otp-header-mini">
+                                    <span class="otp-label">Access Code</span>
+                                    <span class="otp-status status-active">Hidden</span>
+                                </div>
+                                <div class="otp-code-mini">
+                                    <code class="code-hidden">················</code>
+                                </div>
+                            </div>
+                            {% elif file.scan_status == 'malicious' %}
+                            <!-- File flagged as malicious - show danger warning -->
+                            <div class="otp-card-section scan-blocked">
+                                <div class="scan-status-banner scan-malicious">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>File flagged as malicious - download blocked</span>
+                                </div>
+                                <div class="otp-header-mini">
+                                    <span class="otp-label">Access Code</span>
+                                    <span class="otp-status status-used">Blocked</span>
+                                </div>
+                                <div class="otp-code-mini">
+                                    <code class="code-hidden">················</code>
+                                </div>
+                            </div>
+                            {% elif file.scan_status == 'error' %}
+                            <!-- Scan error - show error warning -->
+                            <div class="otp-card-section scan-blocked">
+                                <div class="scan-status-banner scan-error">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>Scan error - contact support</span>
+                                </div>
+                                <div class="otp-header-mini">
+                                    <span class="otp-label">Access Code</span>
+                                    <span class="otp-status status-expired">Unavailable</span>
+                                </div>
+                                <div class="otp-code-mini">
+                                    <code class="code-hidden">················</code>
+                                </div>
+                            </div>
+                            {% else %}
+                            <!-- Normal OTP Section for clean files -->
                             <div class="otp-card-section">
                                 <div class="otp-header-mini">
                                     <span class="otp-label">Access Code</span>
@@ -61,6 +135,7 @@
                                     </div>
                                 </div>
                             </div>
+                            {% endif %}
 
                             <!-- Access Logs Section -->
                             {% if file.access_logs %}
@@ -222,12 +297,24 @@
             }, 3000);
         }
 
-        // Auto-refresh page every 30 seconds to show updated access logs
-        setInterval(() => {
-            // Only refresh if not currently interacting with the page
-            if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
-                location.reload();
-            }
-        }, 30000);
+        // Check if there are any pending files
+        function hasPendingFiles() {
+            return document.querySelectorAll('.badge-warning').length > 0;
+        }
+
+        // Auto-refresh: 5 seconds if pending files, 30 seconds otherwise
+        function setupAutoRefresh() {
+            const refreshInterval = hasPendingFiles() ? 5000 : 30000;
+
+            setInterval(() => {
+                // Only refresh if not currently interacting with the page
+                if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
+                    location.reload();
+                }
+            }, refreshInterval);
+        }
+
+        // Start auto-refresh
+        setupAutoRefresh();
     </script>
 {% endblock %}

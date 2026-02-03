@@ -82,6 +82,9 @@ services:
       DELETE_FILES_OLDER_THAN_SECONDS: ${DELETE_FILES_OLDER_THAN_SECONDS:-0}
     ports:
       - "8080:8080"
+    volumes:
+      # Development: Mount code for live editing (comment out for production)
+      - ./sync_service.py:/app/sync_service.py
     networks:
       - sync_network  # Can reach both DBs
       - app_network  # Can receive requests from app
@@ -111,10 +114,54 @@ services:
       DUAL_DB_ENABLED: "false"
       SECRET_KEY: ${SECRET_KEY:-change_this_secret_key}
       DEBUG: ${DEBUG:-false}
+      # VirusTotal scanning
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
+      VIRUSTOTAL_ENABLED: ${VIRUSTOTAL_ENABLED:-true}
+      VIRUSTOTAL_TIMEOUT: ${VIRUSTOTAL_TIMEOUT:-60}
+      # Force Python to not buffer stdout/stderr
+      PYTHONUNBUFFERED: "1"
     volumes:
       - ./uploads:/app/uploads
+      # Development: Mount code for live editing (comment out for production)
+      - ./app.py:/app/app.py
+      - ./db.py:/app/db.py
+      - ./virustotal_service.py:/app/virustotal_service.py
+      - ./templates:/app/templates
+      - ./styles:/app/styles
     networks:
       - app_network  # ONLY app_network - cannot reach storage-db
+    depends_on:
+      working-db:
+        condition: service_healthy
+
+  # ============================================
+  # VirusTotal Background Worker
+  # ============================================
+  # Processes pending virus scans in background
+  vt-worker:
+    build: .
+    container_name: moveit-vt-worker
+    restart: always
+    command: python3 vt_worker.py
+    environment:
+      WORKING_DB_HOST: working-db
+      WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      WORKING_DB_PORT: 3306
+      # VirusTotal configuration
+      VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
+      VIRUSTOTAL_ENABLED: ${VIRUSTOTAL_ENABLED:-true}
+      VT_WORKER_INTERVAL: ${VT_WORKER_INTERVAL:-10}  # Check every 10 seconds
+      # Force Python to not buffer stdout/stderr
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      # Development: Mount code for live editing (comment out for production)
+      - ./vt_worker.py:/app/vt_worker.py
+      - ./db.py:/app/db.py
+      - ./virustotal_service.py:/app/virustotal_service.py
+    networks:
+      - app_network
     depends_on:
       working-db:
         condition: service_healthy

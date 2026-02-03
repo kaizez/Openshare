@@ -1,6 +1,8 @@
 import os
 import secrets
 import string
+import time
+import requests
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, send_file, redirect, url_for, flash, jsonify, session
 from werkzeug.utils import secure_filename
@@ -27,8 +29,21 @@ app.config['ALLOWED_EXTENSIONS'] = {
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# VirusTotal Configuration
+app.config['VIRUSTOTAL_API_KEY'] = os.environ.get('VIRUSTOTAL_API_KEY', '')
+app.config['VIRUSTOTAL_ENABLED'] = os.environ.get('VIRUSTOTAL_ENABLED', 'true').lower() == 'true'
+app.config['VIRUSTOTAL_TIMEOUT'] = int(os.environ.get('VIRUSTOTAL_TIMEOUT', 60))  # seconds to wait for scan
+
 # Initialize database connection
 db = get_db()
+
+# Initialize VirusTotal service
+from virustotal_service import VirusTotalService
+vt_service = VirusTotalService(
+    api_key=app.config['VIRUSTOTAL_API_KEY'],
+    timeout=app.config['VIRUSTOTAL_TIMEOUT'],
+    enabled=app.config['VIRUSTOTAL_ENABLED']
+)
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -301,11 +316,85 @@ def upload_file():
             # Validate file using magic bytes
             is_valid, error_msg, detected_mime = validate_file_magic_bytes(temp_path, file_extension)
 
+            # Calculate hash early for logging purposes
+            file_hash = hashlib.sha256(file_content).hexdigest()
+
             if not is_valid:
+                # Log the failed upload (magic byte validation failed)
+                db.log_failed_upload(
+                    filename=original_filename,
+                    file_size=file_size,
+                    file_hash=file_hash,
+                    detected_mime=detected_mime,
+                    failure_reason='magic_byte_validation',
+                    failure_details=error_msg,
+                    ip_address=request.remote_addr,
+                    classification=classification
+                )
                 return jsonify({'error': error_msg}), 400
 
-            # Calculate hash from content
-            file_hash = hashlib.sha256(file_content).hexdigest()
+            # VirusTotal hybrid scan (hash lookup + async)
+            print(f"[Upload] Starting VT hybrid scan for {original_filename}", flush=True)
+            scan_result = vt_service.scan_file_async_start(
+                file_content,
+                original_filename,
+                file_hash
+            )
+            
+            # Handle immediate results (hash lookup success or error)
+            if scan_result['immediate_result']:
+                if not scan_result['passed']:
+                    # File is malicious or scan error - reject immediately
+                    print(f"[Upload] File rejected: {scan_result.get('error', 'malicious')}", flush=True)
+                    
+                    # Log the failed upload
+                    db.log_failed_upload(
+                        filename=original_filename,
+                        file_size=file_size,
+                        file_hash=file_hash,
+                        detected_mime=detected_mime,
+                        failure_reason='virustotal_malicious',
+                        failure_details=f"Flagged by {scan_result['malicious_count']} vendors ({scan_result['scan_method']})",
+                        ip_address=request.remote_addr,
+                        classification=classification
+                    )
+                    
+                    # Log to virus scan logs
+                    db.log_virus_scan(
+                        file_id=None,
+                        filename=original_filename,
+                        file_size=file_size,
+                        file_hash=file_hash,
+                        scan_status='failed',
+                        malicious_count=scan_result['malicious_count'],
+                        suspicious_count=scan_result['suspicious_count'],
+                        scan_details=f"Hash lookup - Flagged by {scan_result['malicious_count']} vendors",
+                        ip_address=request.remote_addr
+                    )
+                    
+                    return jsonify({
+                        'error': 'File upload failed: File is suspected to be malicious',
+                        'error_type': 'malicious_file'
+                    }), 400
+                else:
+                    # File is clean (from hash lookup)
+                    print(f"[Upload] File clean via hash lookup ({scan_result['scan_method']})", flush=True)
+                    scan_status = 'clean'
+                    vt_scan_method = scan_result['scan_method']
+                    vt_analysis_id = None
+                    vt_malicious = scan_result['malicious_count']
+                    vt_suspicious = scan_result['suspicious_count']
+                    vt_total = scan_result['total_engines']
+            else:
+                # File needs async scan - upload and queue for background processing
+                print(f"[Upload] File needs async scan - queuing (ID: {scan_result['analysis_id']})", flush=True)
+                scan_status = 'pending'
+                vt_scan_method = 'full_scan'
+                vt_analysis_id = scan_result['analysis_id']
+                vt_malicious = 0
+                vt_suspicious = 0
+                vt_total = 0
+
             upload_time = datetime.now().isoformat()
 
             # Generate OTP code
@@ -326,19 +415,50 @@ def upload_file():
                 'current_otp_code': otp_code,
                 'otp_generated_at': otp_generated.isoformat(),
                 'otp_expires_at': otp_expires.isoformat(),
-                'otp_used': False
+                'otp_used': False,
+                'scan_status': scan_status,
+                'vt_analysis_id': vt_analysis_id,
+                'vt_scan_method': vt_scan_method,
+                'upload_ip': request.remote_addr
             }
 
             db.save_file_metadata(file_id, metadata, file_content)
 
-            return jsonify({
+            # Log successful virus scan (only for clean files from hash lookup)
+            if scan_status == 'clean':
+                db.log_virus_scan(
+                    file_id=file_id,
+                    filename=original_filename,
+                    file_size=file_size,
+                    file_hash=file_hash,
+                    scan_status='clean',
+                    malicious_count=vt_malicious,
+                    suspicious_count=vt_suspicious,
+                    scan_details=f"Hash lookup - Scanned by {vt_total} engines - No threats detected",
+                    ip_address=request.remote_addr
+                )
+
+            # Build response with scan info
+            response_data = {
                 'success': True,
                 'file_id': file_id,
-                'otp_code': otp_code,
                 'filename': original_filename,
                 'file_size': format_file_size(file_size),
-                'expires_at': otp_expires.strftime('%Y-%m-%d %H:%M:%S')
-            })
+                'expires_at': otp_expires.strftime('%Y-%m-%d %H:%M:%S'),
+                'virus_scan': {
+                    'status': scan_status,  # 'clean' or 'pending'
+                    'method': vt_scan_method,  # 'hash_lookup' or 'full_scan'
+                    'total_engines': vt_total,
+                    'malicious_count': vt_malicious,
+                    'suspicious_count': vt_suspicious
+                }
+            }
+
+            # Only include OTP code if file is clean (not pending scan)
+            if scan_status == 'clean':
+                response_data['otp_code'] = otp_code
+
+            return jsonify(response_data)
 
         finally:
             # Clean up temporary file
@@ -430,7 +550,23 @@ def get_file(file_id):
     if not file_info:
         return jsonify({'error': 'File not found'}), 404
 
+    # Check scan status - block pending or malicious files
+    scan_status = file_info.get('scan_status')
+    
+    if scan_status == 'pending':
+        return jsonify({
+            'error': 'File is still being scanned for viruses. Please try again in a moment.',
+            'status': 'pending'
+        }), 425  # 425 Too Early
+    
+    if scan_status == 'malicious':
+        return jsonify({'error': 'File failed security scan'}), 403
+    
+    if scan_status == 'error':
+        return jsonify({'error': 'File scan encountered an error. Contact support.'}), 500
+
     # Check if file is archived (content moved to Storage DB)
+
     file_content = None
     
     if file_info.get('is_archived', False):
@@ -508,8 +644,10 @@ def list_files():
             'otp_used': info.get('otp_used', False),
             'otp_expires': time_remaining,
             'access_logs': info.get('access_logs', []),
-            'classification': info.get('classification', 'Public')
+            'classification': info.get('classification', 'Public'),
+            'scan_status': info.get('scan_status', 'clean')  # Add scan status
         })
+
 
     files_list.sort(key=lambda x: x['upload_time'], reverse=True)
     return render_template('files.html', files=files_list)
@@ -521,6 +659,14 @@ def regenerate_otp_endpoint(file_id):
 
     if not file_info:
         return jsonify({'error': 'File not found'}), 404
+
+    # Security check: Don't allow operations on pending or malicious files
+    scan_status = file_info.get('scan_status')
+    if scan_status == 'pending':
+        return jsonify({'error': 'File is currently being scanned for security. Please wait.'}), 425
+    if scan_status == 'malicious':
+        return jsonify({'error': 'File is flagged as malicious.'}), 403
+
 
     new_code = regenerate_otp(file_id)
 
@@ -559,20 +705,97 @@ def get_access_logs(file_id):
 
 @app.route('/delete/<file_id>', methods=['POST'])
 def delete_file(file_id):
-    """Delete a file"""
+    """Delete a file from both Working DB and Storage DB (if archived)"""
     file_info = db.get_file_metadata(file_id)
 
     if not file_info:
         return jsonify({'error': 'File not found'}), 404
 
     try:
-        # Remove from database (file content is also deleted)
+        # Check if file is archived (content moved to Storage DB)
+        is_archived = file_info.get('is_archived', False)
+        
+        if is_archived:
+            # File is archived - delete from Storage DB via sync service
+            print(f"[App] File {file_id} is archived, deleting from Storage DB...")
+            
+            try:
+                import requests
+                response = requests.delete(
+                    f'http://sync-service:8080/delete/{file_id}',
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    print(f"[App] Successfully deleted file {file_id} from Storage DB")
+                elif response.status_code == 404:
+                    # File not found in Storage DB - log but continue with Working DB deletion
+                    print(f"[App] File {file_id} not found in Storage DB (may have already been deleted)")
+                else:
+                    # Failed to delete from Storage DB
+                    print(f"[App] Failed to delete from Storage DB: {response.status_code}")
+                    return jsonify({
+                        'error': 'Failed to delete archived file from storage',
+                        'details': response.json().get('error', 'Unknown error')
+                    }), 500
+                    
+            except requests.exceptions.Timeout:
+                return jsonify({'error': 'Storage service timeout - file may not have been deleted from storage'}), 504
+            except requests.exceptions.ConnectionError:
+                return jsonify({'error': 'Could not connect to storage service'}), 503
+            except Exception as e:
+                print(f"[App] Error deleting from Storage DB: {e}")
+                return jsonify({'error': f'Storage deletion error: {str(e)}'}), 500
+        
+        # Delete from Working DB (metadata and content if not archived)
         db.delete_file_metadata(file_id)
-
-        return jsonify({'success': True, 'message': 'File deleted successfully'})
+        
+        print(f"[App] Successfully deleted file {file_id} from Working DB")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'File deleted successfully',
+            'deleted_from_storage': is_archived
+        })
 
     except Exception as e:
         return jsonify({'error': f'Deletion failed: {str(e)}'}), 500
+
+@app.route('/failed-uploads')
+def get_failed_uploads():
+    """Get failed upload logs (admin view)"""
+    limit = request.args.get('limit', 100, type=int)
+    logs = db.get_failed_upload_logs(limit=limit)
+
+    # Format file sizes for display
+    for log in logs:
+        if log.get('file_size'):
+            log['formatted_size'] = format_file_size(log['file_size'])
+        else:
+            log['formatted_size'] = 'Unknown'
+
+    return jsonify({
+        'count': len(logs),
+        'logs': logs
+    })
+
+@app.route('/virus-scan-logs')
+def get_virus_scan_logs():
+    """Get virus scan logs (admin view)"""
+    limit = request.args.get('limit', 100, type=int)
+    logs = db.get_virus_scan_logs(limit=limit)
+
+    # Format file sizes for display
+    for log in logs:
+        if log.get('file_size'):
+            log['formatted_size'] = format_file_size(log['file_size'])
+        else:
+            log['formatted_size'] = 'Unknown'
+
+    return jsonify({
+        'count': len(logs),
+        'logs': logs
+    })
 
 # ============================================
 # Error Handlers
