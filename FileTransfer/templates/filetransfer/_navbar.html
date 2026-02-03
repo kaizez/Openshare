@@ -1,0 +1,7 @@
+<nav>
+    <a href="{{ url_for('filetransfer.index') }}" class="nav-link {% if request.path == url_for('filetransfer.index') %}active{% endif %}">Upload</a>
+    <a href="{{ url_for('filetransfer.download_page') }}" class="nav-link {% if request.path == url_for('filetransfer.download_page') %}active{% endif %}">Download</a>
+    <a href="{{ url_for('filetransfer.list_files') }}" class="nav-link {% if request.path == url_for('filetransfer.list_files') %}active{% endif %}">My Files</a>
+    <a href="{{ url_for('main.profile') }}" class="nav-link">Profile</a>
+    <a href="{{ url_for('main.logout') }}" class="nav-link">Logout</a>
+</nav>
