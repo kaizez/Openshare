@@ -23,6 +23,44 @@ from src.database.connection import get_db_connection, init_database
 from src.ingestion.siem_engine import get_siem_engine
 from src.playbooks.playbook_engine import get_playbook_engine
 import mysql.connector
+import threading
+import time
+
+LOG_RETENTION_HOURS = 10
+CLEANUP_INTERVAL_SECONDS = 1800  # 30 minutes
+
+
+def _cleanup_old_logs():
+    """Delete security_logs older than LOG_RETENTION_HOURS."""
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            'DELETE FROM security_logs WHERE timestamp < NOW() - INTERVAL %s HOUR',
+            (LOG_RETENTION_HOURS,)
+        )
+        deleted = cursor.rowcount
+        connection.commit()
+        if deleted > 0:
+            print(f"Log cleanup: deleted {deleted} old log(s)")
+    except Exception as e:
+        print(f"Log cleanup error: {e}")
+        if connection:
+            connection.rollback()
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+
+def _log_cleanup_loop():
+    """Daemon loop: run cleanup, then sleep, repeat."""
+    while True:
+        _cleanup_old_logs()
+        time.sleep(CLEANUP_INTERVAL_SECONDS)
 
 
 def create_app():
@@ -46,7 +84,11 @@ def create_app():
         init_database()
     except Exception as e:
         print(f"Warning: Database initialization issue: {e}")
-    
+
+    # Start background log retention cleanup
+    cleanup_thread = threading.Thread(target=_log_cleanup_loop, daemon=True)
+    cleanup_thread.start()
+
     # In-memory token store for remote dashboard sessions {token: username}
     _session_tokens = {}
 
