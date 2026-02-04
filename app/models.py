@@ -50,6 +50,15 @@ class User(db.Model):
     locked_until = db.Column(db.DateTime, nullable=True)
     last_failed_login = db.Column(db.DateTime, nullable=True)
 
+    # Session management
+    current_session_id = db.Column(db.String(64), nullable=True)  # For concurrent session control
+
+    # Password expiry (90 days)
+    password_changed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Keystroke dynamics profile (JSON)
+    keystroke_profile = db.Column(db.Text, nullable=True)
+
     def set_password(self, password):
         self.password_hash = ph.hash(password)
 
@@ -102,6 +111,23 @@ class User(db.Model):
         self.account_locked = False
         self.locked_until = None
         db.session.commit()
+
+    def is_password_expired(self):
+        """Check if password is older than 90 days"""
+        if not self.password_changed_at:
+            return False
+        from datetime import timedelta
+        expiry_date = self.password_changed_at + timedelta(days=90)
+        return datetime.utcnow() >= expiry_date
+
+    def days_until_password_expiry(self):
+        """Get days remaining until password expires"""
+        if not self.password_changed_at:
+            return 90
+        from datetime import timedelta
+        expiry_date = self.password_changed_at + timedelta(days=90)
+        remaining = (expiry_date - datetime.utcnow()).days
+        return max(0, remaining)
 
     def __repr__(self):
         return f'<User {self.username}>'

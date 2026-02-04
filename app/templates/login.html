@@ -62,8 +62,9 @@
         </div>
 
         <h1 class="auth-title">Login to Your Account</h1>
-        <form method="POST" action="{{ url_for('main.login') }}" class="auth-form">
+        <form method="POST" action="{{ url_for('main.login') }}" class="auth-form" id="loginForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="keystroke_data" id="keystroke_data" value="">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" class="form-control" required>
@@ -121,5 +122,53 @@ function togglePassword(inputId, iconId) {
         icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
     }
 }
+
+// Keystroke Dynamics Capture
+(function() {
+    const passwordField = document.getElementById('password');
+    const keystrokeInput = document.getElementById('keystroke_data');
+    const loginForm = document.getElementById('loginForm');
+    let keystrokeData = [];
+
+    if (passwordField) {
+        passwordField.addEventListener('keydown', function(e) {
+            if (e.key.length === 1 || e.key === 'Backspace') {
+                keystrokeData.push({
+                    key: e.key === 'Backspace' ? 'BS' : '*',
+                    press: Date.now(),
+                    release: 0
+                });
+            }
+        });
+
+        passwordField.addEventListener('keyup', function(e) {
+            if (e.key.length === 1 || e.key === 'Backspace') {
+                // Find the last keystroke for this key and set release time
+                for (let i = keystrokeData.length - 1; i >= 0; i--) {
+                    if (keystrokeData[i].release === 0) {
+                        keystrokeData[i].release = Date.now();
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Clear keystroke data when password field is cleared
+        passwordField.addEventListener('input', function(e) {
+            if (e.target.value === '') {
+                keystrokeData = [];
+            }
+        });
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            // Set keystroke data before form submission
+            if (keystrokeInput && keystrokeData.length > 0) {
+                keystrokeInput.value = JSON.stringify(keystrokeData);
+            }
+        });
+    }
+})();
 </script>
 {% endblock %}

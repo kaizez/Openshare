@@ -1,10 +1,11 @@
-from flask import Flask, request
+from flask import Flask, request, session, redirect, url_for, flash
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 import os
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from app.models import db
 from app.security_middleware import SecurityMiddleware, setup_security_logging
@@ -104,6 +105,56 @@ def create_app():
 
     from app import routes
     app.register_blueprint(routes.bp)
+
+    # Session management middleware
+    @app.before_request
+    def session_management():
+        # Skip for static files and auth routes
+        exempt_routes = ['main.login', 'main.register', 'main.logout', 'main.forgot_password',
+                        'main.reset_password', 'main.reset_password_confirm', 'main.verify_mfa',
+                        'main.google_login', 'main.google_callback', 'main.oauth_confirm',
+                        'main.oauth_signup', 'main.change_password', 'static', 'filetransfer.static']
+
+        if request.endpoint in exempt_routes or request.endpoint is None:
+            return
+
+        if request.path.startswith('/static'):
+            return
+
+        # Check if user is logged in
+        if 'user_id' not in session:
+            return
+
+        from app.models import User
+
+        # 1. Session timeout check (10 minutes)
+        last_activity = session.get('last_activity')
+        if last_activity:
+            last_activity_time = datetime.fromisoformat(last_activity)
+            if datetime.utcnow() - last_activity_time > timedelta(minutes=10):
+                # Session expired
+                user_id = session.get('user_id')
+                session.clear()
+                flash('Session expired due to inactivity. Please login again.', 'warning')
+                return redirect(url_for('main.login'))
+
+        # Update last activity
+        session['last_activity'] = datetime.utcnow().isoformat()
+
+        # 2. Concurrent session check
+        user = User.query.get(session.get('user_id'))
+        if user and user.current_session_id:
+            if session.get('session_id') != user.current_session_id:
+                # Another session is active, kick this one
+                session.clear()
+                flash('You have been logged out because your account was accessed from another location.', 'warning')
+                return redirect(url_for('main.login'))
+
+        # 3. Password expiry check (skip for OAuth users)
+        if user and not user.is_oauth_user() and user.is_password_expired():
+            if request.endpoint != 'main.change_password':
+                flash('Your password has expired. Please change it now.', 'warning')
+                return redirect(url_for('main.change_password'))
 
     return app
 

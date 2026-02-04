@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_mail import Message
 from app import oauth, mail, limiter
-from app.models import db, User
+from app.models import db, User, LoginHistory
 from app.siem_logger import SIEMLogger
+from app.ml_security import LoginBehaviorAnalyzer, build_login_data
+from app.keystroke_dynamics import keystroke_analyzer
 import geoip2.database
 import geoip2.errors
 import os
@@ -24,6 +26,24 @@ bp = Blueprint('main', __name__)
 # The SIEM URL is configurable via environment variable
 SIEM_URL = os.environ.get('SIEM_URL', 'http://siem:5001')
 siem = SIEMLogger(SIEM_URL, log_source="authentication")
+
+# Initialize ML Security Analyzer
+ml_analyzer = LoginBehaviorAnalyzer()
+
+def init_user_session(user):
+    """Initialize session with user data, session ID, and activity timestamp"""
+    import uuid
+    session_id = str(uuid.uuid4())
+
+    session['user'] = user.username
+    session['user_id'] = user.id
+    session['session_id'] = session_id
+    session['last_activity'] = datetime.utcnow().isoformat()
+
+    # Store session ID in user model for concurrent session control
+    user.current_session_id = session_id
+    db.session.commit()
+
 
 def sanitize_input(text):
     """Sanitize user input by escaping HTML and removing dangerous characters"""
@@ -644,6 +664,74 @@ def login():
                 if user.verify_password(password):
                     # Password verified with Argon2id
 
+                    # === KEYSTROKE DYNAMICS CHECK ===
+                    keystroke_data = request.form.get('keystroke_data')
+                    if keystroke_data:
+                        try:
+                            ks_data = json.loads(keystroke_data)
+                            ks_valid, ks_score, ks_msg = keystroke_analyzer.verify(user.keystroke_profile, ks_data)
+
+                            # Update user's keystroke profile
+                            current_features = keystroke_analyzer.extract_features(ks_data)
+                            if current_features:
+                                existing_profile = json.loads(user.keystroke_profile) if user.keystroke_profile else None
+                                updated_profile = keystroke_analyzer.update_profile(existing_profile, current_features)
+                                user.keystroke_profile = json.dumps(updated_profile)
+                                db.session.commit()
+
+                            # Log keystroke analysis
+                            if not ks_valid:
+                                siem.log(
+                                    event_type='keystroke_mismatch',
+                                    severity='warning',
+                                    message=f'Keystroke pattern mismatch for {user.username}: {ks_msg}',
+                                    user_id=user.username,
+                                    ip=get_client_ip()
+                                )
+                        except Exception as e:
+                            print(f"Keystroke analysis error: {e}")
+
+                    # === ML RISK ANALYSIS ===
+                    current_ip = get_client_ip()
+                    current_location = get_location_from_ip(current_ip)
+                    device_fp = get_device_fingerprint()
+
+                    # Get login history for ML
+                    login_history = LoginHistory.query.filter_by(user_id=user.id).order_by(LoginHistory.timestamp.desc()).limit(20).all()
+                    history_data = [{'timestamp': h.timestamp, 'ip': h.ip_address, 'location': h.location} for h in login_history]
+
+                    # Build login data and analyze
+                    login_data = build_login_data(user, current_ip, current_location, device_fp, history_data)
+                    risk_score, risk_level, risk_factors = ml_analyzer.calculate_risk_score(login_data, history_data)
+
+                    # Log to LoginHistory
+                    login_record = LoginHistory(
+                        user_id=user.id,
+                        ip_address=current_ip,
+                        location=current_location,
+                        device_fingerprint=device_fp,
+                        user_agent=request.headers.get('User-Agent', '')[:500],
+                        risk_score=risk_score,
+                        risk_level=risk_level,
+                        risk_factors=json.dumps(risk_factors),
+                        success=True
+                    )
+                    db.session.add(login_record)
+                    db.session.commit()
+
+                    # Handle high risk logins
+                    if risk_level == 'critical':
+                        siem.log(
+                            event_type='high_risk_login_blocked',
+                            severity='critical',
+                            message=f'Critical risk login blocked for {user.username}',
+                            user_id=user.username,
+                            ip=current_ip,
+                            details={'risk_score': risk_score, 'risk_factors': risk_factors}
+                        )
+                        flash('Login blocked due to suspicious activity. Please contact support.', 'error')
+                        return render_template('login.html')
+
                     # Reset failed login attempts on successful login
                     user.reset_failed_login_attempts()
 
@@ -706,8 +794,7 @@ def login():
                             return redirect(url_for('main.admin_mac_verify'))
 
                         # Complete login
-                        session['user'] = user.username
-                        session['user_id'] = user.id
+                        init_user_session(user)
                         flash('Login successful!', 'success')
 
                         # Auto-whitelist device and IP for admins (first login without MFA)
@@ -993,8 +1080,7 @@ def link_google_account():
                 session.pop('link_user_id', None)
 
                 # Log the user in
-                session['user'] = user.username
-                session['user_id'] = user.id
+                init_user_session(user)
                 session['email'] = user.email
                 session['picture'] = user.profile_picture_url
 
@@ -1042,8 +1128,7 @@ def google_callback():
                 # Check if user was created via Google OAuth
                 if existing_user.oauth_provider == 'google':
                     # User exists and was created via Google, log them in
-                    session['user'] = existing_user.username
-                    session['user_id'] = existing_user.id
+                    init_user_session(existing_user)
                     session['email'] = existing_user.email
                     session['picture'] = existing_user.profile_picture_url or oauth_picture
 
@@ -1323,7 +1408,68 @@ def settings():
     if not user:
         return redirect(url_for('main.login'))
 
-    return render_template('settings.html', user=user)
+    # Calculate password expiry info
+    days_until_expiry = user.days_until_password_expiry()
+    password_expired = user.is_password_expired()
+
+    return render_template('settings.html', user=user,
+                          days_until_expiry=days_until_expiry,
+                          password_expired=password_expired)
+
+
+@bp.route('/change-password', methods=['GET', 'POST'])
+def change_password():
+    """Change password - required when password expires"""
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return redirect(url_for('main.login'))
+
+    # OAuth users can't change password
+    if user.is_oauth_user():
+        flash('OAuth users cannot change password here.', 'error')
+        return redirect(url_for('main.settings'))
+
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Verify current password
+        if not user.verify_password(current_password):
+            flash('Current password is incorrect.', 'error')
+            return render_template('change_password.html', user=user)
+
+        # Check new password matches confirmation
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'error')
+            return render_template('change_password.html', user=user)
+
+        # Validate new password strength
+        is_valid, error_msg = validate_password_strength(new_password)
+        if not is_valid:
+            flash(error_msg, 'error')
+            return render_template('change_password.html', user=user)
+
+        # Check new password is different from current
+        if user.verify_password(new_password):
+            flash('New password must be different from current password.', 'error')
+            return render_template('change_password.html', user=user)
+
+        # Update password
+        user.set_password(new_password)
+        user.password_changed_at = datetime.utcnow()
+        db.session.commit()
+
+        # Log to SIEM
+        siem.password_changed(user_id=user.username, ip=get_client_ip())
+
+        flash('Password changed successfully!', 'success')
+        return redirect(url_for('main.settings'))
+
+    return render_template('change_password.html', user=user)
 
 @bp.route('/mfa-setup-required', methods=['GET', 'POST'])
 def mfa_setup_required():
@@ -1417,8 +1563,7 @@ def admin_mfa_setup():
                 db.session.commit()
 
                 # Complete login
-                session['user'] = user.username
-                session['user_id'] = user.id
+                init_user_session(user)
                 session['email'] = user.email
                 session['mfa_enabled'] = True
 
@@ -1579,8 +1724,7 @@ def mfa_verify():
                     db.session.commit()
 
                 # Complete login
-                session['user'] = user.username
-                session['user_id'] = user.id
+                init_user_session(user)
                 session['email'] = user.email
                 session['picture'] = user.profile_picture_url
 
@@ -2192,8 +2336,7 @@ def admin_mac_verify():
             if detected_mac:
                 if detected_mac == user.registered_mac_address:
                     # MAC matches, complete login
-                    session['user'] = user.username
-                    session['user_id'] = user.id
+                    init_user_session(user)
                     session['email'] = user.email
                     session.pop('mac_verify_user_id', None)
                     flash('Login successful! MAC address verified.', 'success')
@@ -2208,8 +2351,7 @@ def admin_mac_verify():
 
             if entered_mac == user.registered_mac_address:
                 # MAC matches, complete login
-                session['user'] = user.username
-                session['user_id'] = user.id
+                init_user_session(user)
                 session['email'] = user.email
                 session.pop('mac_verify_user_id', None)
                 flash('Login successful! MAC address verified.', 'success')

@@ -376,7 +376,25 @@ input:checked + .toggle-slider:before {
                     <p class="setting-label">Password</p>
                     <p class="setting-description">Change your account password</p>
                 </div>
-                <a href="{{ url_for('main.forgot_password') }}" class="change-password-btn">Change</a>
+                <a href="{{ url_for('main.change_password') }}" class="change-password-btn">Change</a>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <p class="setting-label">Password Expiry</p>
+                    {% if password_expired %}
+                    <p class="setting-description" style="color: #ff3b30;">Your password has expired! Please change it now.</p>
+                    {% elif days_until_expiry <= 7 %}
+                    <p class="setting-description" style="color: #ff9500;">Expires in {{ days_until_expiry }} day{% if days_until_expiry != 1 %}s{% endif %}</p>
+                    {% else %}
+                    <p class="setting-description">Expires in {{ days_until_expiry }} days</p>
+                    {% endif %}
+                </div>
+                {% if password_expired or days_until_expiry <= 7 %}
+                <a href="{{ url_for('main.change_password') }}" class="change-password-btn" style="color: #ff3b30;">Change Now</a>
+                {% else %}
+                <span class="badge badge-success">{{ days_until_expiry }} days</span>
+                {% endif %}
             </div>
             {% endif %}
         </div>
