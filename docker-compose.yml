@@ -35,7 +35,7 @@ services:
       MYSQL_USER: ${WORKING_DB_USER:-working_user}
       MYSQL_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
     ports:
-      - "3306:3306"
+      - "3309:3306"
     volumes:
       - working_db_data:/var/lib/mysql
     healthcheck:
@@ -79,7 +79,7 @@ services:
     container_name: moveit-app
     restart: always
     ports:
-      - "5000:5000"
+      - "5005:5000"
     environment:
       DOCKER_ENV: "true"
       URL_SCHEME: "https"
@@ -151,7 +151,7 @@ services:
       DELETE_FILES_OLDER_THAN_SECONDS: ${DELETE_FILES_OLDER_THAN_SECONDS:-0}
       PYTHONUNBUFFERED: "1"
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - sync_network
       - app_network
