@@ -27,5 +27,32 @@
     </div>
 
     {% block extra_js %}{% endblock %}
+
+    {% if session.get('user_id') %}
+    <script>
+    // Location check for impossible travel detection - runs every 5 minutes
+    (function() {
+        async function checkLocation() {
+            try {
+                const response = await fetch('/check-location');
+                const data = await response.json();
+
+                if (data.status === 'locked') {
+                    alert('Security Alert: ' + data.message);
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.log('Location check failed:', error);
+            }
+        }
+
+        // Check every 5 minutes (300000 ms)
+        setInterval(checkLocation, 300000);
+
+        // Also check on page load
+        checkLocation();
+    })();
+    </script>
+    {% endif %}
 </body>
 </html>

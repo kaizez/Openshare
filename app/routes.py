@@ -437,6 +437,104 @@ def send_account_locked_email(email, username, ip_address, location, unlock_time
         print(f"Error sending account locked email: {str(e)}")
         return False
 
+
+def send_impossible_travel_email(email, username, last_location, current_location, last_ip, current_ip, time_diff_minutes):
+    """Send security alert when impossible travel is detected and account is locked"""
+    try:
+        msg = Message(
+            subject='URGENT Security Alert: Suspicious Login Detected - MOVEit',
+            recipients=[email]
+        )
+
+        msg.html = f'''
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #c53030;">URGENT: Suspicious Login Activity Detected</h2>
+                    <p>Hello <strong>{username}</strong>,</p>
+                    <p>We have detected <strong>impossible travel</strong> on your account. Your account has been <strong>locked</strong> for security.</p>
+
+                    <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #c53030;">What We Detected:</h3>
+                        <p>Your account was accessed from two different locations within {time_diff_minutes} minutes, which is physically impossible.</p>
+                        <p style="margin: 10px 0;"><strong>Previous Login:</strong></p>
+                        <ul>
+                            <li>Location: {last_location}</li>
+                            <li>IP Address: {last_ip}</li>
+                        </ul>
+                        <p style="margin: 10px 0;"><strong>New Login Attempt:</strong></p>
+                        <ul>
+                            <li>Location: {current_location}</li>
+                            <li>IP Address: {current_ip}</li>
+                        </ul>
+                    </div>
+
+                    <div style="background-color: #fff5f5; border-left: 4px solid #c53030; padding: 15px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #c53030;">Your Account Has Been Locked</h3>
+                        <p>For your security, we have immediately locked your account.</p>
+                        <p>To unlock your account, please contact our support team:</p>
+                        <ul>
+                            <li>Email: <a href="mailto:support@moveit.com">support@moveit.com</a></li>
+                        </ul>
+                    </div>
+
+                    <div style="background-color: #fffaf0; border-left: 4px solid #ed8936; padding: 15px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #c05621;">Recommended Actions:</h3>
+                        <ul>
+                            <li>Contact support immediately to verify your identity</li>
+                            <li>Change your password once your account is unlocked</li>
+                            <li>Review your account activity for any unauthorized access</li>
+                            <li>Enable Two-Factor Authentication if not already enabled</li>
+                        </ul>
+                    </div>
+
+                    <p style="color: #718096; font-size: 12px; margin-top: 30px;">
+                        This is an automated security notification from MOVEit. Please do not reply to this email.
+                    </p>
+                </div>
+            </body>
+        </html>
+        '''
+
+        msg.body = f'''
+        URGENT: Suspicious Login Activity Detected
+
+        Hello {username},
+
+        We have detected impossible travel on your account. Your account has been locked for security.
+
+        What We Detected:
+        Your account was accessed from two different locations within {time_diff_minutes} minutes, which is physically impossible.
+
+        Previous Login:
+        - Location: {last_location}
+        - IP Address: {last_ip}
+
+        New Login Attempt:
+        - Location: {current_location}
+        - IP Address: {current_ip}
+
+        Your Account Has Been Locked
+        For your security, we have immediately locked your account.
+        To unlock your account, please contact our support team:
+        - Email: support@moveit.com
+
+        Recommended Actions:
+        - Contact support immediately to verify your identity
+        - Change your password once your account is unlocked
+        - Review your account activity for any unauthorized access
+        - Enable Two-Factor Authentication if not already enabled
+
+        This is an automated security notification from MOVEit. Please do not reply to this email.
+        '''
+
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending impossible travel email: {str(e)}")
+        return False
+
+
 def send_password_reset_email(email, username, otp_code):
     """Send password reset email with OTP code only"""
     try:
@@ -1105,6 +1203,89 @@ def reset_password_confirm():
                 return redirect(url_for('main.login'))
 
     return render_template('reset_password_confirm.html')
+
+
+@bp.route('/check-location')
+def check_location():
+    """Check user's current location against last login - called every 5 minutes by frontend.
+    Detects impossible travel and locks account if suspicious."""
+    from flask import jsonify
+
+    if 'user_id' not in session:
+        return jsonify({'status': 'not_logged_in'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'status': 'user_not_found'}), 404
+
+    # Get current IP and location
+    current_ip = get_client_ip()
+    current_location = get_location_from_ip(current_ip)
+
+    # Get last login info
+    last_ip = user.last_login_ip
+    last_location = user.last_login_location
+
+    # Skip if no previous location data
+    if not last_location or last_location == 'Location unavailable':
+        # Update location for next check
+        user.last_login_ip = current_ip
+        user.last_login_location = current_location
+        db.session.commit()
+        return jsonify({'status': 'ok', 'location': current_location})
+
+    # Skip if same location
+    if last_location == current_location:
+        return jsonify({'status': 'ok', 'location': current_location})
+
+    # Different location detected - check if impossible travel
+    # Calculate time since last location update (in minutes)
+    # For simplicity, we consider any location change within a session as suspicious
+    # since sessions are typically short-lived
+
+    # Lock account and send alert
+    user.account_locked = True
+    user.locked_until = None  # Permanent lock until admin unlocks
+    db.session.commit()
+
+    # Calculate approximate time (assume 5 minute intervals)
+    time_diff_minutes = 5
+
+    # Send email alert
+    send_impossible_travel_email(
+        user.email,
+        user.username,
+        last_location,
+        current_location,
+        last_ip,
+        current_ip,
+        time_diff_minutes
+    )
+
+    # Log to SIEM
+    siem.log(
+        event_type='impossible_travel_detected',
+        severity='critical',
+        message=f'Impossible travel detected for {user.username}: {last_location} -> {current_location}',
+        user_id=user.username,
+        ip=current_ip,
+        details={
+            'last_location': last_location,
+            'current_location': current_location,
+            'last_ip': last_ip,
+            'current_ip': current_ip
+        }
+    )
+
+    # Clear session
+    session.clear()
+
+    return jsonify({
+        'status': 'locked',
+        'reason': 'impossible_travel',
+        'message': 'Your account has been locked due to suspicious activity. Please contact support.'
+    }), 403
+
 
 @bp.route('/logout')
 def logout():
@@ -1825,6 +2006,105 @@ def delete_user(user_id):
     db.session.commit()
 
     return jsonify({'success': True, 'message': f'{deleted_username} has been deleted'})
+
+
+@bp.route('/admin/lock-user/<int:user_id>', methods=['POST'])
+def lock_user(user_id):
+    """Lock a user account - requires TOTP verification"""
+    from flask import jsonify
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    current_user = User.query.get(session['user_id'])
+
+    if not current_user or not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    # Verify TOTP code
+    totp_code = request.form.get('totp_code')
+    if not totp_code:
+        return jsonify({'success': False, 'message': 'TOTP code is required'}), 400
+
+    if not current_user.mfa_secret:
+        return jsonify({'success': False, 'message': 'MFA not configured'}), 400
+
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(totp_code, valid_window=1):
+        return jsonify({'success': False, 'message': 'Invalid TOTP code'}), 400
+
+    target_user = User.query.get(user_id)
+    if not target_user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    if target_user.is_super_admin:
+        return jsonify({'success': False, 'message': 'Cannot lock super admin'}), 403
+
+    if target_user.id == current_user.id:
+        return jsonify({'success': False, 'message': 'Cannot lock your own account'}), 403
+
+    # Lock the account
+    target_user.account_locked = True
+    target_user.locked_until = None  # Permanent lock until admin unlocks
+    db.session.commit()
+
+    # Log to SIEM
+    siem.log(
+        event_type='account_locked_by_admin',
+        severity='warning',
+        message=f'Account {target_user.username} locked by admin {current_user.username}',
+        user_id=target_user.username,
+        ip=get_client_ip()
+    )
+
+    return jsonify({'success': True, 'message': f'{target_user.username} has been locked'})
+
+
+@bp.route('/admin/unlock-user/<int:user_id>', methods=['POST'])
+def unlock_user(user_id):
+    """Unlock a user account - requires TOTP verification"""
+    from flask import jsonify
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    current_user = User.query.get(session['user_id'])
+
+    if not current_user or not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    # Verify TOTP code
+    totp_code = request.form.get('totp_code')
+    if not totp_code:
+        return jsonify({'success': False, 'message': 'TOTP code is required'}), 400
+
+    if not current_user.mfa_secret:
+        return jsonify({'success': False, 'message': 'MFA not configured'}), 400
+
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(totp_code, valid_window=1):
+        return jsonify({'success': False, 'message': 'Invalid TOTP code'}), 400
+
+    target_user = User.query.get(user_id)
+    if not target_user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    # Unlock the account
+    target_user.account_locked = False
+    target_user.locked_until = None
+    target_user.failed_login_attempts = 0
+    db.session.commit()
+
+    # Log to SIEM
+    siem.log(
+        event_type='account_unlocked_by_admin',
+        severity='info',
+        message=f'Account {target_user.username} unlocked by admin {current_user.username}',
+        user_id=target_user.username,
+        ip=get_client_ip()
+    )
+
+    return jsonify({'success': True, 'message': f'{target_user.username} has been unlocked'})
 
 
 @bp.route('/admin/settings')

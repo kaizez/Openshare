@@ -257,6 +257,29 @@
     background: #333;
 }
 
+.toggle-btn-lock {
+    background: #ff9500;
+    color: white;
+}
+
+.toggle-btn-lock:hover {
+    background: #e68600;
+}
+
+.toggle-btn-unlock {
+    background: #007aff;
+    color: white;
+}
+
+.toggle-btn-unlock:hover {
+    background: #0056b3;
+}
+
+.badge-locked {
+    background: #ff3b30;
+    color: white;
+}
+
 .flash-message {
     padding: 16px 20px;
     border-radius: 12px;
@@ -411,6 +434,9 @@
                             {% endif %}
                         </td>
                         <td>
+                            {% if user.account_locked %}
+                            <span class="badge badge-locked">LOCKED</span>
+                            {% endif %}
                             {% if user.mfa_enabled %}
                             <span class="badge badge-mfa">MFA</span>
                             {% endif %}
@@ -440,6 +466,15 @@
                                     <button type="button" class="toggle-btn toggle-btn-delete" onclick="openTotpModal({{ user.id }}, '{{ user.username }}', 'delete')">
                                         Delete
                                     </button>
+                                    {% if user.account_locked %}
+                                    <button type="button" class="toggle-btn toggle-btn-unlock" onclick="openTotpModal({{ user.id }}, '{{ user.username }}', 'unlock')">
+                                        Unlock
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="toggle-btn toggle-btn-lock" onclick="openTotpModal({{ user.id }}, '{{ user.username }}', 'lock')">
+                                        Lock
+                                    </button>
+                                    {% endif %}
                                 </div>
                             {% endif %}
                         </td>
@@ -594,14 +629,24 @@ function openTotpModal(userId, username, action) {
     } else if (action === 'delete') {
         description = `Enter your authenticator code to permanently delete ${username}. This action cannot be undone.`;
         confirmBtnClass = 'modal-btn-danger';
+    } else if (action === 'lock') {
+        description = `Enter your authenticator code to lock ${username}'s account. They will need to contact support to unlock.`;
+        confirmBtnClass = 'modal-btn-danger';
+    } else if (action === 'unlock') {
+        description = `Enter your authenticator code to unlock ${username}'s account.`;
     }
+
+    let btnText = 'Confirm';
+    if (action === 'delete') btnText = 'Delete User';
+    else if (action === 'lock') btnText = 'Lock Account';
+    else if (action === 'unlock') btnText = 'Unlock Account';
 
     document.getElementById('modalTitle').textContent = `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} User`;
     document.getElementById('modalDescription').textContent = description;
     document.getElementById('totp_code').value = '';
     document.getElementById('modalError').style.display = 'none';
     document.getElementById('confirmBtn').className = `modal-btn ${confirmBtnClass}`;
-    document.getElementById('confirmBtn').textContent = action === 'delete' ? 'Delete User' : 'Confirm';
+    document.getElementById('confirmBtn').textContent = btnText;
     document.getElementById('totpModal').style.display = 'flex';
     document.getElementById('totp_code').focus();
 }
@@ -634,6 +679,10 @@ async function confirmAction() {
         let endpoint = '';
         if (currentAction === 'delete') {
             endpoint = `/admin/delete-user/${currentUserId}`;
+        } else if (currentAction === 'lock') {
+            endpoint = `/admin/lock-user/${currentUserId}`;
+        } else if (currentAction === 'unlock') {
+            endpoint = `/admin/unlock-user/${currentUserId}`;
         } else {
             endpoint = `/admin/toggle-admin/${currentUserId}`;
         }
