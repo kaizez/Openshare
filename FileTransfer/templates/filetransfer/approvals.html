@@ -1,0 +1,361 @@
+{% extends "filetransfer/filetransfer_base.html" %}
+
+{% block title %}Pending Approvals - MoveIt{% endblock %}
+
+{% block content %}
+<div class="approvals-section">
+    <div class="approvals-header">
+        <div class="approvals-icon">
+            <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                <circle cx="30" cy="30" r="30" fill="#FEE2E2"/>
+                <path d="M30 15L18 21V30C18 37.5 22.8 44.4 30 46.5C37.2 44.4 42 37.5 42 30V21L30 15Z" fill="#DC2626"/>
+                <path d="M26 32L29 35L34 27" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <h2>Pending Access Requests</h2>
+        <p>Review and approve/deny access requests for your classified files</p>
+    </div>
+
+    {% if approvals %}
+    <div class="approvals-list">
+        {% for approval in approvals %}
+        <div class="approval-card" id="approval-{{ approval.request_id }}">
+            <div class="approval-urgency">
+                <span class="time-remaining" id="time-{{ approval.request_id }}">{{ approval.time_remaining }}</span>
+                <span class="time-label">remaining</span>
+            </div>
+
+            <div class="approval-details">
+                <div class="file-info">
+                    <h3>{{ approval.filename }}</h3>
+                    <span class="badge badge-classified">Classified</span>
+                </div>
+                <div class="requester-info">
+                    <p><strong>Requested by:</strong> {{ approval.requester_username }}</p>
+                    <p><strong>IP Address:</strong> {{ approval.requester_ip }}</p>
+                    <p><strong>Requested at:</strong> {{ approval.created_at }}</p>
+                </div>
+            </div>
+
+            <div class="approval-actions">
+                <button class="btn-approve" onclick="handleApproval('{{ approval.request_id }}', 'approve')">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 1C4.14 1 1 4.14 1 8C1 11.86 4.14 15 8 15C11.86 15 15 11.86 15 8C15 4.14 11.86 1 8 1ZM6.5 11L3.5 8L4.56 6.94L6.5 8.88L11.44 3.94L12.5 5L6.5 11Z"/>
+                    </svg>
+                    Approve
+                </button>
+                <button class="btn-deny" onclick="handleApproval('{{ approval.request_id }}', 'deny')">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 1C4.14 1 1 4.14 1 8C1 11.86 4.14 15 8 15C11.86 15 15 11.86 15 8C15 4.14 11.86 1 8 1ZM11 10.06L10.06 11L8 8.94L5.94 11L5 10.06L7.06 8L5 5.94L5.94 5L8 7.06L10.06 5L11 5.94L8.94 8L11 10.06Z"/>
+                    </svg>
+                    Deny
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">
+            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                <circle cx="40" cy="40" r="40" fill="#F3F4F6"/>
+                <path d="M40 20L25 28V40C25 50 31.4 59.2 40 62C48.6 59.2 55 50 55 40V28L40 20Z" stroke="#9CA3AF" stroke-width="2" fill="none"/>
+                <path d="M33 42L38 47L47 35" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <h3>No Pending Requests</h3>
+        <p>You have no pending access requests for your classified files.</p>
+        <p class="empty-hint">When someone requests access to your classified files, they will appear here.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function handleApproval(requestId, action) {
+        const card = document.getElementById(`approval-${requestId}`);
+        const buttons = card.querySelectorAll('button');
+
+        // Disable buttons
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+        });
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        fetch(`/respond-approval/${requestId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ action: action })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Animate card removal
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(100px)';
+
+                setTimeout(() => {
+                    card.remove();
+
+                    // Check if no more approvals
+                    const remainingCards = document.querySelectorAll('.approval-card');
+                    if (remainingCards.length === 0) {
+                        location.reload(); // Show empty state
+                    }
+
+                    // Update navbar badge
+                    if (typeof updateApprovalBadge === 'function') {
+                        updateApprovalBadge();
+                    }
+                }, 300);
+
+                // Show toast notification
+                showToast(action === 'approve' ? 'Access approved' : 'Access denied', action === 'approve' ? 'success' : 'error');
+            } else {
+                // Re-enable buttons on error
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                });
+                showToast(data.error || 'Failed to process request', 'error');
+            }
+        })
+        .catch(error => {
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            });
+            showToast('Connection error. Please try again.', 'error');
+        });
+    }
+
+    function showToast(message, type) {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            background: ${type === 'success' ? '#38A169' : '#E53E3E'};
+        `;
+
+        document.body.appendChild(toast);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Auto-refresh the page every 30 seconds to update time remaining
+    setInterval(() => {
+        const cards = document.querySelectorAll('.approval-card');
+        if (cards.length > 0) {
+            location.reload();
+        }
+    }, 30000);
+</script>
+
+<style>
+    @keyframes slideIn {
+        from { transform: translateX(100px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100px); opacity: 0; }
+    }
+
+    .approvals-section {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .approvals-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .approvals-header h2 {
+        margin: 20px 0 10px 0;
+        color: #1F2937;
+    }
+
+    .approvals-header p {
+        color: #6B7280;
+    }
+
+    .approvals-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .approval-card {
+        background: white;
+        border: 2px solid #FEE2E2;
+        border-left: 4px solid #DC2626;
+        border-radius: 12px;
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 100px 1fr auto;
+        gap: 24px;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .approval-urgency {
+        text-align: center;
+    }
+
+    .time-remaining {
+        display: block;
+        font-size: 28px;
+        font-weight: 700;
+        color: #DC2626;
+    }
+
+    .time-label {
+        font-size: 12px;
+        color: #9CA3AF;
+        text-transform: uppercase;
+    }
+
+    .approval-details .file-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .approval-details .file-info h3 {
+        margin: 0;
+        color: #1F2937;
+    }
+
+    .requester-info p {
+        margin: 4px 0;
+        color: #4B5563;
+        font-size: 14px;
+    }
+
+    .approval-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn-approve {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: #38A169;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-approve:hover {
+        background: #2F855A;
+    }
+
+    .btn-deny {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: #E53E3E;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-deny:hover {
+        background: #C53030;
+    }
+
+    .badge-classified {
+        background: #FEE2E2;
+        color: #991B1B;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid #F87171;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: #F9FAFB;
+        border-radius: 12px;
+        border: 2px dashed #E5E7EB;
+    }
+
+    .empty-state h3 {
+        margin: 20px 0 10px 0;
+        color: #374151;
+    }
+
+    .empty-state p {
+        color: #6B7280;
+        margin: 0;
+    }
+
+    .empty-hint {
+        margin-top: 8px !important;
+        font-size: 14px;
+    }
+
+    /* Navbar badge styling */
+    .approval-badge {
+        background: #DC2626;
+        color: white;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 6px;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .approval-card {
+            grid-template-columns: 1fr;
+            text-align: center;
+        }
+
+        .approval-actions {
+            flex-direction: row;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}

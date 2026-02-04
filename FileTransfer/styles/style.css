@@ -90,6 +90,25 @@ nav {
     color: white;
 }
 
+/* Approval Badge in Navbar */
+.approval-badge {
+    background: #DC2626;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+    font-weight: 600;
+    display: inline-block;
+    min-width: 18px;
+    text-align: center;
+}
+
+.nav-link.active .approval-badge {
+    background: white;
+    color: #DC2626;
+}
+
 /* Main Content */
 main {
     min-height: calc(100vh - 200px);

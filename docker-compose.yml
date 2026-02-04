@@ -192,7 +192,7 @@ services:
     container_name: moveit-siem-dashboard
     restart: always
     ports:
-      - "5001:5001"
+      - "5002:5001"
     environment:
       SIEM_URL: ${SIEM_URL}
       SIEM_DASHBOARD_SECRET: ${SIEM_DASHBOARD_SECRET:-change-this}

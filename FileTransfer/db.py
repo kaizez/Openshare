@@ -1,6 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 # Check if dual DB mode is enabled
@@ -134,6 +134,26 @@ class Database:
                     INDEX idx_timestamp (timestamp),
                     INDEX idx_scan_status (scan_status),
                     INDEX idx_file_id (file_id)
+                )
+            """)
+
+            # Approval requests for Classified files (two-person rule)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS approval_requests (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    request_id VARCHAR(32) UNIQUE NOT NULL,
+                    file_id VARCHAR(255) NOT NULL,
+                    requester_user_id INT NOT NULL,
+                    owner_user_id INT NOT NULL,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    created_at DATETIME NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    responded_at DATETIME,
+                    requester_ip VARCHAR(45),
+                    FOREIGN KEY (file_id) REFERENCES file_metadata(file_id) ON DELETE CASCADE,
+                    INDEX idx_request_id (request_id),
+                    INDEX idx_owner_status (owner_user_id, status),
+                    INDEX idx_expires_at (expires_at)
                 )
             """)
 
@@ -728,6 +748,201 @@ class Database:
             print(f"Error deleting file: {e}")
             self.connection.rollback()
             return False
+        finally:
+            cursor.close()
+
+    # ============================================
+    # Approval Request Methods (Classified Files)
+    # ============================================
+
+    def create_approval_request(self, file_id, requester_id, owner_id, requester_ip):
+        """
+        Create a new approval request for Classified file access
+        Returns request_id on success, None on failure
+        """
+        import secrets
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+
+            request_id = secrets.token_urlsafe(16)
+            created_at = datetime.now()
+            expires_at = created_at + timedelta(minutes=5)
+
+            cursor.execute("""
+                INSERT INTO approval_requests
+                (request_id, file_id, requester_user_id, owner_user_id, status,
+                 created_at, expires_at, requester_ip)
+                VALUES (%s, %s, %s, %s, 'pending', %s, %s, %s)
+            """, (request_id, file_id, requester_id, owner_id, created_at, expires_at, requester_ip))
+
+            self.connection.commit()
+            print(f"[DB] Created approval request {request_id} for file {file_id}", flush=True)
+            return request_id
+        except Error as e:
+            print(f"[DB] Error creating approval request: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            self.connection.rollback()
+            return None
+        finally:
+            cursor.close()
+
+    def get_approval_request(self, request_id):
+        """Get an approval request by request_id"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            print(f"[DB] get_approval_request: request_id={request_id}", flush=True)
+
+            cursor.execute("""
+                SELECT * FROM approval_requests WHERE request_id = %s
+            """, (request_id,))
+
+            row = cursor.fetchone()
+            print(f"[DB] get_approval_request: row={row}", flush=True)
+            if not row:
+                return None
+
+            return {
+                'id': row['id'],
+                'request_id': row['request_id'],
+                'file_id': row['file_id'],
+                'requester_user_id': row['requester_user_id'],
+                'owner_user_id': row['owner_user_id'],
+                'status': row['status'],
+                'created_at': row['created_at'].isoformat() if row['created_at'] else None,
+                'expires_at': row['expires_at'].isoformat() if row['expires_at'] else None,
+                'responded_at': row['responded_at'].isoformat() if row['responded_at'] else None,
+                'requester_ip': row['requester_ip']
+            }
+        except Error as e:
+            print(f"[DB] Error fetching approval request: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+
+    def get_pending_approvals_for_owner(self, owner_user_id):
+        """Get all pending approval requests for a file owner"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+
+            # First, expire old requests
+            self.expire_old_requests()
+
+            cursor.execute("""
+                SELECT ar.*, fm.original_filename, fm.file_size, fm.classification
+                FROM approval_requests ar
+                JOIN file_metadata fm ON ar.file_id = fm.file_id
+                WHERE ar.owner_user_id = %s AND ar.status = 'pending'
+                ORDER BY ar.created_at DESC
+            """, (owner_user_id,))
+
+            rows = cursor.fetchall()
+            results = []
+
+            for row in rows:
+                expires_at = row['expires_at']
+                time_remaining = ''
+                if expires_at:
+                    remaining = (expires_at - datetime.now()).total_seconds()
+                    if remaining > 0:
+                        minutes = int(remaining // 60)
+                        seconds = int(remaining % 60)
+                        time_remaining = f"{minutes}:{seconds:02d}"
+                    else:
+                        time_remaining = "Expired"
+
+                results.append({
+                    'request_id': row['request_id'],
+                    'file_id': row['file_id'],
+                    'filename': row['original_filename'],
+                    'file_size': row['file_size'],
+                    'classification': row['classification'],
+                    'requester_user_id': row['requester_user_id'],
+                    'requester_ip': row['requester_ip'],
+                    'created_at': row['created_at'].strftime('%Y-%m-%d %H:%M:%S') if row['created_at'] else None,
+                    'time_remaining': time_remaining
+                })
+
+            return results
+        except Error as e:
+            print(f"Error fetching pending approvals: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def update_approval_status(self, request_id, status):
+        """Update the status of an approval request (approve/deny)"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+
+            cursor.execute("""
+                UPDATE approval_requests
+                SET status = %s, responded_at = %s
+                WHERE request_id = %s AND status = 'pending'
+            """, (status, datetime.now(), request_id))
+
+            self.connection.commit()
+            updated = cursor.rowcount > 0
+            if updated:
+                print(f"[DB] Updated approval request {request_id} to {status}")
+            return updated
+        except Error as e:
+            print(f"Error updating approval status: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+
+    def expire_old_requests(self):
+        """Mark expired approval requests (older than 5 minutes)"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+
+            cursor.execute("""
+                UPDATE approval_requests
+                SET status = 'expired'
+                WHERE status = 'pending' AND expires_at < %s
+            """, (datetime.now(),))
+
+            self.connection.commit()
+            expired_count = cursor.rowcount
+            if expired_count > 0:
+                print(f"[DB] Expired {expired_count} old approval requests")
+            return expired_count
+        except Error as e:
+            print(f"Error expiring old requests: {e}")
+            self.connection.rollback()
+            return 0
+        finally:
+            cursor.close()
+
+    def get_pending_approval_count(self, owner_user_id):
+        """Get count of pending approval requests for badge display"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+
+            # Expire old requests first
+            self.expire_old_requests()
+
+            cursor.execute("""
+                SELECT COUNT(*) FROM approval_requests
+                WHERE owner_user_id = %s AND status = 'pending'
+            """, (owner_user_id,))
+
+            count = cursor.fetchone()[0]
+            return count
+        except Error as e:
+            print(f"Error counting pending approvals: {e}")
+            return 0
         finally:
             cursor.close()
 

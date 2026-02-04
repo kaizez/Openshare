@@ -91,7 +91,46 @@
                     <div class="error-message" id="totpErrorMessage" style="display: none;"></div>
                 </div>
 
-                <!-- Step 3: Download Success -->
+                <!-- Step 3: Waiting for Owner Approval (Classified files only) -->
+                <div class="claim-form" id="approvalWaitingForm" style="display: none;">
+                    <div class="approval-info-banner" style="background: #FEE2E2; border: 1px solid #F87171; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="#DC2626">
+                                <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z"/>
+                            </svg>
+                            <div>
+                                <strong style="color: #991B1B;">Classified File - Owner Approval Required</strong>
+                                <p style="margin: 4px 0 0 0; color: #7F1D1D; font-size: 14px;">
+                                    The file owner must approve your access request within 5 minutes
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="file-details" id="approvalFileDetails" style="margin-bottom: 20px;">
+                        <p><strong>File:</strong> <span id="approvalFileName"></span></p>
+                        <p><strong>Size:</strong> <span id="approvalFileSize"></span></p>
+                        <p><strong>Classification:</strong> <span class="badge badge-classified">Classified</span></p>
+                    </div>
+
+                    <div class="approval-status-container" style="text-align: center; padding: 30px;">
+                        <div class="approval-spinner" style="margin-bottom: 20px;">
+                            <svg width="60" height="60" viewBox="0 0 60 60" class="spinner">
+                                <circle cx="30" cy="30" r="25" stroke="#E5E7EB" stroke-width="5" fill="none"/>
+                                <circle cx="30" cy="30" r="25" stroke="#DC2626" stroke-width="5" fill="none"
+                                    stroke-dasharray="157" stroke-dashoffset="117" stroke-linecap="round" class="spinner-circle"/>
+                            </svg>
+                        </div>
+                        <h3 id="approvalStatusText">Waiting for owner approval...</h3>
+                        <p id="approvalTimeRemaining" style="color: #6B7280; margin-top: 8px;">
+                            Time remaining: <span id="timeCounter">5:00</span>
+                        </p>
+                    </div>
+
+                    <div class="error-message" id="approvalErrorMessage" style="display: none;"></div>
+                </div>
+
+                <!-- Step 4: Download Success -->
                 <div class="claim-success" id="downloadSuccess" style="display: none;">
                     <div class="success-icon">
                         <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
@@ -131,6 +170,10 @@
     <script>
         let currentFileId = null;
         let currentFileData = null;
+        let approvalRequestId = null;
+        let approvalPollInterval = null;
+        let countdownInterval = null;
+        let approvalCountdown = 300; // 5 minutes in seconds
 
         // Auto-focus on code input
         document.getElementById('accessCode').focus();
@@ -213,6 +256,11 @@
             document.getElementById('totpFileName').textContent = data.filename;
             document.getElementById('totpFileSize').textContent = data.file_size;
 
+            // Update classification badge
+            const totpClassBadge = document.getElementById('totpFileClass');
+            totpClassBadge.textContent = data.classification;
+            totpClassBadge.className = 'badge badge-' + data.classification.toLowerCase().replace(' ', '-');
+
             // Hide OTP form, show TOTP form
             document.getElementById('downloadForm').style.display = 'none';
             document.getElementById('totpForm').style.display = 'block';
@@ -260,8 +308,15 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // TOTP verified - show download
-                    showSuccess(data);
+                    currentFileData = {...currentFileData, ...data};
+
+                    if (data.requires_approval) {
+                        // Classified file - need owner approval
+                        requestApproval(data);
+                    } else {
+                        // Internal Use - show download directly
+                        showSuccess(data);
+                    }
                 } else {
                     showError(data.error || 'Invalid authenticator code', 'totpErrorMessage', 'totpCode');
                     button.disabled = false;
@@ -275,7 +330,132 @@
             });
         }
 
+        function requestApproval(data) {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            fetch('{{ url_for("filetransfer.request_approval") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ file_id: currentFileId })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    if (result.self_approved) {
+                        // Owner accessing their own file - direct access
+                        showSuccess(data);
+                    } else {
+                        // Need to wait for owner approval
+                        approvalRequestId = result.request_id;
+                        showApprovalWaiting(data);
+                        startApprovalPolling();
+                        startCountdown();
+                    }
+                } else {
+                    showError(result.error || 'Failed to request approval', 'totpErrorMessage', 'totpCode');
+                }
+            })
+            .catch(error => {
+                showError('Connection error. Please try again.', 'totpErrorMessage', 'totpCode');
+            });
+        }
+
+        function showApprovalWaiting(data) {
+            // Update file details
+            document.getElementById('approvalFileName').textContent = data.filename;
+            document.getElementById('approvalFileSize').textContent = data.file_size;
+
+            // Hide other forms, show approval waiting
+            document.getElementById('downloadForm').style.display = 'none';
+            document.getElementById('totpForm').style.display = 'none';
+            document.getElementById('approvalWaitingForm').style.display = 'block';
+        }
+
+        function startApprovalPolling() {
+            approvalPollInterval = setInterval(() => {
+                fetch(`/approval-status/${approvalRequestId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'approved') {
+                        clearIntervals();
+                        showSuccess(currentFileData);
+                    } else if (data.status === 'denied') {
+                        clearIntervals();
+                        showApprovalDenied();
+                    } else if (data.status === 'expired') {
+                        clearIntervals();
+                        showApprovalExpired();
+                    }
+                })
+                .catch(error => {
+                    console.error('Polling error:', error);
+                });
+            }, 2000); // Poll every 2 seconds
+        }
+
+        function startCountdown() {
+            approvalCountdown = 300; // Reset to 5 minutes
+            updateCountdownDisplay();
+
+            countdownInterval = setInterval(() => {
+                approvalCountdown--;
+                updateCountdownDisplay();
+
+                if (approvalCountdown <= 0) {
+                    clearIntervals();
+                    showApprovalExpired();
+                }
+            }, 1000);
+        }
+
+        function updateCountdownDisplay() {
+            const minutes = Math.floor(approvalCountdown / 60);
+            const seconds = approvalCountdown % 60;
+            document.getElementById('timeCounter').textContent =
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            // Change color when low on time
+            if (approvalCountdown <= 60) {
+                document.getElementById('timeCounter').style.color = '#DC2626';
+            }
+        }
+
+        function clearIntervals() {
+            if (approvalPollInterval) {
+                clearInterval(approvalPollInterval);
+                approvalPollInterval = null;
+            }
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+        }
+
+        function showApprovalDenied() {
+            document.getElementById('approvalStatusText').textContent = 'Access Denied';
+            document.getElementById('approvalStatusText').style.color = '#DC2626';
+            document.getElementById('approvalTimeRemaining').innerHTML =
+                '<span style="color: #DC2626;">The file owner denied your access request.</span>';
+            document.querySelector('.spinner-circle').style.stroke = '#DC2626';
+            document.querySelector('.spinner').classList.remove('spinner');
+        }
+
+        function showApprovalExpired() {
+            document.getElementById('approvalStatusText').textContent = 'Request Expired';
+            document.getElementById('approvalStatusText').style.color = '#9CA3AF';
+            document.getElementById('approvalTimeRemaining').innerHTML =
+                '<span style="color: #9CA3AF;">The approval request has expired. Please try again.</span>';
+            document.querySelector('.spinner-circle').style.stroke = '#9CA3AF';
+            document.querySelector('.spinner').classList.remove('spinner');
+        }
+
         function showSuccess(data) {
+            // Clear any polling intervals
+            clearIntervals();
+
             // Update file details
             document.getElementById('verifiedFileName').textContent = data.filename;
             document.getElementById('verifiedFileSize').textContent = data.file_size;
@@ -287,6 +467,7 @@
             // Hide all forms, show success
             document.getElementById('downloadForm').style.display = 'none';
             document.getElementById('totpForm').style.display = 'none';
+            document.getElementById('approvalWaitingForm').style.display = 'none';
             document.getElementById('downloadSuccess').style.display = 'block';
 
             // Setup download button
@@ -302,10 +483,29 @@
 
             // Shake animation
             const inputEl = document.getElementById(inputElementId);
-            inputEl.classList.add('shake');
-            setTimeout(() => {
-                inputEl.classList.remove('shake');
-            }, 500);
+            if (inputEl) {
+                inputEl.classList.add('shake');
+                setTimeout(() => {
+                    inputEl.classList.remove('shake');
+                }, 500);
+            }
         }
     </script>
+
+    <style>
+        /* Approval spinner animation */
+        .spinner {
+            animation: spin 1.5s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .badge-classified {
+            background: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #F87171;
+        }
+    </style>
 {% endblock %}
