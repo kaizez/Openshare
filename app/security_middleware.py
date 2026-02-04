@@ -8,6 +8,10 @@ import re
 import logging
 from datetime import datetime
 import json
+import os
+
+# Ensure logs directory exists
+os.makedirs('logs', exist_ok=True)
 
 # Configure security logger
 security_logger = logging.getLogger('security')
