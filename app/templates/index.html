@@ -95,8 +95,8 @@
                 </div>
             {% else %}
                 <div class="hero-buttons">
-                    <a href="#upload" class="btn btn-primary btn-large">Upload Files</a>
-                    <a href="#files" class="btn btn-outline btn-large">My Files</a>
+                    <a href="{{ url_for('filetransfer.index') }}" class="btn btn-primary btn-large">Upload Files</a>
+                    <a href="{{ url_for('filetransfer.download_page') }}" class="btn btn-outline btn-large">Download Files</a>
                 </div>
             {% endif %}
         </div>

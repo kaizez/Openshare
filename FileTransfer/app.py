@@ -319,16 +319,16 @@ def verify_access_by_classification(file_id, classification):
 # Routes
 # ============================================
 
-@bp.route('/')
+@bp.route('/upload')
 @login_required
 def index():
-    """Main page - upload interface"""
+    """Upload page interface"""
     return render_template('filetransfer/index.html')
 
 @bp.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
-    """Handle file upload"""
+    """Handle file upload (POST)"""
     print(f"[Upload] Request received", flush=True)
     print(f"[Upload] Request files: {request.files}", flush=True)
     print(f"[Upload] Request form: {request.form}", flush=True)
@@ -843,17 +843,30 @@ def pending_approvals_page():
     """Render the pending approvals dashboard page"""
     db = get_db()
     user_id = session.get('user_id')
-
-    # Get pending approvals
-    approvals = db.get_pending_approvals_for_owner(user_id)
-
-    # Get requester usernames
     User = get_user_model()
+
+    # Get pending approvals (as file owner)
+    approvals = db.get_pending_approvals_for_owner(user_id)
     for approval in approvals:
         requester = User.query.get(approval['requester_user_id'])
         approval['requester_username'] = requester.username if requester else 'Unknown'
 
-    return render_template('filetransfer/approvals.html', approvals=approvals)
+    # Get approval history (as file owner - requests I've responded to)
+    owner_history = db.get_approval_history_for_owner(user_id)
+    for item in owner_history:
+        requester = User.query.get(item['requester_user_id'])
+        item['requester_username'] = requester.username if requester else 'Unknown'
+
+    # Get my requests history (as requester - requests I've made)
+    my_requests = db.get_approval_history_for_requester(user_id)
+    for item in my_requests:
+        owner = User.query.get(item['owner_user_id'])
+        item['owner_username'] = owner.username if owner else 'Unknown'
+
+    return render_template('filetransfer/approvals.html',
+                           approvals=approvals,
+                           owner_history=owner_history,
+                           my_requests=my_requests)
 
 
 @bp.route('/respond-approval/<request_id>', methods=['POST'])

@@ -1,6 +1,6 @@
 {% extends "filetransfer/filetransfer_base.html" %}
 
-{% block title %}Pending Approvals - MoveIt{% endblock %}
+{% block title %}Approvals - MoveIt{% endblock %}
 
 {% block content %}
 <div class="approvals-section">
@@ -12,67 +12,166 @@
                 <path d="M26 32L29 35L34 27" stroke="white" stroke-width="2" stroke-linecap="round"/>
             </svg>
         </div>
-        <h2>Pending Access Requests</h2>
-        <p>Review and approve/deny access requests for your classified files</p>
+        <h2>Access Requests</h2>
+        <p>Manage access requests for classified files</p>
     </div>
 
-    {% if approvals %}
-    <div class="approvals-list">
-        {% for approval in approvals %}
-        <div class="approval-card" id="approval-{{ approval.request_id }}">
-            <div class="approval-urgency">
-                <span class="time-remaining" id="time-{{ approval.request_id }}">{{ approval.time_remaining }}</span>
-                <span class="time-label">remaining</span>
-            </div>
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('pending')">
+            Pending Requests
+            {% if approvals %}<span class="tab-badge">{{ approvals|length }}</span>{% endif %}
+        </button>
+        <button class="tab-btn" onclick="showTab('history')">My Responses</button>
+        <button class="tab-btn" onclick="showTab('my-requests')">My Requests</button>
+    </div>
 
-            <div class="approval-details">
-                <div class="file-info">
-                    <h3>{{ approval.filename }}</h3>
-                    <span class="badge badge-classified">Classified</span>
+    <!-- Pending Requests Tab -->
+    <div id="pending-tab" class="tab-content active">
+        {% if approvals %}
+        <div class="approvals-list">
+            {% for approval in approvals %}
+            <div class="approval-card" id="approval-{{ approval.request_id }}">
+                <div class="approval-urgency">
+                    <span class="time-remaining" id="time-{{ approval.request_id }}">{{ approval.time_remaining }}</span>
+                    <span class="time-label">remaining</span>
                 </div>
-                <div class="requester-info">
-                    <p><strong>Requested by:</strong> {{ approval.requester_username }}</p>
-                    <p><strong>IP Address:</strong> {{ approval.requester_ip }}</p>
-                    <p><strong>Requested at:</strong> {{ approval.created_at }}</p>
+
+                <div class="approval-details">
+                    <div class="file-info">
+                        <h3>{{ approval.filename }}</h3>
+                        <span class="badge badge-classified">Classified</span>
+                    </div>
+                    <div class="requester-info">
+                        <p><strong>Requested by:</strong> {{ approval.requester_username }}</p>
+                        <p><strong>IP Address:</strong> {{ approval.requester_ip }}</p>
+                        <p><strong>Requested at:</strong> {{ approval.created_at }}</p>
+                    </div>
+                </div>
+
+                <div class="approval-actions">
+                    <button class="btn-approve" onclick="handleApproval('{{ approval.request_id }}', 'approve')">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 1C4.14 1 1 4.14 1 8C1 11.86 4.14 15 8 15C11.86 15 15 11.86 15 8C15 4.14 11.86 1 8 1ZM6.5 11L3.5 8L4.56 6.94L6.5 8.88L11.44 3.94L12.5 5L6.5 11Z"/>
+                        </svg>
+                        Approve
+                    </button>
+                    <button class="btn-deny" onclick="handleApproval('{{ approval.request_id }}', 'deny')">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 1C4.14 1 1 4.14 1 8C1 11.86 4.14 15 8 15C11.86 15 15 11.86 15 8C15 4.14 11.86 1 8 1ZM11 10.06L10.06 11L8 8.94L5.94 11L5 10.06L7.06 8L5 5.94L5.94 5L8 7.06L10.06 5L11 5.94L8.94 8L11 10.06Z"/>
+                        </svg>
+                        Deny
+                    </button>
                 </div>
             </div>
-
-            <div class="approval-actions">
-                <button class="btn-approve" onclick="handleApproval('{{ approval.request_id }}', 'approve')">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 1C4.14 1 1 4.14 1 8C1 11.86 4.14 15 8 15C11.86 15 15 11.86 15 8C15 4.14 11.86 1 8 1ZM6.5 11L3.5 8L4.56 6.94L6.5 8.88L11.44 3.94L12.5 5L6.5 11Z"/>
-                    </svg>
-                    Approve
-                </button>
-                <button class="btn-deny" onclick="handleApproval('{{ approval.request_id }}', 'deny')">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 1C4.14 1 1 4.14 1 8C1 11.86 4.14 15 8 15C11.86 15 15 11.86 15 8C15 4.14 11.86 1 8 1ZM11 10.06L10.06 11L8 8.94L5.94 11L5 10.06L7.06 8L5 5.94L5.94 5L8 7.06L10.06 5L11 5.94L8.94 8L11 10.06Z"/>
-                    </svg>
-                    Deny
-                </button>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                    <circle cx="40" cy="40" r="40" fill="#F3F4F6"/>
+                    <path d="M40 20L25 28V40C25 50 31.4 59.2 40 62C48.6 59.2 55 50 55 40V28L40 20Z" stroke="#9CA3AF" stroke-width="2" fill="none"/>
+                    <path d="M33 42L38 47L47 35" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
+                </svg>
             </div>
+            <h3>No Pending Requests</h3>
+            <p>You have no pending access requests for your classified files.</p>
         </div>
-        {% endfor %}
+        {% endif %}
     </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="empty-icon">
-            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                <circle cx="40" cy="40" r="40" fill="#F3F4F6"/>
-                <path d="M40 20L25 28V40C25 50 31.4 59.2 40 62C48.6 59.2 55 50 55 40V28L40 20Z" stroke="#9CA3AF" stroke-width="2" fill="none"/>
-                <path d="M33 42L38 47L47 35" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+
+    <!-- My Responses History Tab -->
+    <div id="history-tab" class="tab-content">
+        {% if owner_history %}
+        <div class="history-list">
+            {% for item in owner_history %}
+            <div class="history-card {{ item.status }}">
+                <div class="history-status">
+                    {% if item.status == 'approved' %}
+                    <span class="status-icon approved">&#10003;</span>
+                    {% elif item.status == 'denied' %}
+                    <span class="status-icon denied">&#10007;</span>
+                    {% else %}
+                    <span class="status-icon expired">&#8987;</span>
+                    {% endif %}
+                    <span class="status-text">{{ item.status|capitalize }}</span>
+                </div>
+                <div class="history-details">
+                    <h4>{{ item.filename }}</h4>
+                    <p><strong>Requested by:</strong> {{ item.requester_username }}</p>
+                    <p><strong>IP:</strong> {{ item.requester_ip }}</p>
+                    <p><strong>Requested:</strong> {{ item.created_at }}</p>
+                    {% if item.responded_at %}
+                    <p><strong>Responded:</strong> {{ item.responded_at }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
         </div>
-        <h3>No Pending Requests</h3>
-        <p>You have no pending access requests for your classified files.</p>
-        <p class="empty-hint">When someone requests access to your classified files, they will appear here.</p>
+        {% else %}
+        <div class="empty-state">
+            <h3>No History</h3>
+            <p>You haven't responded to any access requests yet.</p>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
+
+    <!-- My Requests Tab -->
+    <div id="my-requests-tab" class="tab-content">
+        {% if my_requests %}
+        <div class="history-list">
+            {% for item in my_requests %}
+            <div class="history-card {{ item.status }}">
+                <div class="history-status">
+                    {% if item.status == 'approved' %}
+                    <span class="status-icon approved">&#10003;</span>
+                    {% elif item.status == 'denied' %}
+                    <span class="status-icon denied">&#10007;</span>
+                    {% elif item.status == 'pending' %}
+                    <span class="status-icon pending">&#8987;</span>
+                    {% else %}
+                    <span class="status-icon expired">&#8987;</span>
+                    {% endif %}
+                    <span class="status-text">{{ item.status|capitalize }}</span>
+                </div>
+                <div class="history-details">
+                    <h4>{{ item.filename }}</h4>
+                    <p><strong>Owner:</strong> {{ item.owner_username }}</p>
+                    <p><strong>Requested:</strong> {{ item.created_at }}</p>
+                    {% if item.responded_at %}
+                    <p><strong>Responded:</strong> {{ item.responded_at }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>No Requests Made</h3>
+            <p>You haven't requested access to any classified files yet.</p>
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    function showTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        document.getElementById(tabName + '-tab').classList.add('active');
+        event.target.classList.add('active');
+    }
+
     function handleApproval(requestId, action) {
         const card = document.getElementById(`approval-${requestId}`);
         const buttons = card.querySelectorAll('button');
@@ -138,7 +237,6 @@
     }
 
     function showToast(message, type) {
-        // Create toast element
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.textContent = message;
@@ -157,18 +255,20 @@
 
         document.body.appendChild(toast);
 
-        // Remove after 3 seconds
         setTimeout(() => {
             toast.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
 
-    // Auto-refresh the page every 30 seconds to update time remaining
+    // Auto-refresh pending tab every 30 seconds
     setInterval(() => {
-        const cards = document.querySelectorAll('.approval-card');
-        if (cards.length > 0) {
-            location.reload();
+        const pendingTab = document.getElementById('pending-tab');
+        if (pendingTab.classList.contains('active')) {
+            const cards = document.querySelectorAll('.approval-card');
+            if (cards.length > 0) {
+                location.reload();
+            }
         }
     }, 30000);
 </script>
@@ -192,7 +292,7 @@
 
     .approvals-header {
         text-align: center;
-        margin-bottom: 40px;
+        margin-bottom: 30px;
     }
 
     .approvals-header h2 {
@@ -204,7 +304,54 @@
         color: #6B7280;
     }
 
-    .approvals-list {
+    /* Tabs */
+    .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 2px solid #E5E7EB;
+        padding-bottom: 0;
+    }
+
+    .tab-btn {
+        padding: 12px 24px;
+        border: none;
+        background: none;
+        color: #6B7280;
+        font-weight: 500;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: #1F2937;
+    }
+
+    .tab-btn.active {
+        color: #4F46E5;
+        border-bottom-color: #4F46E5;
+    }
+
+    .tab-badge {
+        background: #DC2626;
+        color: white;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        margin-left: 8px;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .approvals-list, .history-list {
         display: flex;
         flex-direction: column;
         gap: 16px;
@@ -312,6 +459,68 @@
         border: 1px solid #F87171;
     }
 
+    /* History Cards */
+    .history-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid #E5E7EB;
+    }
+
+    .history-card.approved {
+        border-left-color: #38A169;
+    }
+
+    .history-card.denied {
+        border-left-color: #E53E3E;
+    }
+
+    .history-card.expired {
+        border-left-color: #9CA3AF;
+    }
+
+    .history-card.pending {
+        border-left-color: #F59E0B;
+    }
+
+    .history-status {
+        text-align: center;
+        min-width: 80px;
+    }
+
+    .status-icon {
+        display: block;
+        font-size: 28px;
+        margin-bottom: 4px;
+    }
+
+    .status-icon.approved { color: #38A169; }
+    .status-icon.denied { color: #E53E3E; }
+    .status-icon.expired { color: #9CA3AF; }
+    .status-icon.pending { color: #F59E0B; }
+
+    .status-text {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #6B7280;
+    }
+
+    .history-details h4 {
+        margin: 0 0 8px 0;
+        color: #1F2937;
+    }
+
+    .history-details p {
+        margin: 4px 0;
+        color: #4B5563;
+        font-size: 14px;
+    }
+
     .empty-state {
         text-align: center;
         padding: 60px 20px;
@@ -330,22 +539,6 @@
         margin: 0;
     }
 
-    .empty-hint {
-        margin-top: 8px !important;
-        font-size: 14px;
-    }
-
-    /* Navbar badge styling */
-    .approval-badge {
-        background: #DC2626;
-        color: white;
-        font-size: 11px;
-        padding: 2px 6px;
-        border-radius: 10px;
-        margin-left: 6px;
-        font-weight: 600;
-    }
-
     @media (max-width: 768px) {
         .approval-card {
             grid-template-columns: 1fr;
@@ -355,6 +548,15 @@
         .approval-actions {
             flex-direction: row;
             justify-content: center;
+        }
+
+        .tabs {
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 100px;
         }
     }
 </style>

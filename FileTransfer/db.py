@@ -3,6 +3,9 @@ from mysql.connector import Error
 from datetime import datetime, timedelta
 import os
 
+# Import encryption utilities
+from encryption import encrypt_file, decrypt_file, encrypt_otp, decrypt_otp
+
 # Check if dual DB mode is enabled
 DUAL_DB_ENABLED = os.environ.get('DUAL_DB_ENABLED', 'false').lower() == 'true'
 
@@ -235,6 +238,10 @@ class Database:
 
             access_logs = self.get_access_logs(file_id)
 
+            # Decrypt OTP code
+            encrypted_otp = row['current_otp_code']
+            decrypted_otp = decrypt_otp(encrypted_otp) if encrypted_otp else None
+
             result = {
                 'original_filename': row['original_filename'],
                 'stored_filename': row['stored_filename'],
@@ -244,7 +251,7 @@ class Database:
                 'download_count': row['download_count'],
                 'classification': row['classification'],
                 'detected_mime': row['detected_mime'],
-                'current_otp_code': row['current_otp_code'],
+                'current_otp_code': decrypted_otp,  # Return decrypted OTP
                 'otp_generated_at': row['otp_generated_at'].isoformat() if row['otp_generated_at'] else None,
                 'otp_expires_at': row['otp_expires_at'].isoformat() if row['otp_expires_at'] else None,
                 'otp_used': bool(row['otp_used']),
@@ -256,7 +263,9 @@ class Database:
             }
 
             if include_content and 'file_content' in row:
-                result['file_content'] = row['file_content']
+                # Decrypt file content
+                encrypted_content = row['file_content']
+                result['file_content'] = decrypt_file(encrypted_content) if encrypted_content else None
 
             return result
         except Error as e:
@@ -266,7 +275,7 @@ class Database:
             cursor.close()
 
     def save_file_metadata(self, file_id, metadata, file_content=None):
-        """Save or update file metadata"""
+        """Save or update file metadata with encryption"""
         try:
             self.ensure_connection()
             cursor = self.connection.cursor()
@@ -274,6 +283,13 @@ class Database:
             upload_time = datetime.fromisoformat(metadata['upload_time']) if isinstance(metadata['upload_time'], str) else metadata['upload_time']
             otp_generated_at = datetime.fromisoformat(metadata['otp_generated_at']) if isinstance(metadata.get('otp_generated_at'), str) else metadata.get('otp_generated_at')
             otp_expires_at = datetime.fromisoformat(metadata['otp_expires_at']) if isinstance(metadata.get('otp_expires_at'), str) else metadata.get('otp_expires_at')
+
+            # Encrypt OTP code before storing
+            otp_code = metadata.get('current_otp_code')
+            encrypted_otp = encrypt_otp(otp_code) if otp_code else None
+
+            # Encrypt file content before storing
+            encrypted_content = encrypt_file(file_content) if file_content is not None else None
 
             if file_content is not None:
                 cursor.execute("""
@@ -312,7 +328,7 @@ class Database:
                     metadata.get('download_count', 0),
                     metadata['classification'],
                     metadata.get('detected_mime'),
-                    metadata.get('current_otp_code'),
+                    encrypted_otp,  # Store encrypted OTP
                     otp_generated_at,
                     otp_expires_at,
                     metadata.get('otp_used', False),
@@ -321,7 +337,7 @@ class Database:
                     metadata.get('vt_scan_method'),
                     metadata.get('upload_ip'),
                     metadata.get('uploaded_by'),
-                    file_content
+                    encrypted_content  # Store encrypted file content
                 ))
             else:
                 cursor.execute("""
@@ -352,7 +368,7 @@ class Database:
                     metadata.get('download_count', 0),
                     metadata['classification'],
                     metadata.get('detected_mime'),
-                    metadata.get('current_otp_code'),
+                    encrypted_otp,  # Store encrypted OTP
                     otp_generated_at,
                     otp_expires_at,
                     metadata.get('otp_used', False),
@@ -436,14 +452,18 @@ class Database:
             cursor.close()
 
     def find_file_by_otp(self, otp_code):
-        """Find file by OTP code"""
+        """Find file by OTP code (encrypts OTP for comparison)"""
         try:
             self.ensure_connection()
             cursor = self.connection.cursor(dictionary=True, buffered=True)
+
+            # Encrypt the OTP to match against stored encrypted OTP
+            encrypted_otp = encrypt_otp(otp_code)
+
             cursor.execute("""
                 SELECT file_id FROM file_metadata
                 WHERE current_otp_code = %s
-            """, (otp_code,))
+            """, (encrypted_otp,))
 
             row = cursor.fetchone()
             return row['file_id'] if row else None
@@ -474,10 +494,14 @@ class Database:
             cursor.close()
 
     def update_otp(self, file_id, otp_code, generated_at, expires_at, otp_used=False):
-        """Update OTP information for a file"""
+        """Update OTP information for a file (encrypts OTP before storing)"""
         try:
             self.ensure_connection()
             cursor = self.connection.cursor()
+
+            # Encrypt OTP before storing
+            encrypted_otp = encrypt_otp(otp_code) if otp_code else None
+
             cursor.execute("""
                 UPDATE file_metadata
                 SET current_otp_code = %s,
@@ -485,7 +509,7 @@ class Database:
                     otp_expires_at = %s,
                     otp_used = %s
                 WHERE file_id = %s
-            """, (otp_code, generated_at, expires_at, otp_used, file_id))
+            """, (encrypted_otp, generated_at, expires_at, otp_used, file_id))
 
             self.connection.commit()
             return True
@@ -872,6 +896,83 @@ class Database:
             return results
         except Error as e:
             print(f"Error fetching pending approvals: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def get_approval_history_for_owner(self, owner_user_id, limit=50):
+        """Get past (non-pending) approval requests for a file owner"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+
+            cursor.execute("""
+                SELECT ar.*, fm.original_filename, fm.file_size, fm.classification
+                FROM approval_requests ar
+                JOIN file_metadata fm ON ar.file_id = fm.file_id
+                WHERE ar.owner_user_id = %s AND ar.status != 'pending'
+                ORDER BY ar.responded_at DESC, ar.created_at DESC
+                LIMIT %s
+            """, (owner_user_id, limit))
+
+            rows = cursor.fetchall()
+            results = []
+
+            for row in rows:
+                results.append({
+                    'request_id': row['request_id'],
+                    'file_id': row['file_id'],
+                    'filename': row['original_filename'],
+                    'file_size': row['file_size'],
+                    'classification': row['classification'],
+                    'requester_user_id': row['requester_user_id'],
+                    'requester_ip': row['requester_ip'],
+                    'status': row['status'],
+                    'created_at': row['created_at'].strftime('%Y-%m-%d %H:%M:%S') if row['created_at'] else None,
+                    'responded_at': row['responded_at'].strftime('%Y-%m-%d %H:%M:%S') if row['responded_at'] else None
+                })
+
+            return results
+        except Error as e:
+            print(f"Error fetching approval history: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def get_approval_history_for_requester(self, requester_user_id, limit=50):
+        """Get past approval requests made by a user"""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+
+            cursor.execute("""
+                SELECT ar.*, fm.original_filename, fm.file_size, fm.classification
+                FROM approval_requests ar
+                JOIN file_metadata fm ON ar.file_id = fm.file_id
+                WHERE ar.requester_user_id = %s
+                ORDER BY ar.created_at DESC
+                LIMIT %s
+            """, (requester_user_id, limit))
+
+            rows = cursor.fetchall()
+            results = []
+
+            for row in rows:
+                results.append({
+                    'request_id': row['request_id'],
+                    'file_id': row['file_id'],
+                    'filename': row['original_filename'],
+                    'file_size': row['file_size'],
+                    'classification': row['classification'],
+                    'owner_user_id': row['owner_user_id'],
+                    'status': row['status'],
+                    'created_at': row['created_at'].strftime('%Y-%m-%d %H:%M:%S') if row['created_at'] else None,
+                    'responded_at': row['responded_at'].strftime('%Y-%m-%d %H:%M:%S') if row['responded_at'] else None
+                })
+
+            return results
+        except Error as e:
+            print(f"Error fetching requester history: {e}")
             return []
         finally:
             cursor.close()

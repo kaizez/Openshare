@@ -595,16 +595,16 @@ def send_password_reset_email(email, username, otp_code):
         print(f"Error sending password reset email: {str(e)}")
         return False
 
-# Index route moved to FileTransfer blueprint
-# @bp.route('/')
-# def index():
-#     user = None
-#     # Check if user is logged in and get MFA status
-#     if 'user_id' in session:
-#         user = User.query.get(session['user_id'])
-#         if user:
-#             session['mfa_enabled'] = user.mfa_enabled
-#     return render_template('index.html', user=user)
+@bp.route('/')
+def index():
+    """Landing page"""
+    user = None
+    # Check if user is logged in and get MFA status
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+        if user:
+            session['mfa_enabled'] = user.mfa_enabled
+    return render_template('index.html', user=user)
 
 @bp.route('/debug-oauth')
 def debug_oauth():

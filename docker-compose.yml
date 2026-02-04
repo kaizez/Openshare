@@ -123,6 +123,7 @@ services:
       - ./app:/app/app
       - ./FileTransfer:/app/FileTransfer
       - ./uploads:/app/uploads
+      - encryption_keys:/app/keys
     networks:
       - moveit-network
       - app_network
@@ -212,3 +213,4 @@ volumes:
   auth_db_data:
   working_db_data:
   storage_db_data:
+  encryption_keys:
