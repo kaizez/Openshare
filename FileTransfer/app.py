@@ -571,13 +571,14 @@ def verify_code():
     )
     log_access_attempt(file_id, 'verified', f'Access code verified successfully (Classification: {classification})')
 
-    # Check classification - Internal Use requires TOTP verification
-    if classification == 'Internal Use':
+    # Check classification - Internal Use and Classified require TOTP verification
+    if classification == 'Internal Use' or classification == 'Classified':
         # Store partial verification in session (OTP passed, TOTP pending)
         session[f'otp_verified_{file_id}'] = {
             'timestamp': datetime.now().isoformat(),
             'ip': request.remote_addr,
-            'totp_verified': False
+            'totp_verified': False,
+            'classification': classification  # Store classification for later
         }
         return jsonify({
             'success': True,
@@ -636,14 +637,36 @@ def verify_totp():
         log_access_attempt(file_id, 'failed', 'Invalid TOTP code entered')
         return jsonify({'success': False, 'error': 'Invalid authenticator code'}), 400
 
-    # TOTP verified - grant full access
+    # TOTP verified - check classification for next step
     db = get_db()
     file_info = db.get_file_metadata(file_id)
 
     if not file_info:
         return jsonify({'success': False, 'error': 'File not found'}), 404
 
-    # Remove partial session and create full access session
+    classification = otp_session.get('classification', file_info.get('classification', 'Internal Use'))
+
+    # For Classified files, require owner approval (two-person rule)
+    if classification == 'Classified':
+        # Keep otp_verified session for approval request
+        # Mark TOTP as verified - must reassign entire dict for Flask session to persist
+        otp_session['totp_verified'] = True
+        session[f'otp_verified_{file_id}'] = otp_session  # Reassign to trigger session update
+        session.modified = True  # Explicitly mark session as modified
+
+        print(f"[verify_totp] Classified file - set totp_verified=True for {file_id}", flush=True)
+        log_access_attempt(file_id, 'totp_verified', 'TOTP verification successful for Classified file - awaiting owner approval')
+
+        return jsonify({
+            'success': True,
+            'file_id': file_id,
+            'filename': file_info['original_filename'],
+            'file_size': format_file_size(file_info['file_size']),
+            'classification': classification,
+            'requires_approval': True  # Signal that owner approval is needed
+        })
+
+    # For Internal Use files, grant full access after TOTP
     session.pop(f'otp_verified_{file_id}', None)
     session[f'verified_{file_id}'] = {
         'timestamp': datetime.now().isoformat(),
@@ -658,8 +681,248 @@ def verify_totp():
         'file_id': file_id,
         'filename': file_info['original_filename'],
         'file_size': format_file_size(file_info['file_size']),
-        'classification': file_info.get('classification', 'Internal Use')
+        'classification': classification
     })
+
+
+# ============================================
+# Classified File Approval Endpoints (Two-Person Rule)
+# ============================================
+
+@bp.route('/request-approval', methods=['POST'])
+@login_required
+def request_approval():
+    """Create an approval request for Classified file access after OTP+TOTP verification"""
+    db = get_db()
+    data = request.get_json()
+    file_id = data.get('file_id', '').strip()
+
+    print(f"[request_approval] file_id={file_id}", flush=True)
+
+    if not file_id:
+        return jsonify({'success': False, 'error': 'File ID is required'}), 400
+
+    # Verify OTP+TOTP was verified for this file
+    otp_session = session.get(f'otp_verified_{file_id}')
+    print(f"[request_approval] otp_session={otp_session}", flush=True)
+
+    if not otp_session or not otp_session.get('totp_verified'):
+        print(f"[request_approval] FAILED: otp_session missing or totp_verified not True", flush=True)
+        return jsonify({'success': False, 'error': 'Please complete OTP and TOTP verification first'}), 400
+
+    # Verify file exists and is Classified
+    file_info = db.get_file_metadata(file_id)
+    if not file_info:
+        return jsonify({'success': False, 'error': 'File not found'}), 404
+
+    if file_info.get('classification') != 'Classified':
+        return jsonify({'success': False, 'error': 'This file does not require approval'}), 400
+
+    # Get file owner
+    owner_id = file_info.get('uploaded_by')
+    if not owner_id:
+        return jsonify({'success': False, 'error': 'File owner not found'}), 400
+
+    requester_id = session.get('user_id')
+    print(f"[request_approval] owner_id={owner_id}, requester_id={requester_id}", flush=True)
+
+    # Prevent self-approval (owner accessing their own file)
+    if int(owner_id) == int(requester_id):
+        print(f"[request_approval] SELF-APPROVAL: owner accessing their own file", flush=True)
+        # Owner can access their own Classified files directly
+        session.pop(f'otp_verified_{file_id}', None)
+        session[f'verified_{file_id}'] = {
+            'timestamp': datetime.now().isoformat(),
+            'ip': request.remote_addr,
+            'totp_verified': True,
+            'self_approved': True
+        }
+        log_access_attempt(file_id, 'verified', 'Owner self-access for Classified file')
+        return jsonify({
+            'success': True,
+            'self_approved': True,
+            'message': 'Access granted (you are the file owner)'
+        })
+
+    # Create approval request
+    print(f"[request_approval] Creating approval request for file_id={file_id}", flush=True)
+    request_id = db.create_approval_request(
+        file_id=file_id,
+        requester_id=requester_id,
+        owner_id=owner_id,
+        requester_ip=request.remote_addr
+    )
+    print(f"[request_approval] create_approval_request returned: {request_id}", flush=True)
+
+    if not request_id:
+        return jsonify({'success': False, 'error': 'Failed to create approval request'}), 500
+
+    # Store request_id in session for later verification
+    session[f'approval_request_{file_id}'] = request_id
+
+    log_access_attempt(file_id, 'approval_requested', f'Approval request created: {request_id}')
+
+    return jsonify({
+        'success': True,
+        'request_id': request_id,
+        'message': 'Approval request sent to file owner'
+    })
+
+
+@bp.route('/approval-status/<request_id>')
+@login_required
+def check_approval_status(request_id):
+    """Check the status of an approval request (for recipient polling)"""
+    print(f"[check_approval_status] request_id={request_id}, user_id={session.get('user_id')}", flush=True)
+    db = get_db()
+    print(f"[check_approval_status] got db instance", flush=True)
+
+    # Get the approval request
+    approval = db.get_approval_request(request_id)
+    print(f"[check_approval_status] approval={approval}", flush=True)
+    if not approval:
+        return jsonify({'success': False, 'error': 'Approval request not found'}), 404
+
+    # Verify requester is the one who made the request
+    if int(approval['requester_user_id']) != int(session.get('user_id')):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    # Check if expired
+    if approval['status'] == 'pending':
+        expires_at = datetime.fromisoformat(approval['expires_at'])
+        if datetime.now() > expires_at:
+            db.update_approval_status(request_id, 'expired')
+            approval['status'] = 'expired'
+
+    # If approved, grant access
+    if approval['status'] == 'approved':
+        file_id = approval['file_id']
+        session.pop(f'otp_verified_{file_id}', None)
+        session.pop(f'approval_request_{file_id}', None)
+        session[f'verified_{file_id}'] = {
+            'timestamp': datetime.now().isoformat(),
+            'ip': request.remote_addr,
+            'totp_verified': True,
+            'owner_approved': True
+        }
+        log_access_attempt(file_id, 'verified', 'Access granted after owner approval')
+
+    return jsonify({
+        'success': True,
+        'status': approval['status'],
+        'file_id': approval['file_id']
+    })
+
+
+@bp.route('/pending-approvals')
+@login_required
+def list_pending_approvals():
+    """List all pending approval requests for the current user's files"""
+    db = get_db()
+    user_id = session.get('user_id')
+
+    # Get pending approvals where current user is the owner
+    approvals = db.get_pending_approvals_for_owner(user_id)
+
+    # Get requester usernames
+    User = get_user_model()
+    for approval in approvals:
+        requester = User.query.get(approval['requester_user_id'])
+        approval['requester_username'] = requester.username if requester else 'Unknown'
+
+    return jsonify({
+        'success': True,
+        'approvals': approvals,
+        'count': len(approvals)
+    })
+
+
+@bp.route('/pending-approvals-page')
+@login_required
+def pending_approvals_page():
+    """Render the pending approvals dashboard page"""
+    db = get_db()
+    user_id = session.get('user_id')
+
+    # Get pending approvals
+    approvals = db.get_pending_approvals_for_owner(user_id)
+
+    # Get requester usernames
+    User = get_user_model()
+    for approval in approvals:
+        requester = User.query.get(approval['requester_user_id'])
+        approval['requester_username'] = requester.username if requester else 'Unknown'
+
+    return render_template('filetransfer/approvals.html', approvals=approvals)
+
+
+@bp.route('/respond-approval/<request_id>', methods=['POST'])
+@login_required
+def respond_approval(request_id):
+    """Approve or deny an access request"""
+    print(f"[respond_approval] request_id={request_id}", flush=True)
+    db = get_db()
+    data = request.get_json()
+    action = data.get('action', '').strip().lower()
+    print(f"[respond_approval] action={action}, user_id={session.get('user_id')}", flush=True)
+
+    if action not in ['approve', 'deny']:
+        return jsonify({'success': False, 'error': 'Invalid action. Use "approve" or "deny"'}), 400
+
+    # Get the approval request
+    approval = db.get_approval_request(request_id)
+    print(f"[respond_approval] approval={approval}", flush=True)
+    if not approval:
+        return jsonify({'success': False, 'error': 'Approval request not found'}), 404
+
+    # Verify current user is the file owner
+    if int(approval['owner_user_id']) != int(session.get('user_id')):
+        return jsonify({'success': False, 'error': 'Access denied. You are not the file owner.'}), 403
+
+    # Check if request is still pending
+    if approval['status'] != 'pending':
+        return jsonify({'success': False, 'error': f'Request already {approval["status"]}'}), 400
+
+    # Check if expired
+    expires_at = datetime.fromisoformat(approval['expires_at'])
+    if datetime.now() > expires_at:
+        db.update_approval_status(request_id, 'expired')
+        return jsonify({'success': False, 'error': 'Request has expired'}), 400
+
+    # Update status
+    new_status = 'approved' if action == 'approve' else 'denied'
+    success = db.update_approval_status(request_id, new_status)
+
+    if not success:
+        return jsonify({'success': False, 'error': 'Failed to update request'}), 500
+
+    # Log the action with detailed info
+    file_id = approval['file_id']
+    User = get_user_model()
+    owner = User.query.get(session.get('user_id'))
+    requester = User.query.get(approval['requester_user_id'])
+    owner_name = owner.username if owner else 'Unknown'
+    requester_name = requester.username if requester else 'Unknown'
+
+    log_details = f'Owner "{owner_name}" {new_status} access request from "{requester_name}" (IP: {approval.get("requester_ip", "N/A")})'
+    log_access_attempt(file_id, new_status, log_details)
+
+    return jsonify({
+        'success': True,
+        'status': new_status,
+        'message': f'Request {new_status}'
+    })
+
+
+@bp.route('/approval-count')
+@login_required
+def get_approval_count():
+    """Get pending approval count for navbar badge"""
+    db = get_db()
+    user_id = session.get('user_id')
+    count = db.get_pending_approval_count(user_id)
+    return jsonify({'count': count})
+
 
 @bp.route('/file/<file_id>')
 @login_required
