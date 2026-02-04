@@ -7,9 +7,11 @@ Injects sample security logs into the SIEM system to demonstrate detection rules
 import os
 import requests
 import time
-from datetime import datetime
+from dotenv import load_dotenv
 
-BASE_URL = "http://localhost:5001"  # Change to 5000 if using default port
+load_dotenv()
+
+SIEM_URL = os.environ.get("SIEM_URL", "http://localhost:5001").rstrip("/")
 
 # Uses first account from USERS env var (format: "user:pass,user:pass,...")
 _first_user = os.environ.get("USERS", ":").split(",")[0].split(":", 1)
@@ -18,30 +20,34 @@ PASSWORD = _first_user[1].strip() if len(_first_user) > 1 else ""
 
 
 def login():
-    """Login and return session."""
-    session = requests.Session()
+    """Authenticate via JSON API and return a session token."""
     try:
-        response = session.post(f"{BASE_URL}/login", data={
+        response = requests.post(f"{SIEM_URL}/api/auth/login", json={
             'username': USERNAME,
             'password': PASSWORD
         }, timeout=5)
-        
-        if response.status_code == 200 or response.status_code == 302:
+
+        if response.status_code == 200:
             print("✓ Login successful")
-            return session
-        else:
-            print(f"✗ Login failed: Status {response.status_code}")
-            return None
+            return response.json().get('session_token')
+
+        print(f"✗ Login failed: Status {response.status_code}")
+        return None
     except requests.exceptions.RequestException as e:
         print(f"✗ Login error: {e}")
-        print(f"  Make sure the Flask app is running on {BASE_URL}")
+        print(f"  Make sure the SIEM app is running at {SIEM_URL}")
         return None
 
 
-def inject_normal_logs(session):
+def _headers(token):
+    """Build request headers with the session token."""
+    return {'X-Session-Token': token}
+
+
+def inject_normal_logs(token):
     """Inject some normal, non-suspicious logs."""
     print("\n[Injecting Normal Logs]")
-    
+
     normal_logs = [
         {
             'log_source': 'file_transfer_server',
@@ -77,10 +83,10 @@ def inject_normal_logs(session):
             'severity': 'Info'
         }
     ]
-    
+
     for log in normal_logs:
         try:
-            response = session.post(f"{BASE_URL}/api/ingest_log", json=log, timeout=5)
+            response = requests.post(f"{SIEM_URL}/api/ingest_log", json=log, headers=_headers(token), timeout=5)
             if response.status_code == 200:
                 result = response.json()
                 if result.get('alert_triggered'):
@@ -88,17 +94,17 @@ def inject_normal_logs(session):
                 else:
                     print(f"  ✓ Log ingested: {log['description']}")
             else:
-                print(f"  ✗ Failed to ingest: {log['description']}")
+                print(f"  ✗ Failed to ingest ({response.status_code}): {log['description']}")
         except Exception as e:
             print(f"  ✗ Error: {e}")
         time.sleep(0.2)
 
 
-def trigger_suspicious_volume(session):
+def trigger_suspicious_volume(token):
     """Trigger Rule 1: Suspicious Volume (10+ files in 60 seconds)."""
     print("\n[Triggering Suspicious Volume Alert]")
     print("  Sending 11 file downloads rapidly...")
-    
+
     user_id = 'user123'
     for i in range(11):
         log_data = {
@@ -113,9 +119,9 @@ def trigger_suspicious_volume(session):
             'result': 'success',
             'severity': 'Info'
         }
-        
+
         try:
-            response = session.post(f"{BASE_URL}/api/ingest_log", json=log_data, timeout=5)
+            response = requests.post(f"{SIEM_URL}/api/ingest_log", json=log_data, headers=_headers(token), timeout=5)
             if response.status_code == 200:
                 result = response.json()
                 if result.get('alert_triggered'):
@@ -126,15 +132,15 @@ def trigger_suspicious_volume(session):
             time.sleep(0.1)  # Small delay between requests
         except Exception as e:
             print(f"  ✗ Error: {e}")
-    
+
     print("  ✓ Suspicious volume test completed")
 
 
-def trigger_failed_login_attempts(session):
+def trigger_failed_login_attempts(token):
     """Trigger Rule 2: Failed Login Attempts (5+ failures from same IP)."""
     print("\n[Triggering Failed Login Attempts Alert]")
     print("  Sending 5 failed login attempts from same IP...")
-    
+
     ip_address = '192.168.1.200'
     for i in range(5):
         log_data = {
@@ -145,9 +151,9 @@ def trigger_failed_login_attempts(session):
             'result': 'failure',
             'severity': 'Medium'
         }
-        
+
         try:
-            response = session.post(f"{BASE_URL}/api/ingest_log", json=log_data, timeout=5)
+            response = requests.post(f"{SIEM_URL}/api/ingest_log", json=log_data, headers=_headers(token), timeout=5)
             if response.status_code == 200:
                 result = response.json()
                 if result.get('alert_triggered'):
@@ -158,15 +164,15 @@ def trigger_failed_login_attempts(session):
             time.sleep(0.2)
         except Exception as e:
             print(f"  ✗ Error: {e}")
-    
+
     print("  ✓ Failed login attempts test completed")
 
 
-def trigger_unauthorized_file_access(session):
+def trigger_unauthorized_file_access(token):
     """Trigger Rule 3: Unauthorized File Type (config file access without admin role)."""
     print("\n[Triggering Unauthorized File Access Alert - CRITICAL]")
     print("  Attempting to access config file without admin role...")
-    
+
     log_data = {
         'log_source': 'file_transfer_server',
         'event_type': 'file_access',
@@ -178,9 +184,9 @@ def trigger_unauthorized_file_access(session):
         'result': 'success',
         'severity': 'Critical'
     }
-    
+
     try:
-        response = session.post(f"{BASE_URL}/api/ingest_log", json=log_data, timeout=5)
+        response = requests.post(f"{SIEM_URL}/api/ingest_log", json=log_data, headers=_headers(token), timeout=5)
         if response.status_code == 200:
             result = response.json()
             if result.get('alert_triggered'):
@@ -191,19 +197,19 @@ def trigger_unauthorized_file_access(session):
                 print("  ⚠️  No alert triggered (this might be expected)")
     except Exception as e:
         print(f"  ✗ Error: {e}")
-    
+
     print("  ✓ Unauthorized file access test completed")
 
 
-def trigger_large_data_transfer(session):
+def trigger_large_data_transfer(token):
     """Trigger Rule 4: Large Data Transfer (100MB+ in 5 minutes)."""
     print("\n[Triggering Large Data Transfer Alert]")
     print("  Sending large file transfers...")
-    
+
     user_id = 'user789'
     # Send multiple large files to exceed 100MB threshold
     file_sizes = [30 * 1024 * 1024, 35 * 1024 * 1024, 40 * 1024 * 1024]  # 30MB, 35MB, 40MB
-    
+
     for i, file_size in enumerate(file_sizes):
         log_data = {
             'log_source': 'file_transfer_server',
@@ -217,9 +223,9 @@ def trigger_large_data_transfer(session):
             'result': 'success',
             'severity': 'Info'
         }
-        
+
         try:
-            response = session.post(f"{BASE_URL}/api/ingest_log", json=log_data, timeout=5)
+            response = requests.post(f"{SIEM_URL}/api/ingest_log", json=log_data, headers=_headers(token), timeout=5)
             if response.status_code == 200:
                 result = response.json()
                 if result.get('alert_triggered'):
@@ -230,15 +236,15 @@ def trigger_large_data_transfer(session):
             time.sleep(0.2)
         except Exception as e:
             print(f"  ✗ Error: {e}")
-    
+
     print("  ✓ Large data transfer test completed")
 
 
-def trigger_failed_access_attempts(session):
+def trigger_failed_access_attempts(token):
     """Trigger Rule 5: Failed Access Attempts (5+ failures from same IP)."""
     print("\n[Triggering Failed Access Attempts Alert]")
     print("  Sending 5 failed file access attempts...")
-    
+
     ip_address = '192.168.1.250'
     for i in range(5):
         log_data = {
@@ -250,9 +256,9 @@ def trigger_failed_access_attempts(session):
             'result': 'failure',
             'severity': 'Medium'
         }
-        
+
         try:
-            response = session.post(f"{BASE_URL}/api/ingest_log", json=log_data, timeout=5)
+            response = requests.post(f"{SIEM_URL}/api/ingest_log", json=log_data, headers=_headers(token), timeout=5)
             if response.status_code == 200:
                 result = response.json()
                 if result.get('alert_triggered'):
@@ -263,7 +269,7 @@ def trigger_failed_access_attempts(session):
             time.sleep(0.2)
         except Exception as e:
             print(f"  ✗ Error: {e}")
-    
+
     print("  ✓ Failed access attempts test completed")
 
 
@@ -272,46 +278,46 @@ def main():
     print("=" * 60)
     print("SIEM Sample Log Injection Script")
     print("=" * 60)
-    print(f"\nConnecting to: {BASE_URL}")
+    print(f"\nConnecting to: {SIEM_URL}")
     print(f"Username: {USERNAME}")
-    
+
     # Login
-    session = login()
-    if not session:
+    token = login()
+    if not token:
         print("\n❌ Cannot proceed without login. Please check:")
-        print("   1. Flask app is running")
-        print("   2. URL is correct (default: http://localhost:5001)")
-        print("   3. Credentials are correct")
+        print("   1. SIEM app is running")
+        print(f"   2. URL is correct ({SIEM_URL})")
+        print("   3. USERS env var is set (or .env file exists)")
         return
-    
+
     print("\n" + "=" * 60)
     print("Starting log injection...")
     print("=" * 60)
-    
+
     # Inject normal logs first
-    inject_normal_logs(session)
+    inject_normal_logs(token)
     time.sleep(1)
-    
+
     # Trigger various alerts
-    trigger_suspicious_volume(session)
+    trigger_suspicious_volume(token)
     time.sleep(1)
-    
-    trigger_failed_login_attempts(session)
+
+    trigger_failed_login_attempts(token)
     time.sleep(1)
-    
-    trigger_unauthorized_file_access(session)
+
+    trigger_unauthorized_file_access(token)
     time.sleep(1)
-    
-    trigger_large_data_transfer(session)
+
+    trigger_large_data_transfer(token)
     time.sleep(1)
-    
-    trigger_failed_access_attempts(session)
-    
+
+    trigger_failed_access_attempts(token)
+
     print("\n" + "=" * 60)
     print("✅ Sample log injection completed!")
     print("=" * 60)
     print("\nCheck your dashboard at:")
-    print(f"  {BASE_URL}/dashboard")
+    print(f"  {SIEM_URL}/dashboard")
     print("\nYou should see:")
     print("  - Multiple security logs in the logs table")
     print("  - Several alerts in the alerts section")

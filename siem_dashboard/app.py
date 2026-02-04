@@ -15,7 +15,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 app = Flask(__name__)
 app.secret_key = os.getenv('SIEM_DASHBOARD_SECRET', 'change-this-in-production')
 
-SIEM_URL = os.getenv('SIEM_URL', 'http://localhost:5001').rstrip('/')
+_default_siem_url = 'http://siem:5001' if os.getenv('DOCKER_ENV') == 'true' else 'http://localhost:5001'
+SIEM_URL = os.getenv('SIEM_URL', _default_siem_url).rstrip('/')
 
 
 def _auth_headers():
