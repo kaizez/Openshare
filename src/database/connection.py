@@ -312,6 +312,18 @@ def init_database():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
         
+        # Create session_tokens table for DB-backed auth tokens
+        # Tokens are persisted here so they survive Flask reloads (FLASK_DEBUG reloader)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS session_tokens (
+                token VARCHAR(64) NOT NULL,
+                username VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (token),
+                INDEX idx_username (username)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ''')
+
         connection.commit()
         print("Database initialized successfully")
         

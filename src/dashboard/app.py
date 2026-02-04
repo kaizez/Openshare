@@ -1,17 +1,15 @@
 """
-Flask application for SIEM/SOAR Dashboard.
-Provides admin interface for monitoring and manual response actions.
+Flask application for SIEM/SOAR Backend API.
+Provides API endpoints for log ingestion, playbook actions, and dashboard data.
 """
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
 import os
 import secrets
-
 import sys
-import os
 
 # Add parent directory to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -65,20 +63,11 @@ def _log_cleanup_loop():
 
 def create_app():
     """Create and configure Flask application."""
-    # Get the project root directory (parent of src/)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(os.path.dirname(current_dir))
-    
-    # Create Flask app with explicit template and static folder paths
-    app = Flask(
-        __name__,
-        template_folder=os.path.join(project_root, 'templates'),
-        static_folder=os.path.join(project_root, 'static')
-    )
+    app = Flask(__name__)
     app.secret_key = os.getenv('SECRET_KEY')
     if not app.secret_key:
         raise EnvironmentError("SECRET_KEY environment variable is required")
-    
+
     # Initialize database on startup
     try:
         init_database()
@@ -89,57 +78,44 @@ def create_app():
     cleanup_thread = threading.Thread(target=_log_cleanup_loop, daemon=True)
     cleanup_thread.start()
 
-    # In-memory token store for remote dashboard sessions {token: username}
-    _session_tokens = {}
+    # ==================== AUTH HELPERS ====================
 
-    def require_login(f):
-        """Decorator to require login via session or remote session token."""
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if 'user_id' in session:
-                return f(*args, **kwargs)
-            token = request.headers.get('X-Session-Token')
-            if token and token in _session_tokens:
-                return f(*args, **kwargs)
-            if request.is_json:
-                return jsonify({'error': 'Authentication required'}), 401
-            return redirect(url_for('login'))
-        return decorated_function
+    def _verify_session_token(token: str) -> bool:
+        """Verify a session token exists in the database."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute('SELECT 1 FROM session_tokens WHERE token = %s', (token,))
+            return cursor.fetchone() is not None
+        except mysql.connector.Error:
+            return False
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
 
-    def require_auth(f):
-        """Decorator to require session, remote session token, or API key."""
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if 'user_id' in session:
-                return f(*args, **kwargs)
+    def _get_username_for_token(token: str) -> str:
+        """Get username associated with a session token."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute('SELECT username FROM session_tokens WHERE token = %s', (token,))
+            row = cursor.fetchone()
+            return row['username'] if row else 'unknown'
+        except mysql.connector.Error:
+            return 'unknown'
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
 
-            # Check remote session token
-            token = request.headers.get('X-Session-Token')
-            if token and token in _session_tokens:
-                return f(*args, **kwargs)
-
-            # Check API key
-            api_key = request.headers.get('X-API-Key')
-            if api_key:
-                if verify_api_key(api_key):
-                    return f(*args, **kwargs)
-                return jsonify({'error': 'Invalid API key'}), 401
-
-            if request.is_json:
-                return jsonify({'error': 'Authentication required'}), 401
-            return redirect(url_for('login'))
-        return decorated_function
-
-    def get_authenticated_username():
-        """Resolve the username from Flask session or remote session token."""
-        if 'username' in session:
-            return session['username']
-        token = request.headers.get('X-Session-Token')
-        if token and token in _session_tokens:
-            return _session_tokens[token]
-        return 'unknown'
-
-    def verify_api_key(api_key: str) -> bool:
+    def _verify_api_key(api_key: str) -> bool:
         """Verify an API key against the database."""
         connection = None
         cursor = None
@@ -152,7 +128,6 @@ def create_app():
             ''', (api_key,))
             result = cursor.fetchone()
             if result:
-                # Update last used
                 cursor.execute('''
                     UPDATE api_keys SET last_used = %s WHERE api_key = %s
                 ''', (datetime.utcnow(), api_key))
@@ -166,6 +141,30 @@ def create_app():
                 cursor.close()
             if connection and connection.is_connected():
                 connection.close()
+
+    def require_auth(f):
+        """Decorator: require session token or API key. Always returns JSON on failure."""
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            token = request.headers.get('X-Session-Token')
+            if token and _verify_session_token(token):
+                return f(*args, **kwargs)
+
+            api_key = request.headers.get('X-API-Key')
+            if api_key:
+                if _verify_api_key(api_key):
+                    return f(*args, **kwargs)
+                return jsonify({'error': 'Invalid API key'}), 401
+
+            return jsonify({'error': 'Authentication required'}), 401
+        return decorated_function
+
+    def get_authenticated_username():
+        """Resolve the username from the current request's auth context."""
+        token = request.headers.get('X-Session-Token')
+        if token:
+            return _get_username_for_token(token)
+        return 'api_key'
 
     # ==================== HEALTH CHECK ====================
 
@@ -192,147 +191,8 @@ def create_app():
                 'timestamp': datetime.utcnow().isoformat()
             }), 503
 
-    @app.route('/')
-    def index():
-        """Redirect to login or dashboard."""
-        if 'user_id' in session:
-            return redirect(url_for('dashboard'))
-        return redirect(url_for('login'))
-    
-    @app.route('/login', methods=['GET', 'POST'])
-    def login():
-        """Login page and authentication."""
-        if request.method == 'POST':
-            username = request.form.get('username', '').strip()
-            password = request.form.get('password', '')
-            
-            connection = None
-            cursor = None
-            
-            try:
-                connection = get_db_connection()
-                cursor = connection.cursor(dictionary=True)
-                
-                cursor.execute(
-                    'SELECT id, username, password_hash FROM users WHERE username = %s',
-                    (username,)
-                )
-                user = cursor.fetchone()
-                
-                if user and check_password_hash(user['password_hash'], password):
-                    session['user_id'] = user['id']
-                    session['username'] = user['username']
-                    
-                    # Update last login
-                    cursor.execute(
-                        'UPDATE users SET last_login = %s WHERE id = %s',
-                        (datetime.utcnow(), user['id'])
-                    )
-                    connection.commit()
-                    
-                    return redirect(url_for('dashboard'))
-                else:
-                    return render_template('login.html', error='Invalid username or password')
-            except mysql.connector.Error as e:
-                print(f"Database error during login: {e}")
-                return render_template('login.html', error='An internal error occurred. Please try again.')
-            finally:
-                if cursor:
-                    cursor.close()
-                if connection and connection.is_connected():
-                    connection.close()
-        
-        return render_template('login.html')
-    
-    @app.route('/logout')
-    def logout():
-        """Logout and clear session."""
-        session.clear()
-        return redirect(url_for('login'))
-    
-    @app.route('/dashboard')
-    @require_login
-    def dashboard():
-        """Main security dashboard."""
-        connection = None
-        cursor = None
-        
-        try:
-            connection = get_db_connection()
-            cursor = connection.cursor(dictionary=True)
-            
-            # Get top 20 most recent security logs
-            cursor.execute('''
-                SELECT timestamp, log_source, event_type, description, severity, user_id, ip_address
-                FROM security_logs
-                ORDER BY timestamp DESC
-                LIMIT 20
-            ''')
-            logs = cursor.fetchall()
-            
-            # Convert datetime objects to strings
-            for log in logs:
-                if log.get('timestamp'):
-                    log['timestamp'] = log['timestamp'].isoformat() if hasattr(log['timestamp'], 'isoformat') else str(log['timestamp'])
-            
-            # Get recent alerts
-            cursor.execute('''
-                SELECT alert_type, severity, description, user_id, ip_address, file_name, timestamp, status
-                FROM alerts
-                ORDER BY timestamp DESC
-                LIMIT 10
-            ''')
-            alerts = cursor.fetchall()
-            
-            # Convert datetime objects to strings
-            for alert in alerts:
-                if alert.get('timestamp'):
-                    alert['timestamp'] = alert['timestamp'].isoformat() if hasattr(alert['timestamp'], 'isoformat') else str(alert['timestamp'])
-            
-            # Get statistics
-            cursor.execute('SELECT COUNT(*) as count FROM security_logs WHERE severity = "Critical"')
-            critical_count = cursor.fetchone()['count']
-            
-            cursor.execute('SELECT COUNT(*) as count FROM security_logs WHERE severity = "High"')
-            high_count = cursor.fetchone()['count']
-            
-            cursor.execute('SELECT COUNT(*) as count FROM quarantined_ips WHERE status = "quarantined"')
-            quarantined_ips_count = cursor.fetchone()['count']
-            
-            cursor.execute('SELECT COUNT(*) as count FROM alerts WHERE status = "new"')
-            new_alerts_count = cursor.fetchone()['count']
-            
-        except mysql.connector.Error as e:
-            print(f"Error fetching dashboard data: {e}")
-            logs = []
-            alerts = []
-            critical_count = high_count = quarantined_ips_count = new_alerts_count = 0
-        finally:
-            if cursor:
-                cursor.close()
-            if connection and connection.is_connected():
-                connection.close()
-        
-        # Get quarantined IPs and files
-        playbook_engine = get_playbook_engine()
-        quarantined_ips = playbook_engine.get_quarantined_ips()
-        quarantined_files = playbook_engine.get_quarantined_files()
-        active_sessions = playbook_engine.get_active_sessions()
-        
-        return render_template('dashboard.html',
-                             logs=logs,
-                             alerts=alerts,
-                             quarantined_ips=quarantined_ips,
-                             quarantined_files=quarantined_files,
-                             active_sessions=active_sessions,
-                             username=session.get('username'),
-                             stats={
-                                 'critical': critical_count,
-                                 'high': high_count,
-                                 'quarantined_ips': quarantined_ips_count,
-                                 'new_alerts': new_alerts_count
-                             })
-    
+    # ==================== LOG INGESTION ====================
+
     @app.route('/api/ingest_log', methods=['POST'])
     @require_auth
     def ingest_log():
@@ -342,65 +202,67 @@ def create_app():
         """
         try:
             log_data = request.get_json()
-            
+
             if not log_data:
                 return jsonify({'error': 'No JSON data provided'}), 400
-            
+
             # Ensure timestamp is set
             if 'timestamp' not in log_data:
                 log_data['timestamp'] = datetime.utcnow().isoformat()
-            
+
             # Process through SIEM engine
             siem_engine = get_siem_engine()
             alert = siem_engine.process_log(log_data)
-            
+
             response_data = {
                 'status': 'success',
                 'message': 'Log ingested successfully',
                 'alert_triggered': alert is not None
             }
-            
+
             if alert:
                 response_data['alert'] = alert
-            
+
             return jsonify(response_data), 200
-        
+
         except Exception as e:
             print(f"Error ingesting log: {e}")
             return jsonify({'error': 'Internal server error'}), 500
-    
+
+    # ==================== PLAYBOOK ACTIONS ====================
+
     @app.route('/api/playbook/block_ip', methods=['POST'])
-    @require_login
+    @require_auth
     def playbook_block_ip():
         """Manual playbook action: Block Attacker IP."""
         data = request.get_json()
         ip_address = data.get('ip_address', '').strip()
         reason = data.get('reason', 'Manual block by admin').strip()
-        
+
         if not ip_address:
             return jsonify({'error': 'IP address is required'}), 400
-        
+
         playbook_engine = get_playbook_engine()
         result = playbook_engine.block_attacker_ip(
             ip_address=ip_address,
             reason=reason,
             action_taken_by=get_authenticated_username()
         )
-        
+
         return jsonify(result), 200 if result.get('status') == 'success' else 400
-    
+
     @app.route('/api/playbook/terminate_session', methods=['POST'])
-    @require_login
+    @require_auth
     def playbook_terminate_session():
         """Manual playbook action: Terminate User Session."""
         data = request.get_json()
         user_id = data.get('user_id')
         session_id = data.get('session_id')
         reason = data.get('reason', 'Manual termination by admin').strip()
-        
+
         if not user_id:
             return jsonify({'error': 'User ID is required'}), 400
-        
+
         playbook_engine = get_playbook_engine()
         result = playbook_engine.terminate_user_session(
             user_id=user_id,
@@ -408,11 +270,11 @@ def create_app():
             reason=reason,
             action_taken_by=get_authenticated_username()
         )
-        
+
         return jsonify(result), 200 if result.get('status') == 'success' else 400
-    
+
     @app.route('/api/playbook/quarantine_file', methods=['POST'])
-    @require_login
+    @require_auth
     def playbook_quarantine_file():
         """Manual playbook action: Quarantine File."""
         data = request.get_json()
@@ -421,10 +283,10 @@ def create_app():
         reason = data.get('reason', 'Manual quarantine by admin').strip()
         user_id = data.get('user_id')
         ip_address = data.get('ip_address')
-        
+
         if not file_name:
             return jsonify({'error': 'File name is required'}), 400
-        
+
         playbook_engine = get_playbook_engine()
         result = playbook_engine.quarantine_file(
             file_name=file_name,
@@ -434,11 +296,11 @@ def create_app():
             ip_address=ip_address,
             action_taken_by=get_authenticated_username()
         )
-        
+
         return jsonify(result), 200 if result.get('status') == 'success' else 400
-    
+
     @app.route('/api/playbook/release_ip', methods=['POST'])
-    @require_login
+    @require_auth
     def playbook_release_ip():
         """Manual playbook action: Release IP from quarantine."""
         data = request.get_json()
@@ -461,7 +323,7 @@ def create_app():
     # ==================== API KEY MANAGEMENT ====================
 
     @app.route('/api/keys', methods=['GET'])
-    @require_login
+    @require_auth
     def list_api_keys():
         """List all API keys (without showing the actual keys)."""
         connection = None
@@ -490,7 +352,7 @@ def create_app():
                 connection.close()
 
     @app.route('/api/keys', methods=['POST'])
-    @require_login
+    @require_auth
     def create_api_key():
         """Create a new API key."""
         data = request.get_json()
@@ -530,7 +392,7 @@ def create_app():
                 connection.close()
 
     @app.route('/api/keys/<int:key_id>', methods=['DELETE'])
-    @require_login
+    @require_auth
     def revoke_api_key(key_id):
         """Revoke (deactivate) an API key."""
         connection = None
@@ -560,7 +422,7 @@ def create_app():
     # ==================== HONEYTOKEN MANAGEMENT ====================
 
     @app.route('/api/honeytokens', methods=['GET'])
-    @require_login
+    @require_auth
     def list_honeytokens():
         """List all active honeytokens."""
         playbook_engine = get_playbook_engine()
@@ -568,7 +430,7 @@ def create_app():
         return jsonify({'honeytokens': honeytokens}), 200
 
     @app.route('/api/honeytokens', methods=['POST'])
-    @require_login
+    @require_auth
     def create_honeytoken():
         """Create a new honeytoken."""
         data = request.get_json()
@@ -588,55 +450,8 @@ def create_app():
         )
 
         return jsonify(result), 200 if result.get('status') == 'success' else 400
-    
-    @app.route('/add_admin', methods=['GET', 'POST'])
-    @require_login
-    def add_admin():
-        """Add a new admin account (web form)."""
-        if request.method == 'POST':
-            username = request.form.get('username', '').strip()
-            password = request.form.get('password', '')
-            confirm_password = request.form.get('confirm_password', '')
-            
-            if not username or not password:
-                return render_template('add_admin.html', error='Username and password are required')
-            
-            if password != confirm_password:
-                return render_template('add_admin.html', error='Passwords do not match')
-            
-            connection = None
-            cursor = None
-            
-            try:
-                connection = get_db_connection()
-                cursor = connection.cursor()
-                
-                password_hash = generate_password_hash(password)
-                cursor.execute('''
-                    INSERT INTO users (username, password_hash, created_at)
-                    VALUES (%s, %s, %s)
-                ''', (username, password_hash, datetime.utcnow()))
-                
-                connection.commit()
-                return redirect(url_for('dashboard') + '?admin_added=' + username)
-            except mysql.connector.IntegrityError:
-                if connection:
-                    connection.rollback()
-                return render_template('add_admin.html', error='Username already exists')
-            except mysql.connector.Error as e:
-                if connection:
-                    connection.rollback()
-                print(f"Database error during add_admin: {e}")
-                return render_template('add_admin.html', error='An internal error occurred. Please try again.')
-            finally:
-                if cursor:
-                    cursor.close()
-                if connection and connection.is_connected():
-                    connection.close()
-        
-        return render_template('add_admin.html')
 
-    # ==================== REMOTE DASHBOARD API ====================
+    # ==================== SESSION AUTH API ====================
 
     @app.route('/api/auth/login', methods=['POST'])
     def api_login():
@@ -664,7 +479,12 @@ def create_app():
 
             if user and check_password_hash(user['password_hash'], password):
                 token = secrets.token_hex(32)
-                _session_tokens[token] = user['username']
+
+                # Store token in DB — survives Flask reloads
+                cursor.execute(
+                    'INSERT INTO session_tokens (token, username) VALUES (%s, %s)',
+                    (token, user['username'])
+                )
 
                 cursor.execute(
                     'UPDATE users SET last_login = %s WHERE id = %s',
@@ -687,9 +507,24 @@ def create_app():
     def api_logout():
         """Invalidate a remote session token."""
         token = request.headers.get('X-Session-Token')
-        if token and token in _session_tokens:
-            del _session_tokens[token]
+        if token:
+            connection = None
+            cursor = None
+            try:
+                connection = get_db_connection()
+                cursor = connection.cursor()
+                cursor.execute('DELETE FROM session_tokens WHERE token = %s', (token,))
+                connection.commit()
+            except mysql.connector.Error:
+                pass
+            finally:
+                if cursor:
+                    cursor.close()
+                if connection and connection.is_connected():
+                    connection.close()
         return jsonify({'status': 'ok'}), 200
+
+    # ==================== DASHBOARD DATA API ====================
 
     @app.route('/api/dashboard/data')
     @require_auth
@@ -763,6 +598,8 @@ def create_app():
             'quarantined_files': quarantined_files
         })
 
+    # ==================== ADMIN API ====================
+
     @app.route('/api/admin/add', methods=['POST'])
     @require_auth
     def api_add_admin():
@@ -806,6 +643,8 @@ def create_app():
             if connection and connection.is_connected():
                 connection.close()
 
+    # ==================== BOOTSTRAP ====================
+
     # Initialize users from USERS env var (format: "user1:pass1,user2:pass2")
     users_env = os.getenv('USERS', '')
     if users_env:
@@ -835,5 +674,5 @@ def create_app():
             print(f"Warning: Could not create users: {e}")
     else:
         print("Warning: USERS not set. No users will be created.")
-    
+
     return app
