@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIEM Dashboard - Security Monitoring</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ SIEM Dashboard</h1>
+        <div class="header-info">
+            <span class="user-info">Logged in as: <strong>{{ username }}</strong></span>
+            <a href="{{ url_for('add_admin') }}" class="nav-btn">Add Admin</a>
+            <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card stat-critical">
+                <div class="stat-icon">🚨</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.critical }}</div>
+                    <div class="stat-label">Critical Events</div>
+                </div>
+            </div>
+            <div class="stat-card stat-high">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.high }}</div>
+                    <div class="stat-label">High Severity</div>
+                </div>
+            </div>
+            <div class="stat-card stat-quarantine">
+                <div class="stat-icon">🔒</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.quarantined_ips }}</div>
+                    <div class="stat-label">Quarantined IPs</div>
+                </div>
+            </div>
+            <div class="stat-card stat-alerts">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <div class="stat-value">{{ stats.new_alerts }}</div>
+                    <div class="stat-label">New Alerts</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Security Logs -->
+            <div class="card card-large">
+                <h2>Recent Security Logs</h2>
+                {% if logs %}
+                <div class="table-container">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Source</th>
+                                <th>Event Type</th>
+                                <th>Description</th>
+                                <th>Severity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log['timestamp'][:19] if log['timestamp']|length > 19 else log['timestamp'] }}</td>
+                                <td>{{ log['log_source'] }}</td>
+                                <td>{{ log['event_type'] }}</td>
+                                <td>{{ log['description'] }}</td>
+                                <td>
+                                    <span class="severity-badge severity-{{ log['severity'].lower() }}">
+                                        {{ log['severity'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <p>No security logs found. Logs will appear here once events are ingested.</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Alerts & Playbooks -->
+            <div class="card">
+                <h2>Active Alerts</h2>
+                {% if alerts %}
+                <div class="alerts-list">
+                    {% for alert in alerts %}
+                    <div class="alert-item alert-{{ alert['severity'].lower() }}">
+                        <div class="alert-header">
+                            <span class="alert-type">{{ alert['alert_type'] }}</span>
+                            <span class="alert-severity severity-{{ alert['severity'].lower() }}">{{ alert['severity'] }}</span>
+                        </div>
+                        <div class="alert-description">{{ alert['description'] }}</div>
+                        <div class="alert-meta">
+                            {% if alert['ip_address'] %}<span>IP: {{ alert['ip_address'] }}</span>{% endif %}
+                            {% if alert['user_id'] %}<span>User: {{ alert['user_id'] }}</span>{% endif %}
+                        </div>
+                        <div class="playbook-actions">
+                            {% if alert['ip_address'] and alert['ip_address'] != 'unknown' %}
+                            <button class="playbook-btn btn-block-ip" onclick="showBlockIPModal('{{ alert['ip_address'] }}', '{{ alert['description'] }}')">
+                                🚫 Block IP
+                            </button>
+                            {% endif %}
+                            {% if alert['user_id'] %}
+                            <button class="playbook-btn btn-terminate-session" onclick="showTerminateSessionModal('{{ alert['user_id'] }}', '{{ alert['description'] }}')">
+                                🔌 Terminate Session
+                            </button>
+                            {% endif %}
+                            {% if alert['file_name'] %}
+                            <button class="playbook-btn btn-quarantine-file" onclick="showQuarantineFileModal('{{ alert['file_name'] }}', '{{ alert['user_id'] }}', '{{ alert['ip_address'] }}', '{{ alert['description'] }}')">
+                                📁 Quarantine File
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">✅</div>
+                    <p>No active alerts.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quarantined Items -->
+        <div class="dashboard-grid">
+            <div class="card">
+                <h2>Quarantined IPs</h2>
+                {% if quarantined_ips %}
+                <div class="quarantine-list">
+                    {% for ip in quarantined_ips %}
+                    <div class="quarantine-item">
+                        <div class="quarantine-header">
+                            <span class="ip-address">{{ ip['ip_address'] }}</span>
+                            <span class="quarantine-time">{{ ip['quarantined_at'][:19] if ip['quarantined_at']|length > 19 else ip['quarantined_at'] }}</span>
+                        </div>
+                        <div class="quarantine-reason">{{ ip['reason'] }}</div>
+                        <div class="quarantine-meta">
+                            {% if ip['action_taken_by'] %}<span>By: {{ ip['action_taken_by'] }}</span>{% endif %}
+                        </div>
+                        <button class="playbook-btn btn-release-ip" onclick="releaseIP('{{ ip['ip_address'] }}')">
+                            🔓 Release IP
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">✅</div>
+                    <p>No IP addresses are currently quarantined.</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="card">
+                <h2>Quarantined Files</h2>
+                {% if quarantined_files %}
+                <div class="quarantine-list">
+                    {% for file in quarantined_files %}
+                    <div class="quarantine-item">
+                        <div class="quarantine-header">
+                            <span class="file-name">{{ file['file_name'] }}</span>
+                            <span class="quarantine-time">{{ file['quarantined_at'][:19] if file['quarantined_at']|length > 19 else file['quarantined_at'] }}</span>
+                        </div>
+                        <div class="quarantine-reason">{{ file['reason'] }}</div>
+                        <div class="quarantine-meta">
+                            {% if file['action_taken_by'] %}<span>By: {{ file['action_taken_by'] }}</span>{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">✅</div>
+                    <p>No files are currently quarantined.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals for Playbook Actions -->
+    <div id="blockIPModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('blockIPModal')">&times;</span>
+            <h2>🚫 Block Attacker IP</h2>
+            <form id="blockIPForm">
+                <input type="hidden" id="blockIPAddress" name="ip_address">
+                <div class="form-group">
+                    <label>IP Address</label>
+                    <input type="text" id="blockIPDisplay" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="blockIPReason">Reason</label>
+                    <textarea id="blockIPReason" name="reason" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="playbook-btn btn-block-ip">Confirm Block IP</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="terminateSessionModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('terminateSessionModal')">&times;</span>
+            <h2>🔌 Terminate User Session</h2>
+            <form id="terminateSessionForm">
+                <input type="hidden" id="terminateUserID" name="user_id">
+                <div class="form-group">
+                    <label>User ID</label>
+                    <input type="text" id="terminateUserIDDisplay" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="terminateSessionReason">Reason</label>
+                    <textarea id="terminateSessionReason" name="reason" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="playbook-btn btn-terminate-session">Confirm Terminate Session</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="quarantineFileModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('quarantineFileModal')">&times;</span>
+            <h2>📁 Quarantine File</h2>
+            <form id="quarantineFileForm">
+                <input type="hidden" id="quarantineFileName" name="file_name">
+                <input type="hidden" id="quarantineFileUserID" name="user_id">
+                <input type="hidden" id="quarantineFileIP" name="ip_address">
+                <div class="form-group">
+                    <label>File Name</label>
+                    <input type="text" id="quarantineFileNameDisplay" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="quarantineFileReason">Reason</label>
+                    <textarea id="quarantineFileReason" name="reason" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="playbook-btn btn-quarantine-file">Confirm Quarantine File</button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
