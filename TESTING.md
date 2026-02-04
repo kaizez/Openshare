@@ -35,14 +35,16 @@ This will:
 ### Setup
 
 ```python
+import os
 import requests
 import time
 
-# Login and get session
+# Login and get session (uses first account from USERS env var)
+username, password = os.environ['USERS'].split(',')[0].split(':', 1)
 session = requests.Session()
 session.post('http://localhost:5001/login', data={
-    'username': 'admin',
-    'password': 'admin123'
+    'username': username.strip(),
+    'password': password.strip()
 })
 ```
 
@@ -202,7 +204,7 @@ session.post('http://localhost:5001/api/ingest_log', json={
 ```bash
 # Login and save cookie
 curl -c cookies.txt -X POST http://localhost:5001/login \
-  -d "username=admin&password=admin123"
+  -d "username=$USERNAME&password=$PASSWORD"
 
 # Send a test log
 curl -b cookies.txt -X POST http://localhost:5001/api/ingest_log \
@@ -225,7 +227,7 @@ First, create an API key in the dashboard or via API:
 ```bash
 # Login first
 curl -c cookies.txt -X POST http://localhost:5001/login \
-  -d "username=admin&password=admin123"
+  -d "username=$USERNAME&password=$PASSWORD"
 
 # Create API key
 curl -b cookies.txt -X POST http://localhost:5001/api/keys \
@@ -299,7 +301,7 @@ session.post('http://localhost:5001/api/ingest_log', json={
 After running tests:
 
 1. Go to `http://localhost:5001`
-2. Login with `admin` / `admin123`
+2. Login with `admin` / (your `ADMIN_PASSWORD` from `.env`)
 3. Check:
    - **Statistics cards** - Should show counts
    - **Security Logs table** - Should show your events
@@ -323,5 +325,5 @@ After running tests:
 
 ### Login fails?
 
-- Default credentials: `admin` / `admin123`
-- If changed, check the database
+- Username is `admin`, password is whatever you set in `.env` as `ADMIN_PASSWORD`
+- If the admin user doesn't exist, make sure `ADMIN_PASSWORD` was set before the first container start

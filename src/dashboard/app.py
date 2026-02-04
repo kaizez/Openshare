@@ -37,7 +37,9 @@ def create_app():
         template_folder=os.path.join(project_root, 'templates'),
         static_folder=os.path.join(project_root, 'static')
     )
-    app.secret_key = os.getenv('SECRET_KEY', os.urandom(24).hex())
+    app.secret_key = os.getenv('SECRET_KEY')
+    if not app.secret_key:
+        raise EnvironmentError("SECRET_KEY environment variable is required")
     
     # Initialize database on startup
     try:
@@ -121,10 +123,10 @@ def create_app():
                 'timestamp': datetime.utcnow().isoformat()
             }), 200
         except Exception as e:
+            print(f"Health check failed: {e}")
             return jsonify({
                 'status': 'unhealthy',
                 'database': 'disconnected',
-                'error': str(e),
                 'timestamp': datetime.utcnow().isoformat()
             }), 503
 
@@ -170,7 +172,8 @@ def create_app():
                 else:
                     return render_template('login.html', error='Invalid username or password')
             except mysql.connector.Error as e:
-                return render_template('login.html', error=f'Database error: {str(e)}')
+                print(f"Database error during login: {e}")
+                return render_template('login.html', error='An internal error occurred. Please try again.')
             finally:
                 if cursor:
                     cursor.close()
@@ -301,7 +304,8 @@ def create_app():
             return jsonify(response_data), 200
         
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            print(f"Error ingesting log: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
     
     @app.route('/api/playbook/block_ip', methods=['POST'])
     @require_login
@@ -560,7 +564,8 @@ def create_app():
             except mysql.connector.Error as e:
                 if connection:
                     connection.rollback()
-                return render_template('add_admin.html', error=f'Database error: {str(e)}')
+                print(f"Database error during add_admin: {e}")
+                return render_template('add_admin.html', error='An internal error occurred. Please try again.')
             finally:
                 if cursor:
                     cursor.close()
@@ -569,22 +574,34 @@ def create_app():
         
         return render_template('add_admin.html')
     
-    # Initialize default admin user if it doesn't exist
-    try:
-        connection = get_db_connection()
-        cursor = connection.cursor()
-        cursor.execute('SELECT COUNT(*) FROM users WHERE username = %s', ('admin',))
-        if cursor.fetchone()[0] == 0:
-            password_hash = generate_password_hash('admin123')
-            cursor.execute('''
-                INSERT INTO users (username, password_hash, created_at)
-                VALUES (%s, %s, %s)
-            ''', ('admin', password_hash, datetime.utcnow()))
+    # Initialize users from USERS env var (format: "user1:pass1,user2:pass2")
+    users_env = os.getenv('USERS', '')
+    if users_env:
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            for entry in users_env.split(','):
+                entry = entry.strip()
+                if ':' not in entry:
+                    continue
+                username, password = entry.split(':', 1)
+                username, password = username.strip(), password.strip()
+                if not username or not password:
+                    continue
+                cursor.execute('SELECT COUNT(*) FROM users WHERE username = %s', (username,))
+                if cursor.fetchone()[0] == 0:
+                    password_hash = generate_password_hash(password)
+                    cursor.execute('''
+                        INSERT INTO users (username, password_hash, created_at)
+                        VALUES (%s, %s, %s)
+                    ''', (username, password_hash, datetime.utcnow()))
+                    print(f"User created: {username}")
             connection.commit()
-            print("Default admin user created: admin/admin123")
-        cursor.close()
-        connection.close()
-    except Exception as e:
-        print(f"Warning: Could not create default admin user: {e}")
+            cursor.close()
+            connection.close()
+        except Exception as e:
+            print(f"Warning: Could not create users: {e}")
+    else:
+        print("Warning: USERS not set. No users will be created.")
     
     return app

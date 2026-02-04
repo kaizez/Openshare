@@ -11,7 +11,7 @@ Security Information and Event Management (SIEM) and Security Orchestration, Aut
 docker-compose up --build
 
 # Access dashboard at http://localhost:5001
-# Login: admin / admin123
+# Login: admin / (password from your .env ADMIN_PASSWORD)
 ```
 
 ### Option 2: Run SIEM Locally (MySQL in Docker)
@@ -135,13 +135,15 @@ GET /api/honeytokens    # List active honeytokens
 
 ## Environment Variables
 
+Copy `.env.example` to `.env` and fill in the values before first run.
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| MYSQL_HOST | localhost (or `db` in Docker) | MySQL host |
-| MYSQL_PORT | 3306 | MySQL port |
-| MYSQL_PASSWORD | your_secure_password | MySQL password |
+| MYSQL_ROOT_PASSWORD | — | MySQL root password (required) |
 | MYSQL_DATABASE | siem_db | Database name |
-| SECRET_KEY | random | Flask session key |
+| SECRET_KEY | — | Flask session key (required) |
+| USERS | — | Admin accounts as `user:pass,user:pass` (required) |
+| FLASK_DEBUG | 0 | Set to 1 for development |
 
 ## For Teammates
 

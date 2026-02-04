@@ -4,13 +4,17 @@ Sample Log Injection Script
 Injects sample security logs into the SIEM system to demonstrate detection rules.
 """
 
+import os
 import requests
 import time
 from datetime import datetime
 
 BASE_URL = "http://localhost:5001"  # Change to 5000 if using default port
-USERNAME = "admin"
-PASSWORD = "admin123"
+
+# Uses first account from USERS env var (format: "user:pass,user:pass,...")
+_first_user = os.environ.get("USERS", ":").split(",")[0].split(":", 1)
+USERNAME = _first_user[0].strip()
+PASSWORD = _first_user[1].strip() if len(_first_user) > 1 else ""
 
 
 def login():
