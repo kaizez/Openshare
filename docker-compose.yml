@@ -37,6 +37,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_secure_password}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-siem_db}
       SECRET_KEY: ${SECRET_KEY:-change_this_in_production}
+      USERS: ${USERS}
       FLASK_DEBUG: 1
     depends_on:
       db:
