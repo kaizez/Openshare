@@ -480,7 +480,8 @@ def upload_file():
                 'scan_status': scan_status,
                 'vt_analysis_id': vt_analysis_id,
                 'vt_scan_method': vt_scan_method,
-                'upload_ip': request.remote_addr
+                'upload_ip': request.remote_addr,
+                'uploaded_by': session.get('user_id')
             }
 
             db.save_file_metadata(file_id, metadata, file_content)
@@ -765,9 +766,10 @@ def get_file(file_id):
 @bp.route('/files')
 @login_required
 def list_files():
-    """List all uploaded files (admin view with OTP codes and access logs)"""
+    """List files uploaded by the current user (with OTP codes and access logs)"""
     db = get_db()
-    all_metadata = db.get_all_metadata()
+    user_id = session.get('user_id')
+    all_metadata = db.get_all_metadata(user_id=user_id)
     files_list = []
 
     for file_id, info in all_metadata.items():
@@ -809,6 +811,12 @@ def regenerate_otp_endpoint(file_id):
     if not file_info:
         return jsonify({'error': 'File not found'}), 404
 
+    # Check ownership - only the uploader can regenerate OTP for their files
+    file_owner = file_info.get('uploaded_by')
+    current_user = session.get('user_id')
+    if file_owner is None or current_user is None or int(file_owner) != int(current_user):
+        return jsonify({'error': 'Access denied. You can only manage your own files.'}), 403
+
     # Security check: Don't allow operations on pending or malicious files
     scan_status = file_info.get('scan_status')
     if scan_status == 'pending':
@@ -847,6 +855,12 @@ def get_access_logs(file_id):
     if not file_info:
         return jsonify({'error': 'File not found'}), 404
 
+    # Check ownership - only the uploader can view access logs for their files
+    file_owner = file_info.get('uploaded_by')
+    current_user = session.get('user_id')
+    if file_owner is None or current_user is None or int(file_owner) != int(current_user):
+        return jsonify({'error': 'Access denied. You can only view logs for your own files.'}), 403
+
     logs = file_info.get('access_logs', [])
     return jsonify({
         'file_id': file_id,
@@ -863,6 +877,20 @@ def delete_file(file_id):
 
     if not file_info:
         return jsonify({'error': 'File not found'}), 404
+
+    # Check ownership - only the uploader can delete their files
+    file_owner = file_info.get('uploaded_by')
+    current_user = session.get('user_id')
+    print(f"[Delete] file_owner={file_owner} (type={type(file_owner)}), current_user={current_user} (type={type(current_user)})", flush=True)
+
+    # Convert both to int for comparison (handles type mismatch between DB and session)
+    if file_owner is None or current_user is None:
+        print(f"[Delete] DENIED: file_owner or current_user is None", flush=True)
+        return jsonify({'error': 'Access denied. You can only delete your own files.'}), 403
+    if int(file_owner) != int(current_user):
+        print(f"[Delete] DENIED: {int(file_owner)} != {int(current_user)}", flush=True)
+        return jsonify({'error': 'Access denied. You can only delete your own files.'}), 403
+    print(f"[Delete] ALLOWED: ownership verified", flush=True)
 
     try:
         # Check if file is archived (content moved to Storage DB)

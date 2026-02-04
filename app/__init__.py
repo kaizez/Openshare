@@ -95,11 +95,89 @@ def create_app():
         }
     )
 
-    # Create database tables
+    # Create database tables and ensure admin exists
     with app.app_context():
         db.create_all()
+        _ensure_admin_exists()
 
     from app import routes
     app.register_blueprint(routes.bp)
 
     return app
+
+
+def _ensure_admin_exists():
+    """
+    Check if a super admin account exists in the database.
+    If not, create the default admin account.
+    This runs on every app startup to ensure admin access is always available.
+    """
+    from app.models import User
+    from argon2 import PasswordHasher
+    from datetime import datetime
+    import time
+
+    # Retry logic for database connection (handles race condition with MySQL startup)
+    max_retries = 30
+    retry_delay = 2  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            # Check if ANY super admin exists (not by username, but by role)
+            super_admin = User.query.filter_by(is_super_admin=True).first()
+            break  # Connection successful, exit retry loop
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"[Init] Database not ready (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+            else:
+                print(f"[Init] Failed to connect to database after {max_retries} attempts: {e}")
+                raise
+
+    if super_admin:
+        print(f"[Init] Super admin exists: {super_admin.username}")
+        return
+
+    # No super admin found - create default admin account
+    print("[Init] No super admin found. Creating default admin account...")
+
+    # Get admin credentials from environment variables (with defaults)
+    admin_username = os.environ.get('DEFAULT_ADMIN_USERNAME', 'admin')
+    admin_password = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'admin')
+    admin_email = os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@moveit.local')
+
+    # Check if the username already exists (edge case: user exists but not super admin)
+    existing_user = User.query.filter_by(username=admin_username).first()
+
+    if existing_user:
+        # Promote existing user to super admin
+        existing_user.is_admin = True
+        existing_user.is_super_admin = True
+        db.session.commit()
+        print(f"[Init] Promoted existing user '{admin_username}' to super admin")
+        return
+
+    # Create new admin user
+    ph = PasswordHasher()
+    admin = User(
+        username=admin_username,
+        email=admin_email,
+        password_hash=ph.hash(admin_password),
+        is_admin=True,
+        is_super_admin=True,
+        mfa_enabled=False,
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(admin)
+    db.session.commit()
+
+    print("=" * 50)
+    print("[Init] Default Admin Account Created!")
+    print("=" * 50)
+    print(f"  Username: {admin_username}")
+    print(f"  Password: {admin_password}")
+    print(f"  Email:    {admin_email}")
+    print("=" * 50)
+    print("  WARNING: Change password after first login!")
+    print("=" * 50)

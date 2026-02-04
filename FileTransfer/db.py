@@ -77,11 +77,13 @@ class Database:
                     vt_scan_completed_at DATETIME,
                     vt_scan_error TEXT,
                     upload_ip VARCHAR(45),
+                    uploaded_by INT,
                     file_content LONGBLOB,
                     INDEX idx_otp_code (current_otp_code),
                     INDEX idx_upload_time (upload_time),
                     INDEX idx_archived (is_archived),
-                    INDEX idx_scan_status (scan_status)
+                    INDEX idx_scan_status (scan_status),
+                    INDEX idx_uploaded_by (uploaded_by)
                 )
             """)
 
@@ -143,13 +145,16 @@ class Database:
         finally:
             cursor.close()
 
-    def get_all_metadata(self):
-        """Get all file metadata as a dictionary"""
+    def get_all_metadata(self, user_id=None):
+        """Get all file metadata as a dictionary, optionally filtered by user"""
         cursor = None
         try:
             self.ensure_connection()
             cursor = self.connection.cursor(dictionary=True, buffered=True)
-            cursor.execute("SELECT * FROM file_metadata")
+            if user_id is not None:
+                cursor.execute("SELECT * FROM file_metadata WHERE uploaded_by = %s", (user_id,))
+            else:
+                cursor.execute("SELECT * FROM file_metadata")
             rows = cursor.fetchall()
             cursor.close()
             cursor = None
@@ -174,6 +179,7 @@ class Database:
                     'otp_used': bool(row['otp_used']),
                     'is_archived': bool(row.get('is_archived', False)),
                     'scan_status': row.get('scan_status'),
+                    'uploaded_by': row.get('uploaded_by'),
                     'access_logs': access_logs
                 }
             return result
@@ -198,7 +204,7 @@ class Database:
                            file_hash, upload_time, download_count, classification,
                            detected_mime, current_otp_code, otp_generated_at,
                            otp_expires_at, otp_used, is_archived, scan_status,
-                           vt_analysis_id
+                           vt_analysis_id, uploaded_by
                     FROM file_metadata WHERE file_id = %s
                 """, (file_id,))
 
@@ -225,6 +231,7 @@ class Database:
                 'is_archived': bool(row.get('is_archived', False)),
                 'scan_status': row.get('scan_status'),
                 'vt_analysis_id': row.get('vt_analysis_id'),
+                'uploaded_by': row.get('uploaded_by'),
                 'access_logs': access_logs
             }
 
@@ -254,8 +261,8 @@ class Database:
                     (file_id, original_filename, stored_filename, file_size, file_hash,
                      upload_time, download_count, classification, detected_mime,
                      current_otp_code, otp_generated_at, otp_expires_at, otp_used,
-                     scan_status, vt_analysis_id, vt_scan_method, upload_ip, file_content)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     scan_status, vt_analysis_id, vt_scan_method, upload_ip, uploaded_by, file_content)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
                     original_filename = VALUES(original_filename),
                     stored_filename = VALUES(stored_filename),
@@ -273,6 +280,7 @@ class Database:
                     vt_analysis_id = VALUES(vt_analysis_id),
                     vt_scan_method = VALUES(vt_scan_method),
                     upload_ip = VALUES(upload_ip),
+                    uploaded_by = VALUES(uploaded_by),
                     file_content = VALUES(file_content)
                 """, (
                     file_id,
@@ -292,6 +300,7 @@ class Database:
                     metadata.get('vt_analysis_id'),
                     metadata.get('vt_scan_method'),
                     metadata.get('upload_ip'),
+                    metadata.get('uploaded_by'),
                     file_content
                 ))
             else:
