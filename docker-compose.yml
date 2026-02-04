@@ -186,6 +186,18 @@ services:
     depends_on:
       working-db:
         condition: service_healthy
+  siem-dashboard:
+    build:
+      context: ./siem_dashboard
+    container_name: moveit-siem-dashboard
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      SIEM_URL: ${SIEM_URL}
+      SIEM_DASHBOARD_SECRET: ${SIEM_DASHBOARD_SECRET:-change-this}
+    networks:
+      - moveit-network
 
 networks:
   moveit-network:
