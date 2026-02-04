@@ -164,4 +164,19 @@ def proxy_playbook(action):
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', '5001'))
-    app.run(host='0.0.0.0', port=port)
+
+    # Generate self-signed certs if they don't exist
+    cert_dir = '/app/certs'
+    cert_file = f'{cert_dir}/cert.pem'
+    key_file = f'{cert_dir}/key.pem'
+
+    if not os.path.exists(cert_file) or not os.path.exists(key_file):
+        os.makedirs(cert_dir, exist_ok=True)
+        import subprocess
+        subprocess.run([
+            'openssl', 'req', '-x509', '-newkey', 'rsa:4096', '-nodes',
+            '-keyout', key_file, '-out', cert_file,
+            '-days', '365', '-subj', '/C=SG/ST=Singapore/L=Singapore/O=MoveIT/CN=localhost'
+        ], check=True)
+
+    app.run(host='0.0.0.0', port=port, ssl_context=(cert_file, key_file))
