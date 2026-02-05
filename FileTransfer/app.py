@@ -49,6 +49,18 @@ bp = Blueprint('filetransfer', __name__,
                static_url_path='/filetransfer/styles')
 
 # ============================================
+# Context Processor - Inject current_user
+# ============================================
+@bp.context_processor
+def inject_current_user():
+    """Make current_user available in all FileTransfer templates"""
+    if 'user_id' in session:
+        User = get_user_model()
+        user = User.query.get(session['user_id'])
+        return dict(current_user=user)
+    return dict(current_user=None)
+
+# ============================================
 # Security Headers - Applied to all responses
 # ============================================
 @bp.after_request

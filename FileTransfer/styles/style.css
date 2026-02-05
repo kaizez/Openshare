@@ -50,10 +50,18 @@ header {
     z-index: 100;
 }
 
-header .container {
+.header-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
+}
+
+.header-left {
+    flex-shrink: 0;
 }
 
 .logo {
@@ -61,12 +69,179 @@ header .container {
     align-items: center;
     gap: 12px;
     padding-bottom: 0;
+    text-decoration: none;
+}
+
+.logo-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .logo h1 {
     font-size: 24px;
     font-weight: 700;
     color: var(--primary-dark);
+    margin: 0;
+}
+
+/* Mascot Logo for Navbar */
+.mascot-logo-nav {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mascot-logo-nav .character-head {
+    width: 40px;
+    height: 32px;
+    background: white;
+    border-radius: 4px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(72, 187, 120, 0.2);
+    border: 2px solid #48bb78;
+}
+
+.mascot-logo-nav .character-head::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 0;
+    width: 16px;
+    height: 8px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    border-radius: 3px 3px 0 0;
+    border: 2px solid #48bb78;
+    border-bottom: none;
+}
+
+.mascot-logo-nav .character-head::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    height: 1px;
+    background: #48bb78;
+    border-radius: 1px;
+}
+
+.mascot-logo-nav .eyes {
+    display: flex;
+    gap: 8px;
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.mascot-logo-nav .eye {
+    width: 6px;
+    height: 6px;
+    background: transparent;
+    border-radius: 50%;
+    position: relative;
+}
+
+.mascot-logo-nav .pupil {
+    width: 3px;
+    height: 3px;
+    background: #2d3748;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.mascot-logo-nav .sunglasses {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 10px;
+    z-index: 10;
+}
+
+.mascot-logo-nav .sunglasses::before,
+.mascot-logo-nav .sunglasses::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 9px;
+    background: rgba(45, 55, 72, 0.85);
+    border: 1px solid #2d3748;
+    border-radius: 4px;
+    top: 0;
+}
+
+.mascot-logo-nav .sunglasses::before {
+    left: 0;
+}
+
+.mascot-logo-nav .sunglasses::after {
+    right: 0;
+}
+
+.mascot-logo-nav .sunglasses-bridge {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 2px;
+    background: #2d3748;
+    border-radius: 1px;
+}
+
+.mascot-logo-nav .mouth {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 5px;
+    border: 1px solid #48bb78;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+}
+
+.mascot-logo-nav .hand-left-small,
+.mascot-logo-nav .hand-right-small {
+    position: absolute;
+    width: 8px;
+    height: 14px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    border-radius: 4px;
+    border: 1px solid #2d5f3f;
+    top: 8px;
+}
+
+.mascot-logo-nav .hand-left-small {
+    left: -10px;
+    transform: rotate(-10deg);
+}
+
+.mascot-logo-nav .hand-right-small {
+    right: -10px;
+    transform: rotate(10deg);
+}
+
+
+.header-nav {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    justify-content: center;
+}
+
+.header-right {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    align-items: center;
 }
 
 nav {
@@ -82,6 +257,10 @@ nav {
     transition: all 0.2s;
     font-weight: 600;
     font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -92,6 +271,25 @@ nav {
 .nav-link.active {
     background: var(--primary-color);
     color: white;
+}
+
+.nav-link-admin {
+    color: var(--primary-color) !important;
+    border: 1px solid var(--primary-color);
+}
+
+.nav-link-admin:hover {
+    background: var(--primary-color) !important;
+    color: white !important;
+}
+
+.nav-link-logout {
+    color: var(--error-color) !important;
+}
+
+.nav-link-logout:hover {
+    background: rgba(255, 59, 48, 0.1) !important;
+    color: var(--error-color) !important;
 }
 
 /* Approval Badge in Navbar */
@@ -112,6 +310,14 @@ nav {
     background: white;
     color: var(--error-color);
 }
+
+/* Main Container */
+.main-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
 
 /* Main Content */
 main {
@@ -260,7 +466,9 @@ main {
 }
 
 /* Buttons */
-.btn-primary, .btn-secondary, .btn-download {
+.btn-primary,
+.btn-secondary,
+.btn-download {
     padding: 12px 24px;
     border: none;
     border-radius: 10px;
@@ -852,9 +1060,30 @@ footer p {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    header .container {
+    .header-container {
         flex-direction: column;
         gap: 16px;
+        align-items: stretch;
+    }
+
+    .header-left {
+        display: flex;
+        justify-content: center;
+    }
+
+    .header-nav {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .header-right {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .nav-link {
+        width: 100%;
+        justify-content: center;
     }
 
     .upload-area {
@@ -877,7 +1106,9 @@ footer p {
         flex-direction: column;
     }
 
-    .btn-primary, .btn-secondary, .btn-download {
+    .btn-primary,
+    .btn-secondary,
+    .btn-download {
         width: 100%;
     }
 
@@ -897,7 +1128,8 @@ footer p {
 }
 
 /* OTP and Claim Page Styles */
-.otp-section, .claim-link-section {
+.otp-section,
+.claim-link-section {
     margin: 24px 0;
     padding: 20px;
     background: #f7fafc;
@@ -905,13 +1137,15 @@ footer p {
     border: 2px dashed var(--primary-light);
 }
 
-.otp-section h4, .claim-link-section h4 {
+.otp-section h4,
+.claim-link-section h4 {
     font-size: 16px;
     color: var(--text-primary);
     margin-bottom: 8px;
 }
 
-.otp-hint, .claim-hint {
+.otp-hint,
+.claim-hint {
     font-size: 13px;
     color: var(--text-secondary);
     margin-bottom: 12px;
@@ -1207,8 +1441,15 @@ footer p {
 }
 
 @keyframes pulse-warning {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
 }
 
 /* Scan blocked states */
@@ -1367,9 +1608,26 @@ footer p {
 }
 
 @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
-    20%, 40%, 60%, 80% { transform: translateX(10px); }
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-10px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(10px);
+    }
 }
 
 /* Custom Error Modal */
@@ -1435,6 +1693,7 @@ footer p {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -1445,6 +1704,7 @@ footer p {
         transform: translateY(20px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -1583,6 +1843,7 @@ footer p {
         transform: translateX(120%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;

@@ -4,676 +4,676 @@
 
 {% block content %}
 <style>
-.admin-container {
-    max-width: 1000px;
-    margin: 40px auto;
-    padding: 20px;
-}
-
-.admin-header {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.admin-header h1 {
-    color: #000;
-    font-size: 32px;
-    font-weight: 600;
-    margin: 0 0 10px 0;
-}
-
-.admin-header p {
-    color: #8e8e93;
-    font-size: 16px;
-    margin: 0;
-}
-
-.admin-nav {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.nav-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 20px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-
-.nav-btn-primary {
-    background: #007aff;
-    color: white;
-}
-
-.nav-btn-primary:hover {
-    background: #0066d6;
-}
-
-.nav-btn-secondary {
-    background: #f7fafc;
-    color: #2d3748;
-    border: 1px solid #e2e8f0;
-}
-
-.nav-btn-secondary:hover {
-    background: #edf2f7;
-}
-
-.nav-btn-active {
-    background: #007aff;
-    color: white;
-}
-
-.nav-btn-active:hover {
-    background: #0066d6;
-}
-
-.admin-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border-radius: 20px;
-    padding: 0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-    overflow: hidden;
-}
-
-.admin-section {
-    padding: 24px;
-}
-
-.admin-section + .admin-section {
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.section-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #000;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin: 0 0 16px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.section-title svg {
-    color: #007aff;
-}
-
-.section-description {
-    color: #8e8e93;
-    font-size: 14px;
-    margin-bottom: 20px;
-}
-
-/* Retention Settings */
-.retention-grid {
-    display: grid;
-    gap: 16px;
-}
-
-.retention-item {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 16px;
-    align-items: center;
-    padding: 16px;
-    background: #f7fafc;
-    border-radius: 12px;
-}
-
-.retention-label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.retention-name {
-    font-weight: 600;
-    color: #2d3748;
-}
-
-.retention-desc {
-    font-size: 13px;
-    color: #8e8e93;
-}
-
-.retention-input {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.retention-input input[type="number"] {
-    width: 100px;
-    padding: 10px 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 14px;
-    text-align: right;
-}
-
-.retention-input input[type="number"]:focus {
-    outline: none;
-    border-color: #007aff;
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
-}
-
-.retention-input select {
-    padding: 10px 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 14px;
-    background: white;
-}
-
-.retention-unit {
-    font-size: 14px;
-    color: #8e8e93;
-    min-width: 60px;
-}
-
-/* Toggle Switch */
-.toggle-switch {
-    position: relative;
-    width: 50px;
-    height: 28px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #e2e8f0;
-    transition: 0.3s;
-    border-radius: 28px;
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 22px;
-    width: 22px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-switch input:checked + .toggle-slider {
-    background-color: #34c759;
-}
-
-.toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(22px);
-}
-
-/* Current Values */
-.current-value {
-    display: inline-block;
-    padding: 4px 10px;
-    background: rgba(0, 122, 255, 0.1);
-    color: #007aff;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-left: 8px;
-}
-
-/* Action Buttons */
-.action-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.btn {
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s;
-}
-
-.btn-primary {
-    background: #007aff;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #0066d6;
-}
-
-.btn-secondary {
-    background: #e2e8f0;
-    color: #4a5568;
-}
-
-.btn-secondary:hover {
-    background: #cbd5e0;
-}
-
-/* Status Badge */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.status-enabled {
-    background: rgba(52, 199, 89, 0.15);
-    color: #34c759;
-}
-
-.status-disabled {
-    background: rgba(255, 59, 48, 0.15);
-    color: #ff3b30;
-}
-
-/* Info Box */
-.info-box {
-    background: rgba(0, 122, 255, 0.1);
-    border-left: 4px solid #007aff;
-    padding: 16px;
-    border-radius: 0 12px 12px 0;
-    margin-bottom: 20px;
-}
-
-.info-box p {
-    color: #2d3748;
-    font-size: 14px;
-    margin: 0;
-}
-
-/* Modal styles */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: white;
-    border-radius: 16px;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-}
-
-.modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 18px;
-    color: #2d3748;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    color: #8e8e93;
-    cursor: pointer;
-}
-
-.modal-body {
-    padding: 24px;
-}
-
-.modal-body p {
-    color: #666;
-    margin-bottom: 20px;
-}
-
-.modal-footer {
-    padding: 16px 24px;
-    border-top: 1px solid #e2e8f0;
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-}
-
-.modal-btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-}
-
-.modal-btn-cancel {
-    background: #e2e8f0;
-    color: #4a5568;
-}
-
-.modal-btn-confirm {
-    background: #007aff;
-    color: white;
-}
-
-.modal-btn-confirm:hover {
-    background: #0066d6;
-}
-
-.form-control {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 16px;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: #007aff;
-}
-
-.form-group {
-    margin-bottom: 16px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #2d3748;
-}
-
-/* File Search Styles */
-.search-box {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-}
-
-.search-input {
-    flex: 1;
-    padding: 12px 16px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 14px;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: #007aff;
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
-}
-
-.search-select {
-    padding: 12px 16px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 14px;
-    background: white;
-    min-width: 140px;
-}
-
-.search-btn {
-    padding: 12px 24px;
-    background: #007aff;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.search-btn:hover {
-    background: #0066d6;
-}
-
-.file-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-}
-
-.file-table th {
-    text-align: left;
-    padding: 12px 16px;
-    background: #f7fafc;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #8e8e93;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.file-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    vertical-align: middle;
-}
-
-.file-table tr:hover td {
-    background: #f7fafc;
-}
-
-.file-table .file-id {
-    font-family: monospace;
-    font-size: 12px;
-    color: #8e8e93;
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.file-table .file-hash {
-    font-family: monospace;
-    font-size: 11px;
-    color: #8e8e93;
-    max-width: 100px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.badge-clean {
-    background: rgba(52, 199, 89, 0.15);
-    color: #34c759;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.badge-pending {
-    background: rgba(255, 149, 0, 0.15);
-    color: #ff9500;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.badge-malicious {
-    background: rgba(255, 59, 48, 0.15);
-    color: #ff3b30;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.badge-archived {
-    background: rgba(142, 142, 147, 0.15);
-    color: #8e8e93;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.badge-public {
-    background: rgba(52, 199, 89, 0.15);
-    color: #34c759;
-}
-
-.badge-internal {
-    background: rgba(0, 122, 255, 0.15);
-    color: #007aff;
-}
-
-.badge-classified {
-    background: rgba(255, 59, 48, 0.15);
-    color: #ff3b30;
-}
-
-.view-logs-btn {
-    padding: 6px 12px;
-    background: #f7fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #4a5568;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.view-logs-btn:hover {
-    background: #edf2f7;
-    border-color: #007aff;
-    color: #007aff;
-}
-
-.no-results {
-    text-align: center;
-    padding: 40px;
-    color: #8e8e93;
-}
-
-.logs-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    margin-top: 16px;
-}
-
-.logs-table th {
-    text-align: left;
-    padding: 10px 12px;
-    background: #f7fafc;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: #8e8e93;
-}
-
-.logs-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.log-status-success {
-    color: #34c759;
-}
-
-.log-status-failed {
-    color: #ff3b30;
-}
-
-.log-status-verified {
-    color: #007aff;
-}
-
-.file-details-modal {
-    max-width: 700px;
-}
-
-.detail-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.detail-item {
-    padding: 12px;
-    background: #f7fafc;
-    border-radius: 8px;
-}
-
-.detail-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    color: #8e8e93;
-    margin-bottom: 4px;
-}
-
-.detail-value {
-    font-weight: 600;
-    color: #2d3748;
-    word-break: break-all;
-}
-
-.detail-value.mono {
-    font-family: monospace;
-    font-size: 12px;
-}
-
-@media (max-width: 768px) {
-    .retention-item {
-        grid-template-columns: 1fr;
+    .admin-container {
+        max-width: 1000px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+
+    .admin-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .admin-header h1 {
+        color: #000;
+        font-size: 32px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+    }
+
+    .admin-header p {
+        color: #8e8e93;
+        font-size: 16px;
+        margin: 0;
+    }
+
+    .admin-nav {
+        display: flex;
         gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .nav-btn-primary {
+        background: #007aff;
+        color: white;
+    }
+
+    .nav-btn-primary:hover {
+        background: #0066d6;
+    }
+
+    .nav-btn-secondary {
+        background: #f7fafc;
+        color: #2d3748;
+        border: 1px solid #e2e8f0;
+    }
+
+    .nav-btn-secondary:hover {
+        background: #edf2f7;
+    }
+
+    .nav-btn-active {
+        background: #007aff;
+        color: white;
+    }
+
+    .nav-btn-active:hover {
+        background: #0066d6;
+    }
+
+    .admin-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .admin-section {
+        padding: 24px;
+    }
+
+    .admin-section+.admin-section {
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #000;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 16px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-title svg {
+        color: #007aff;
+    }
+
+    .section-description {
+        color: #8e8e93;
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+
+    /* Retention Settings */
+    .retention-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .retention-item {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 16px;
+        align-items: center;
+        padding: 16px;
+        background: #f7fafc;
+        border-radius: 12px;
+    }
+
+    .retention-label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .retention-name {
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    .retention-desc {
+        font-size: 13px;
+        color: #8e8e93;
     }
 
     .retention-input {
-        justify-content: flex-start;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .tab-nav {
-        flex-direction: column;
+    .retention-input input[type="number"] {
+        width: 100px;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        text-align: right;
     }
-}
+
+    .retention-input input[type="number"]:focus {
+        outline: none;
+        border-color: #007aff;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+
+    .retention-input select {
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+    }
+
+    .retention-unit {
+        font-size: 14px;
+        color: #8e8e93;
+        min-width: 60px;
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+        position: relative;
+        width: 50px;
+        height: 28px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #e2e8f0;
+        transition: 0.3s;
+        border-radius: 28px;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch input:checked+.toggle-slider {
+        background-color: #34c759;
+    }
+
+    .toggle-switch input:checked+.toggle-slider:before {
+        transform: translateX(22px);
+    }
+
+    /* Current Values */
+    .current-value {
+        display: inline-block;
+        padding: 4px 10px;
+        background: rgba(0, 122, 255, 0.1);
+        color: #007aff;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: #007aff;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #0066d6;
+    }
+
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .btn-secondary:hover {
+        background: #cbd5e0;
+    }
+
+    /* Status Badge */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-enabled {
+        background: rgba(52, 199, 89, 0.15);
+        color: #34c759;
+    }
+
+    .status-disabled {
+        background: rgba(255, 59, 48, 0.15);
+        color: #ff3b30;
+    }
+
+    /* Info Box */
+    .info-box {
+        background: rgba(0, 122, 255, 0.1);
+        border-left: 4px solid #007aff;
+        padding: 16px;
+        border-radius: 0 12px 12px 0;
+        margin-bottom: 20px;
+    }
+
+    .info-box p {
+        color: #2d3748;
+        font-size: 14px;
+        margin: 0;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 18px;
+        color: #2d3748;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #8e8e93;
+        cursor: pointer;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-body p {
+        color: #666;
+        margin-bottom: 20px;
+    }
+
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .modal-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+    }
+
+    .modal-btn-cancel {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .modal-btn-confirm {
+        background: #007aff;
+        color: white;
+    }
+
+    .modal-btn-confirm:hover {
+        background: #0066d6;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 16px;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #007aff;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    /* File Search Styles */
+    .search-box {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #007aff;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+
+    .search-select {
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        background: white;
+        min-width: 140px;
+    }
+
+    .search-btn {
+        padding: 12px 24px;
+        background: #007aff;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .search-btn:hover {
+        background: #0066d6;
+    }
+
+    .file-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .file-table th {
+        text-align: left;
+        padding: 12px 16px;
+        background: #f7fafc;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #8e8e93;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .file-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        vertical-align: middle;
+    }
+
+    .file-table tr:hover td {
+        background: #f7fafc;
+    }
+
+    .file-table .file-id {
+        font-family: monospace;
+        font-size: 12px;
+        color: #8e8e93;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .file-table .file-hash {
+        font-family: monospace;
+        font-size: 11px;
+        color: #8e8e93;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .badge-clean {
+        background: rgba(52, 199, 89, 0.15);
+        color: #34c759;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .badge-pending {
+        background: rgba(255, 149, 0, 0.15);
+        color: #ff9500;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .badge-malicious {
+        background: rgba(255, 59, 48, 0.15);
+        color: #ff3b30;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .badge-archived {
+        background: rgba(142, 142, 147, 0.15);
+        color: #8e8e93;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .badge-public {
+        background: rgba(52, 199, 89, 0.15);
+        color: #34c759;
+    }
+
+    .badge-internal {
+        background: rgba(0, 122, 255, 0.15);
+        color: #007aff;
+    }
+
+    .badge-classified {
+        background: rgba(255, 59, 48, 0.15);
+        color: #ff3b30;
+    }
+
+    .view-logs-btn {
+        padding: 6px 12px;
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #4a5568;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .view-logs-btn:hover {
+        background: #edf2f7;
+        border-color: #007aff;
+        color: #007aff;
+    }
+
+    .no-results {
+        text-align: center;
+        padding: 40px;
+        color: #8e8e93;
+    }
+
+    .logs-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 16px;
+    }
+
+    .logs-table th {
+        text-align: left;
+        padding: 10px 12px;
+        background: #f7fafc;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #8e8e93;
+    }
+
+    .logs-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .log-status-success {
+        color: #34c759;
+    }
+
+    .log-status-failed {
+        color: #ff3b30;
+    }
+
+    .log-status-verified {
+        color: #007aff;
+    }
+
+    .file-details-modal {
+        max-width: 700px;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .detail-item {
+        padding: 12px;
+        background: #f7fafc;
+        border-radius: 8px;
+    }
+
+    .detail-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #8e8e93;
+        margin-bottom: 4px;
+    }
+
+    .detail-value {
+        font-weight: 600;
+        color: #2d3748;
+        word-break: break-all;
+    }
+
+    .detail-value.mono {
+        font-family: monospace;
+        font-size: 12px;
+    }
+
+    @media (max-width: 768px) {
+        .retention-item {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .retention-input {
+            justify-content: flex-start;
+        }
+
+        .tab-nav {
+            flex-direction: column;
+        }
+    }
 </style>
 
 <div class="admin-container">
@@ -684,6 +684,13 @@
 
     <!-- Navigation -->
     <div class="admin-nav">
+        <a href="{{ url_for('main.index') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Home
+        </a>
         <a href="{{ url_for('main.admin_dashboard') }}" class="nav-btn nav-btn-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -703,7 +710,9 @@
         </a>
         <a href="{{ url_for('main.admin_settings') }}" class="nav-btn nav-btn-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z">
+                </path>
                 <circle cx="12" cy="12" r="3"></circle>
             </svg>
             Admin Settings
@@ -734,7 +743,8 @@
 
     <!-- Info Box -->
     <div class="info-box">
-        <p><strong>Data Retention Policy:</strong> Configure how long files and logs are kept before automatic deletion. Retention is applied per-file based on upload time. Set to 0 minutes to keep forever.</p>
+        <p><strong>Data Retention Policy:</strong> Configure how long files and logs are kept before automatic deletion.
+            Retention is applied per-file based on upload time. Set to 0 minutes to keep forever.</p>
     </div>
 
     <form id="retentionForm">
@@ -759,12 +769,12 @@
                         </div>
                         <div class="retention-input">
                             <input type="number" name="retention_working_db" id="retention_working_db" min="0"
-                                   value="{{ (policy.files.working_db.retention_seconds // 60) if policy.files.working_db else 10080 }}">
+                                value="{{ (policy.files.working_db.retention_seconds // 60) if policy.files.working_db else 10080 }}">
                             <span class="retention-unit">minutes</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="enabled_working_db"
-                                   {% if policy.files.working_db.enabled %}checked{% endif %}>
+                            <input type="checkbox" name="enabled_working_db" {% if policy.files.working_db.enabled
+                                %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -777,12 +787,12 @@
                         </div>
                         <div class="retention-input">
                             <input type="number" name="retention_storage_db" id="retention_storage_db" min="0"
-                                   value="{{ (policy.files.storage_db.retention_seconds // 60) if policy.files.storage_db else 43200 }}">
+                                value="{{ (policy.files.storage_db.retention_seconds // 60) if policy.files.storage_db else 43200 }}">
                             <span class="retention-unit">minutes</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="enabled_storage_db"
-                                   {% if policy.files.storage_db.enabled %}checked{% endif %}>
+                            <input type="checkbox" name="enabled_storage_db" {% if policy.files.storage_db.enabled
+                                %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -795,12 +805,12 @@
                         </div>
                         <div class="retention-input">
                             <input type="number" name="retention_filesystem" id="retention_filesystem" min="0"
-                                   value="{{ (policy.files.filesystem.retention_seconds // 60) if policy.files.filesystem else 10080 }}">
+                                value="{{ (policy.files.filesystem.retention_seconds // 60) if policy.files.filesystem else 10080 }}">
                             <span class="retention-unit">minutes</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="enabled_filesystem"
-                                   {% if policy.files.filesystem.enabled %}checked{% endif %}>
+                            <input type="checkbox" name="enabled_filesystem" {% if policy.files.filesystem.enabled
+                                %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -832,12 +842,12 @@
                         </div>
                         <div class="retention-input">
                             <input type="number" name="retention_access_logs" id="retention_access_logs" min="0"
-                                   value="{{ (policy.logs.access_logs.retention_seconds // 60) if policy.logs.access_logs else 129600 }}">
+                                value="{{ (policy.logs.access_logs.retention_seconds // 60) if policy.logs.access_logs else 129600 }}">
                             <span class="retention-unit">minutes</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="enabled_access_logs"
-                                   {% if policy.logs.access_logs.enabled %}checked{% endif %}>
+                            <input type="checkbox" name="enabled_access_logs" {% if policy.logs.access_logs.enabled
+                                %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -849,13 +859,14 @@
                             <span class="retention-desc">Records of rejected file uploads</span>
                         </div>
                         <div class="retention-input">
-                            <input type="number" name="retention_failed_upload_logs" id="retention_failed_upload_logs" min="0"
-                                   value="{{ (policy.logs.failed_upload_logs.retention_seconds // 60) if policy.logs.failed_upload_logs else 43200 }}">
+                            <input type="number" name="retention_failed_upload_logs" id="retention_failed_upload_logs"
+                                min="0"
+                                value="{{ (policy.logs.failed_upload_logs.retention_seconds // 60) if policy.logs.failed_upload_logs else 43200 }}">
                             <span class="retention-unit">minutes</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="enabled_failed_upload_logs"
-                                   {% if policy.logs.failed_upload_logs.enabled %}checked{% endif %}>
+                            <input type="checkbox" name="enabled_failed_upload_logs" {% if
+                                policy.logs.failed_upload_logs.enabled %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -868,12 +879,12 @@
                         </div>
                         <div class="retention-input">
                             <input type="number" name="retention_virus_scan_logs" id="retention_virus_scan_logs" min="0"
-                                   value="{{ (policy.logs.virus_scan_logs.retention_seconds // 60) if policy.logs.virus_scan_logs else 129600 }}">
+                                value="{{ (policy.logs.virus_scan_logs.retention_seconds // 60) if policy.logs.virus_scan_logs else 129600 }}">
                             <span class="retention-unit">minutes</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="enabled_virus_scan_logs"
-                                   {% if policy.logs.virus_scan_logs.enabled %}checked{% endif %}>
+                            <input type="checkbox" name="enabled_virus_scan_logs" {% if
+                                policy.logs.virus_scan_logs.enabled %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -885,13 +896,14 @@
                             <span class="retention-desc">Classified file access approval history</span>
                         </div>
                         <div class="retention-input">
-                            <input type="number" name="retention_approval_requests" id="retention_approval_requests" min="0"
-                                   value="{{ (policy.logs.approval_requests.retention_seconds // 60) if policy.logs.approval_requests else 43200 }}">
+                            <input type="number" name="retention_approval_requests" id="retention_approval_requests"
+                                min="0"
+                                value="{{ (policy.logs.approval_requests.retention_seconds // 60) if policy.logs.approval_requests else 43200 }}">
                             <span class="retention-unit">minutes</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="enabled_approval_requests"
-                                   {% if policy.logs.approval_requests.enabled %}checked{% endif %}>
+                            <input type="checkbox" name="enabled_approval_requests" {% if
+                                policy.logs.approval_requests.enabled %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -920,7 +932,7 @@
                         </div>
                         <div class="retention-input">
                             <input type="number" name="cleanup_interval" id="cleanup_interval" min="1"
-                                   value="{{ (policy.settings.cleanup_interval_seconds // 60) if policy.settings else 60 }}">
+                                value="{{ (policy.settings.cleanup_interval_seconds // 60) if policy.settings else 60 }}">
                             <span class="retention-unit">minutes</span>
                         </div>
                         <div></div>
@@ -930,16 +942,17 @@
                     <div class="retention-item">
                         <div class="retention-label">
                             <span class="retention-name">Dry Run Mode</span>
-                            <span class="retention-desc">Log what would be deleted without actually deleting (for testing)</span>
+                            <span class="retention-desc">Log what would be deleted without actually deleting (for
+                                testing)</span>
                         </div>
                         <div class="retention-input">
-                            <span class="status-badge {% if policy.settings.dry_run %}status-enabled{% else %}status-disabled{% endif %}">
+                            <span
+                                class="status-badge {% if policy.settings.dry_run %}status-enabled{% else %}status-disabled{% endif %}">
                                 {% if policy.settings.dry_run %}Enabled{% else %}Disabled{% endif %}
                             </span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="dry_run"
-                                   {% if policy.settings.dry_run %}checked{% endif %}>
+                            <input type="checkbox" name="dry_run" {% if policy.settings.dry_run %}checked{% endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
@@ -948,7 +961,8 @@
                 <div class="action-buttons">
                     <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Reset</button>
                     <button type="button" class="btn btn-primary" onclick="openTotpModal()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: middle; margin-right: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="display: inline; vertical-align: middle; margin-right: 6px;">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                             <polyline points="17 21 17 13 7 13 7 21"></polyline>
                             <polyline points="7 3 7 8 15 8"></polyline>
@@ -981,7 +995,8 @@
                     <option value="hash">Hash</option>
                 </select>
                 <button type="button" class="search-btn" onclick="searchFiles()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: middle;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="display: inline; vertical-align: middle;">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
@@ -1011,7 +1026,8 @@
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                 {% for key, value in summary.items() %}
                 <div style="padding: 12px; background: #f7fafc; border-radius: 8px;">
-                    <div style="font-size: 12px; color: #8e8e93; text-transform: uppercase;">{{ key.replace('_', ' ').replace('.', ' > ') }}</div>
+                    <div style="font-size: 12px; color: #8e8e93; text-transform: uppercase;">{{ key.replace('_', '
+                        ').replace('.', ' > ') }}</div>
                     <div style="font-weight: 600; color: #2d3748; margin-top: 4px;">{{ value }}</div>
                 </div>
                 {% endfor %}
@@ -1031,109 +1047,110 @@
             <p>Enter your authenticator code to save the retention policy changes.</p>
             <div class="form-group">
                 <label for="totp_code">Authenticator Code</label>
-                <input type="text" id="totp_code" class="form-control" placeholder="Enter 6-digit code"
-                       maxlength="6" pattern="[0-9]{6}" style="text-align: center; font-size: 24px; letter-spacing: 8px;">
+                <input type="text" id="totp_code" class="form-control" placeholder="Enter 6-digit code" maxlength="6"
+                    pattern="[0-9]{6}" style="text-align: center; font-size: 24px; letter-spacing: 8px;">
             </div>
             <p id="modalError" style="color: #ff3b30; display: none; margin-top: 10px;"></p>
         </div>
         <div class="modal-footer">
             <button type="button" class="modal-btn modal-btn-cancel" onclick="closeTotpModal()">Cancel</button>
-            <button type="button" class="modal-btn modal-btn-confirm" id="confirmBtn" onclick="saveRetentionPolicy()">Save Changes</button>
+            <button type="button" class="modal-btn modal-btn-confirm" id="confirmBtn"
+                onclick="saveRetentionPolicy()">Save Changes</button>
         </div>
     </div>
 </div>
 
 <script>
-const csrfToken = "{{ csrf_token() }}";
+    const csrfToken = "{{ csrf_token() }}";
 
-function openTotpModal() {
-    document.getElementById('totp_code').value = '';
-    document.getElementById('modalError').style.display = 'none';
-    document.getElementById('totpModal').style.display = 'flex';
-    document.getElementById('totp_code').focus();
-}
-
-function closeTotpModal() {
-    document.getElementById('totpModal').style.display = 'none';
-}
-
-async function saveRetentionPolicy() {
-    const totpCode = document.getElementById('totp_code').value;
-
-    if (!totpCode || totpCode.length !== 6) {
-        document.getElementById('modalError').textContent = 'Please enter a valid 6-digit code';
-        document.getElementById('modalError').style.display = 'block';
-        return;
+    function openTotpModal() {
+        document.getElementById('totp_code').value = '';
+        document.getElementById('modalError').style.display = 'none';
+        document.getElementById('totpModal').style.display = 'flex';
+        document.getElementById('totp_code').focus();
     }
 
-    const confirmBtn = document.getElementById('confirmBtn');
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Saving...';
+    function closeTotpModal() {
+        document.getElementById('totpModal').style.display = 'none';
+    }
 
-    try {
-        const form = document.getElementById('retentionForm');
-        const formData = new FormData(form);
-        formData.append('totp_code', totpCode);
-        formData.append('csrf_token', csrfToken);
+    async function saveRetentionPolicy() {
+        const totpCode = document.getElementById('totp_code').value;
 
-        const response = await fetch('/admin/filetransfer/retention', {
-            method: 'POST',
-            body: formData
-        });
+        if (!totpCode || totpCode.length !== 6) {
+            document.getElementById('modalError').textContent = 'Please enter a valid 6-digit code';
+            document.getElementById('modalError').style.display = 'block';
+            return;
+        }
 
-        const data = await response.json();
+        const confirmBtn = document.getElementById('confirmBtn');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Saving...';
 
-        if (data.success) {
-            closeTotpModal();
-            // Show success message and reload
-            alert('Retention policy updated successfully!');
-            window.location.reload();
-        } else {
-            document.getElementById('modalError').textContent = data.message;
+        try {
+            const form = document.getElementById('retentionForm');
+            const formData = new FormData(form);
+            formData.append('totp_code', totpCode);
+            formData.append('csrf_token', csrfToken);
+
+            const response = await fetch('/admin/filetransfer/retention', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                closeTotpModal();
+                // Show success message and reload
+                alert('Retention policy updated successfully!');
+                window.location.reload();
+            } else {
+                document.getElementById('modalError').textContent = data.message;
+                document.getElementById('modalError').style.display = 'block';
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Save Changes';
+            }
+        } catch (error) {
+            document.getElementById('modalError').textContent = 'An error occurred. Please try again.';
             document.getElementById('modalError').style.display = 'block';
             confirmBtn.disabled = false;
             confirmBtn.textContent = 'Save Changes';
         }
-    } catch (error) {
-        document.getElementById('modalError').textContent = 'An error occurred. Please try again.';
-        document.getElementById('modalError').style.display = 'block';
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Save Changes';
     }
-}
 
-// Allow Enter key to submit
-document.getElementById('totp_code').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        saveRetentionPolicy();
-    }
-});
+    // Allow Enter key to submit
+    document.getElementById('totp_code').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            saveRetentionPolicy();
+        }
+    });
 
-// Close modal on escape key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeTotpModal();
-        closeFileModal();
-    }
-});
+    // Close modal on escape key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeTotpModal();
+            closeFileModal();
+        }
+    });
 
-// ============================================
-// File Search Functions
-// ============================================
+    // ============================================
+    // File Search Functions
+    // ============================================
 
-async function searchFiles() {
-    const query = document.getElementById('searchQuery').value;
-    const searchType = document.getElementById('searchType').value;
-    const resultsDiv = document.getElementById('searchResults');
+    async function searchFiles() {
+        const query = document.getElementById('searchQuery').value;
+        const searchType = document.getElementById('searchType').value;
+        const resultsDiv = document.getElementById('searchResults');
 
-    resultsDiv.innerHTML = '<div class="no-results"><p>Searching...</p></div>';
+        resultsDiv.innerHTML = '<div class="no-results"><p>Searching...</p></div>';
 
-    try {
-        const response = await fetch(`/admin/filetransfer/search?q=${encodeURIComponent(query)}&type=${searchType}`);
-        const data = await response.json();
+        try {
+            const response = await fetch(`/admin/filetransfer/search?q=${encodeURIComponent(query)}&type=${searchType}`);
+            const data = await response.json();
 
-        if (data.success && data.files.length > 0) {
-            let html = `
+            if (data.success && data.files.length > 0) {
+                let html = `
                 <p style="margin-bottom: 12px; color: #8e8e93; font-size: 14px;">Found ${data.count} file(s)</p>
                 <div style="overflow-x: auto;">
                 <table class="file-table">
@@ -1151,35 +1168,35 @@ async function searchFiles() {
                     <tbody>
             `;
 
-            for (const file of data.files) {
-                const sizeFormatted = formatFileSize(file.file_size);
-                const uploadTime = file.upload_time ? new Date(file.upload_time).toLocaleString() : 'N/A';
+                for (const file of data.files) {
+                    const sizeFormatted = formatFileSize(file.file_size);
+                    const uploadTime = file.upload_time ? new Date(file.upload_time).toLocaleString() : 'N/A';
 
-                let statusBadge = '';
-                if (file.scan_status === 'clean') {
-                    statusBadge = '<span class="badge-clean">Clean</span>';
-                } else if (file.scan_status === 'pending') {
-                    statusBadge = '<span class="badge-pending">Pending</span>';
-                } else if (file.scan_status === 'malicious') {
-                    statusBadge = '<span class="badge-malicious">Malicious</span>';
-                } else {
-                    statusBadge = '<span class="badge-pending">Unknown</span>';
-                }
+                    let statusBadge = '';
+                    if (file.scan_status === 'clean') {
+                        statusBadge = '<span class="badge-clean">Clean</span>';
+                    } else if (file.scan_status === 'pending') {
+                        statusBadge = '<span class="badge-pending">Pending</span>';
+                    } else if (file.scan_status === 'malicious') {
+                        statusBadge = '<span class="badge-malicious">Malicious</span>';
+                    } else {
+                        statusBadge = '<span class="badge-pending">Unknown</span>';
+                    }
 
-                if (file.is_archived) {
-                    statusBadge += ' <span class="badge-archived">Archived</span>';
-                }
+                    if (file.is_archived) {
+                        statusBadge += ' <span class="badge-archived">Archived</span>';
+                    }
 
-                let classBadge = '';
-                if (file.classification === 'Public') {
-                    classBadge = '<span class="badge-clean badge-public">Public</span>';
-                } else if (file.classification === 'Internal Use') {
-                    classBadge = '<span class="badge-clean badge-internal">Internal</span>';
-                } else if (file.classification === 'Classified') {
-                    classBadge = '<span class="badge-clean badge-classified">Classified</span>';
-                }
+                    let classBadge = '';
+                    if (file.classification === 'Public') {
+                        classBadge = '<span class="badge-clean badge-public">Public</span>';
+                    } else if (file.classification === 'Internal Use') {
+                        classBadge = '<span class="badge-clean badge-internal">Internal</span>';
+                    } else if (file.classification === 'Classified') {
+                        classBadge = '<span class="badge-clean badge-classified">Classified</span>';
+                    }
 
-                html += `
+                    html += `
                     <tr>
                         <td><span class="file-id" title="${file.file_id}">${file.file_id}</span></td>
                         <td>${escapeHtml(file.original_filename)}</td>
@@ -1194,46 +1211,46 @@ async function searchFiles() {
                         </td>
                     </tr>
                 `;
+                }
+
+                html += '</tbody></table></div>';
+                resultsDiv.innerHTML = html;
+            } else if (data.success && data.files.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results"><p>No files found matching your search criteria</p></div>';
+            } else {
+                resultsDiv.innerHTML = `<div class="no-results"><p style="color: #ff3b30;">Error: ${data.message}</p></div>`;
             }
-
-            html += '</tbody></table></div>';
-            resultsDiv.innerHTML = html;
-        } else if (data.success && data.files.length === 0) {
-            resultsDiv.innerHTML = '<div class="no-results"><p>No files found matching your search criteria</p></div>';
-        } else {
-            resultsDiv.innerHTML = `<div class="no-results"><p style="color: #ff3b30;">Error: ${data.message}</p></div>`;
+        } catch (error) {
+            resultsDiv.innerHTML = `<div class="no-results"><p style="color: #ff3b30;">Error searching files: ${error.message}</p></div>`;
         }
-    } catch (error) {
-        resultsDiv.innerHTML = `<div class="no-results"><p style="color: #ff3b30;">Error searching files: ${error.message}</p></div>`;
     }
-}
 
-async function viewFileDetails(fileId) {
-    // First, search for this specific file to get its details
-    try {
-        const response = await fetch(`/admin/filetransfer/search?q=${encodeURIComponent(fileId)}&type=file_id`);
-        const data = await response.json();
+    async function viewFileDetails(fileId) {
+        // First, search for this specific file to get its details
+        try {
+            const response = await fetch(`/admin/filetransfer/search?q=${encodeURIComponent(fileId)}&type=file_id`);
+            const data = await response.json();
 
-        if (data.success && data.files.length > 0) {
-            const file = data.files[0];
-            showFileModal(file);
-            loadFileLogs(fileId);
-        } else {
-            alert('File not found');
+            if (data.success && data.files.length > 0) {
+                const file = data.files[0];
+                showFileModal(file);
+                loadFileLogs(fileId);
+            } else {
+                alert('File not found');
+            }
+        } catch (error) {
+            alert('Error loading file details: ' + error.message);
         }
-    } catch (error) {
-        alert('Error loading file details: ' + error.message);
     }
-}
 
-function showFileModal(file) {
-    const modal = document.getElementById('fileModal');
-    const detailsDiv = document.getElementById('fileDetails');
+    function showFileModal(file) {
+        const modal = document.getElementById('fileModal');
+        const detailsDiv = document.getElementById('fileDetails');
 
-    const sizeFormatted = formatFileSize(file.file_size);
-    const uploadTime = file.upload_time ? new Date(file.upload_time).toLocaleString() : 'N/A';
+        const sizeFormatted = formatFileSize(file.file_size);
+        const uploadTime = file.upload_time ? new Date(file.upload_time).toLocaleString() : 'N/A';
 
-    detailsDiv.innerHTML = `
+        detailsDiv.innerHTML = `
         <div class="detail-grid">
             <div class="detail-item">
                 <div class="detail-label">File ID</div>
@@ -1296,18 +1313,18 @@ function showFileModal(file) {
         </div>
     `;
 
-    modal.style.display = 'flex';
-}
+        modal.style.display = 'flex';
+    }
 
-async function loadFileLogs(fileId) {
-    const container = document.getElementById('fileLogsContainer');
+    async function loadFileLogs(fileId) {
+        const container = document.getElementById('fileLogsContainer');
 
-    try {
-        const response = await fetch(`/admin/filetransfer/file/${fileId}/logs`);
-        const data = await response.json();
+        try {
+            const response = await fetch(`/admin/filetransfer/file/${fileId}/logs`);
+            const data = await response.json();
 
-        if (data.success && data.logs.length > 0) {
-            let html = `
+            if (data.success && data.logs.length > 0) {
+                let html = `
                 <table class="logs-table">
                     <thead>
                         <tr>
@@ -1320,18 +1337,18 @@ async function loadFileLogs(fileId) {
                     <tbody>
             `;
 
-            for (const log of data.logs) {
-                const timestamp = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A';
-                let statusClass = '';
-                if (log.status === 'success' || log.status === 'downloaded') {
-                    statusClass = 'log-status-success';
-                } else if (log.status === 'failed') {
-                    statusClass = 'log-status-failed';
-                } else if (log.status === 'verified') {
-                    statusClass = 'log-status-verified';
-                }
+                for (const log of data.logs) {
+                    const timestamp = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A';
+                    let statusClass = '';
+                    if (log.status === 'success' || log.status === 'downloaded') {
+                        statusClass = 'log-status-success';
+                    } else if (log.status === 'failed') {
+                        statusClass = 'log-status-failed';
+                    } else if (log.status === 'verified') {
+                        statusClass = 'log-status-verified';
+                    }
 
-                html += `
+                    html += `
                     <tr>
                         <td>${timestamp}</td>
                         <td><span class="${statusClass}">${log.status}</span></td>
@@ -1339,50 +1356,50 @@ async function loadFileLogs(fileId) {
                         <td>${log.ip_address || 'N/A'}</td>
                     </tr>
                 `;
+                }
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } else if (data.success && data.logs.length === 0) {
+                container.innerHTML = '<p style="color: #8e8e93;">No access logs found for this file</p>';
+            } else {
+                container.innerHTML = `<p style="color: #ff3b30;">Error: ${data.message}</p>`;
             }
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        } else if (data.success && data.logs.length === 0) {
-            container.innerHTML = '<p style="color: #8e8e93;">No access logs found for this file</p>';
-        } else {
-            container.innerHTML = `<p style="color: #ff3b30;">Error: ${data.message}</p>`;
+        } catch (error) {
+            container.innerHTML = `<p style="color: #ff3b30;">Error loading logs: ${error.message}</p>`;
         }
-    } catch (error) {
-        container.innerHTML = `<p style="color: #ff3b30;">Error loading logs: ${error.message}</p>`;
     }
-}
 
-function closeFileModal() {
-    document.getElementById('fileModal').style.display = 'none';
-}
+    function closeFileModal() {
+        document.getElementById('fileModal').style.display = 'none';
+    }
 
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
-// Search on Enter key
-document.getElementById('searchQuery').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
+    // Search on Enter key
+    document.getElementById('searchQuery').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            searchFiles();
+        }
+    });
+
+    // Load recent files on page load
+    document.addEventListener('DOMContentLoaded', function () {
         searchFiles();
-    }
-});
-
-// Load recent files on page load
-document.addEventListener('DOMContentLoaded', function() {
-    searchFiles();
-});
+    });
 </script>
 
 <!-- File Details Modal -->
