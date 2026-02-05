@@ -32,7 +32,7 @@
     }
 
     .faq-hero-card.active {
-        border-color: #0d6efd;
+        border-color: #070707;
         background-color: #f0f7ff;
     }
 
@@ -58,7 +58,7 @@
     }
 
     .qna-item { margin-bottom: 25px; }
-    .qna-item h6 { color: #0d6efd; font-weight: 700; font-size: 1.1rem; }
+    .qna-item h6 { color: #000000; font-weight: 700; font-size: 1.1rem; }
 
     /* Big Bold Headers */
     .big-bold-title {
@@ -102,7 +102,7 @@
         <div class="faq-hero-card active" id="hero-general" onclick="switchHelpCategory('general')">
             <span class="hero-icon">👋</span>
             <h5 class="fw-bold">General</h5>
-            <p class="small text-muted mb-0">Support & Accounts</p>
+            <p class="small text-muted mb-0">Webpage Support</p>
         </div>
         <div class="faq-hero-card" id="hero-files" onclick="switchHelpCategory('files')">
             <span class="hero-icon">📂</span>
@@ -117,57 +117,52 @@
         <div class="faq-hero-card" id="hero-misc" onclick="switchHelpCategory('misc')">
             <span class="hero-icon">⚙️</span>
             <h5 class="fw-bold">Misc</h5>
-            <p class="small text-muted mb-0">Requirements</p>
+            <p class="small text-muted mb-0">Settings</p>
         </div>
     </div>
 
     <div id="content-general" class="help-content-pane active">
         <div class="qna-box">
-            <h4 class="fw-bold mb-4">General Support</h4>
-            <div class="qna-item"><h6>1. How do I contact support?</h6><p>Email Admin Roy at admin@movelorh.sg or use the button below.</p></div>
-            <div class="qna-item"><h6>2. How do I change my profile info?</h6><p>Visit the Settings page to update your details.</p></div>
-            <div class="qna-item"><h6>3. Is account registration free?</h6><p>Yes, all cybersecurity students can register for an account.</p></div>
-            <div class="qna-item"><h6>4. What should I do if I forget my password?</h6><p>Contact the system administrator for a manual password reset.</p></div>
-            <div class="qna-item"><h6>5. Can I delete my account?</h6><p>Account deletion requests can be sent via the support email.</p></div>
+            <div class="qna-item"><h6>1. What is MoveIt?</h6><p>MoveIt is a secure file transfer and storage platform designed to provide encrypted data handling and authenticated access for sensitive documents.</p></div>
+            <div class="qna-item"><h6>2. Is account registration free?</h6><p>Yes everyone can register for an account.</p></div>
+            <div class="qna-item"><h6>3. Who can use this platform?</h6><p>The platform is currently restricted to authorized members of the MoveIt team and registered users within the organization.</p></div>
+            <div class="qna-item"><h6>4. How do I upload a file?</h6><p>Users can upload files through the main dashboard by clicking the "Upload" button and selecting the desired document.</p></div>
+            <div class="qna-item"><h6>5. Are my uploads scanned for threats?</h6><p>Yes, every file uploaded to MoveIt is automatically scanned by our integrated VirusTotal background worker to detect and quarantine malicious content.</p></div>
         </div>
     </div>
 
     <div id="content-files" class="help-content-pane">
         <div class="qna-box">
-            <h4 class="fw-bold mb-4">File Transfer Guides</h4>
-            <div class="qna-item"><h6>1. What is the upload size limit?</h6><p>The current maximum file size is 20MB per upload.</p></div>
-            <div class="qna-item"><h6>2. Which formats are allowed?</h6><p>We allow .pdf, .txt, .png, and .jpg to maintain system security.</p></div>
-            <div class="qna-item"><h6>3. How do I share a file?</h6><p>After uploading, you will receive a unique 16-character access code.</p></div>
-            <div class="qna-item"><h6>4. How long do links last?</h6><p>File access codes are valid for 24 hours by default.</p></div>
-            <div class="qna-item"><h6>5. Can I see who downloaded my file?</h6><p>Yes, check the "Access Logs" section in your My Files dashboard.</p></div>
+            <div class="qna-item"><h6>1. What is the upload size limit?</h6><p>The current maximum file size is 500MB per upload.</p></div>
+            <div class="qna-item"><h6>2. Which am i allowed to upload?</h6><p>We supports documents, images, videos and archives to maintain system security.</p></div>
+            <div class="qna-item"><h6>3. How do I download a file?</h6><p>You will need an unique 16-character access code to download.</p></div>
+            <div class="qna-item"><h6>4. How long do codes last?</h6><p>Codes expire after 24 hours and generated after each download</p></div>
+            <div class="qna-item"><h6>5. How do i manage file requests?</h6><p>Under approval, you can choose to request or respond to file requests.</p></div>
         </div>
     </div>
 
     <div id="content-security" class="help-content-pane">
         <div class="qna-box">
-            <h4 class="fw-bold mb-4">Security & Privacy</h4>
             <div class="qna-item"><h6>1. How is my data encrypted?</h6><p>We use AES-256 for files at rest and TLS 1.3 for data in transit.</p></div>
-            <div class="qna-item"><h6>2. What is HSTS?</h6><p>It forces your browser to use secure HTTPS connections only.</p></div>
+            <div class="qna-item"><h6>2. Is my data encrypted during transfer?</h6><p>Yes, we use secure protocols to ensure that all data moving between your browser and our servers is encrypted and protected from interception.</p></div>
             <div class="qna-item"><h6>3. Does the system scan for viruses?</h6><p>Yes, all uploads undergo a malware integrity check.</p></div>
             <div class="qna-item"><h6>4. How are passwords stored?</h6><p>We use secure salted hashing to store credentials.</p></div>
-            <div class="qna-item"><h6>5. What is a CSRF token?</h6><p>It protects your session from unauthorized third-party actions.</p></div>
+            <div class="qna-item"><h6>5. Can I disable security features for my account?</h6><p>No, security features like MFA and encrypted storage are mandatory requirements of the MoveIt platform to maintain our high security standards.</p></div>
         </div>
     </div>
 
     <div id="content-misc" class="help-content-pane">
         <div class="qna-box">
-            <h4 class="fw-bold mb-4">System Requirements</h4>
             <div class="qna-item"><h6>1. Recommended browsers?</h6><p>Chrome, Firefox, or Edge are highly recommended.</p></div>
-            <div class="qna-item"><h6>2. Do I need JavaScript?</h6><p>Yes, JS is required for secure toggles and AI chatbot features.</p></div>
-            <div class="qna-item"><h6>3. What are session cookies?</h6><p>Small files that keep you logged in; we use HttpOnly flags for safety.</p></div>
-            <div class="qna-item"><h6>4. What is 'nosniff'?</h6><p>A header that prevents the browser from trying to guess the file type.</p></div>
-            <div class="qna-item"><h6>5. Is this open source?</h6><p>This is a private educational project for cybersecurity diplomas.</p></div>
+            <div class="qna-item"><h6>2. How do I change my profile info?</h6><p>Visit the profile page to update your details.</p></div>
+            <div class="qna-item"><h6>3. Can I delete my account?</h6><p>Accounts can be deleted in profile.</p></div>
+            <div class="qna-item"><h6>4. How do i change my password?</h6><p>Passwords can be changed in profile settings.</p></div>
         </div>
     </div>
 
     <div class="row justify-content-center mt-5 py-5">
         <div class="col-12">
-            <h2 class="big-bold-title mb-4">Still have questions?</h2>
+            <h2 class="big-bold-title mb-4">More Questions?</h2>
             <div class="d-flex justify-content-center">
                 <a href="{{ url_for('main.chatbot_page') }}" class="btn-green-pill shadow">
                     💬 Open Chat Assistant

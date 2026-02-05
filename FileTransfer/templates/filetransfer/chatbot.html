@@ -1,6 +1,6 @@
 {% extends "filetransfer/filetransfer_base.html" %}
 
-{% block title %}MoveLorh Assistant{% endblock %}
+{% block title %}MoveIt Assistant{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -142,9 +142,9 @@
         <div class="message-wrapper ai-msg-row">
             <div class="avatar ai-avatar">🤖</div>
             <div class="message-content">
-                <strong>Assistant</strong><br>
-                Hello! I am the secure MoveLorh assistant. I can help you with account issues, security policies, or file transfer questions.
-            </div>
+               <strong>MoveBot</strong><br>
+                Hello! I am MoveBot. I can help you with MoveIt account issues, security policies, or file transfers.
+</div>
         </div>
     </div>
 
@@ -213,7 +213,7 @@
             });
 
             const data = await response.json();
-            appendMessage('Assistant', data.reply || data.error || "Error", true);
+            appendMessage('MoveBot', data.reply || data.error || "Error", true);
 
         } catch (error) {
             appendMessage('System', 'Service unreachable.', true);

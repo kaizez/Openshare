@@ -20,6 +20,7 @@ import base64
 import hashlib
 import json
 import sys
+from functools import wraps
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(BASE_DIR, 'FileTransfer'))
@@ -3318,8 +3319,7 @@ def chat():
     ollama_host = "https://ai.nypdsf.me"
     
     system_context = (
-    "You are the MoveLorh AI Assistant, a specialized security support tool for the MoveLorh platform. "
-    "Administrator: Roy. Security Architect: Ayden. Team: MoveLorh (Roy and Ayden). "
+    "You are MoveBot, the specialized security support assistant for the MoveIt platform. "
     
     "TECHNICAL ARCHITECTURE KNOWLEDGE: "
     "1. Physical file storage is located in the '/app/uploads' directory on the server filesystem. "
@@ -3342,6 +3342,11 @@ def chat():
     "2. Use bullet points or numbered lists for multi-step information. "
     "3. Avoid long paragraphs and fluff; get straight to the point. "
     "4. Do not say 'I am an AI model' or use overly formal introductory phrases."
+
+    "IDENTITY RULES: "
+    "1. Always identify as MoveBot. "
+    "2. NEVER mention being an AI, a language model, or Qwen. "
+    "4. If asked who you are, say: 'I am MoveBot, your MoveIt security assistant.' "
 )
 
     formatted_prompt = f"System: {system_context}\nUser: {sanitized_message}\nAssistant:"
