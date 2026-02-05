@@ -71,6 +71,28 @@ services:
       retries: 5
       start_period: 30s
 
+  movelorh-db: # Renamed from working-db
+    image: mysql:8.0
+    container_name: moveit-movelorh-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MOVELORH_DB_ROOT_PASSWORD:-MoveRoot2024!}
+      MYSQL_DATABASE: ${MOVELORH_DB_NAME:-movedb}
+      MYSQL_USER: ${MOVELORH_DB_USER:-move_user}
+      MYSQL_PASSWORD: ${MOVELORH_DB_PASSWORD:-move_pass_2024}
+    ports:
+      - "3310:3306" # External access via 3310
+    volumes:
+      - movelorh_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app_network
+      - sync_network
   # ============================================
   # Main Application (Auth + FileTransfer)
   # ============================================
@@ -96,6 +118,7 @@ services:
       WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
       WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      
       # AI Engine Connection
       OLLAMA_HOST: http://ai-engine:11434
       # VirusTotal
@@ -276,3 +299,4 @@ volumes:
   encryption_keys:
   retention_config:
   ollama_storage:
+  movelorh_db_data:
