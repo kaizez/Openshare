@@ -1483,7 +1483,168 @@ def profile():
     if not user:
         return redirect(url_for('main.login'))
 
-    return render_template('profile.html', user=user)
+    # Get recent login history
+    login_history = LoginHistory.query.filter_by(user_id=user.id).order_by(LoginHistory.timestamp.desc()).limit(5).all()
+
+    # Get latest risk info
+    latest_login = login_history[0] if login_history else None
+    risk_level = latest_login.risk_level if latest_login else 'low'
+    risk_score = latest_login.risk_score if latest_login else 0
+
+    # Calculate password age
+    password_days = 0
+    if user.password_changed_at:
+        password_days = (datetime.utcnow() - user.password_changed_at).days
+
+    return render_template('profile.html',
+                           user=user,
+                           login_history=login_history,
+                           risk_level=risk_level,
+                           risk_score=risk_score,
+                           password_days=password_days,
+                           timedelta=timedelta)
+
+
+@bp.route('/upload-avatar', methods=['POST'])
+def upload_avatar():
+    """Upload profile picture"""
+    from flask import jsonify
+    import uuid
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    if 'avatar' not in request.files:
+        return jsonify({'success': False, 'message': 'No file uploaded'}), 400
+
+    file = request.files['avatar']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No file selected'}), 400
+
+    # Allowed extensions
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
+
+    # Check file extension
+    filename = file.filename.lower()
+    ext = filename.rsplit('.', 1)[1] if '.' in filename else ''
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({'success': False, 'message': 'Invalid file type. Allowed: PNG, JPG, JPEG, GIF'}), 400
+
+    # Check file size
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    if size > MAX_FILE_SIZE:
+        return jsonify({'success': False, 'message': 'File too large. Maximum size: 2MB'}), 400
+
+    # Save file
+    unique_filename = f"avatar_{user.id}_{uuid.uuid4().hex[:8]}.{ext}"
+    upload_folder = os.path.join(current_app.root_path, 'static', 'avatars')
+    os.makedirs(upload_folder, exist_ok=True)
+
+    filepath = os.path.join(upload_folder, unique_filename)
+    file.save(filepath)
+
+    # Update user profile
+    user.profile_picture_url = url_for('static', filename=f'avatars/{unique_filename}')
+    db.session.commit()
+
+    return jsonify({'success': True, 'url': user.profile_picture_url})
+
+
+@bp.route('/delete-account-request', methods=['POST'])
+def delete_account_request():
+    """Request account deletion - sends OTP to email"""
+    from flask import jsonify
+    import random
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    # Generate 6-digit OTP
+    otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    user.otp_secret = otp
+    user.otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+    db.session.commit()
+
+    # Send OTP email
+    try:
+        msg = Message(
+            'Account Deletion Verification - MoveIt',
+            recipients=[user.email]
+        )
+        msg.html = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #c53030;">Account Deletion Request</h2>
+            <p>Hi {user.username},</p>
+            <p>You have requested to delete your MoveIt account. Use the code below to confirm:</p>
+            <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #c53030;">{otp}</span>
+            </div>
+            <p>This code expires in <strong>10 minutes</strong>.</p>
+            <p style="color: #c53030;"><strong>Warning:</strong> This action is irreversible. All your data will be permanently deleted.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+            <p style="color: #718096; font-size: 12px;">If you did not request this, please ignore this email and secure your account.</p>
+        </div>
+        '''
+        mail.send(msg)
+        return jsonify({'success': True, 'message': 'Verification code sent to your email'})
+    except Exception as e:
+        print(f"Failed to send deletion OTP: {e}")
+        return jsonify({'success': False, 'message': 'Failed to send email'}), 500
+
+
+@bp.route('/delete-account-confirm', methods=['POST'])
+def delete_account_confirm():
+    """Confirm account deletion with OTP"""
+    from flask import jsonify
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    otp = request.form.get('otp', '')
+
+    # Verify OTP
+    if not user.otp_secret or user.otp_secret != otp:
+        return jsonify({'success': False, 'message': 'Invalid verification code'}), 400
+
+    if not user.otp_expiry or datetime.utcnow() > user.otp_expiry:
+        return jsonify({'success': False, 'message': 'Verification code expired'}), 400
+
+    # Log to SIEM before deletion
+    siem.custom_event(
+        event_type='account_deleted',
+        description=f'User {user.username} deleted their account',
+        severity='Warning',
+        user_id=user.username,
+        ip=get_client_ip()
+    )
+
+    # Delete user's login history
+    LoginHistory.query.filter_by(user_id=user.id).delete()
+
+    # Delete user
+    db.session.delete(user)
+    db.session.commit()
+
+    # Clear session
+    session.clear()
+
+    return jsonify({'success': True, 'message': 'Account deleted successfully'})
+
 
 @bp.route('/settings', methods=['GET'])
 def settings():
@@ -1553,8 +1714,28 @@ def change_password():
         # Log to SIEM
         siem.password_changed(user_id=user.username, ip=get_client_ip())
 
+        # Send email notification
+        try:
+            msg = Message(
+                'Password Changed - MoveIt Security Alert',
+                recipients=[user.email]
+            )
+            msg.html = f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #1a202c;">Password Changed Successfully</h2>
+                <p>Hi {user.username},</p>
+                <p>Your password was changed on <strong>{datetime.utcnow().strftime('%B %d, %Y at %I:%M %p')} UTC</strong>.</p>
+                <p>If you did not make this change, please contact support immediately and secure your account.</p>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                <p style="color: #718096; font-size: 12px;">This is an automated security notification from MoveIt.</p>
+            </div>
+            '''
+            mail.send(msg)
+        except Exception as e:
+            print(f"Failed to send password change email: {e}")
+
         flash('Password changed successfully!', 'success')
-        return redirect(url_for('main.settings'))
+        return redirect(url_for('main.profile'))
 
     return render_template('change_password.html', user=user)
 
