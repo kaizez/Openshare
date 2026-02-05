@@ -1348,13 +1348,13 @@ footer p {
 
 .log-entry {
     display: grid;
-    grid-template-columns: 80px 1fr auto;
-    gap: 8px;
-    padding: 8px;
+    grid-template-columns: 120px 1fr auto;
+    gap: 12px;
+    padding: 10px 12px;
     margin: 4px 0;
     border-radius: 6px;
     font-size: 12px;
-    align-items: center;
+    align-items: start;
 }
 
 .log-success {
@@ -1375,6 +1375,9 @@ footer p {
 .log-status {
     font-weight: 600;
     text-transform: capitalize;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
 }
 
 .log-success .log-status {
@@ -1391,12 +1394,16 @@ footer p {
 
 .log-details {
     color: var(--text-secondary);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
 }
 
 .log-time {
     font-family: monospace;
     color: #8e8e93;
     font-size: 11px;
+    white-space: nowrap;
 }
 
 /* Badge Styles */
