@@ -1,0 +1,599 @@
+{% extends "base.html" %}
+
+{% block title %}User Risk Scoring - Admin - MoveIt{% endblock %}
+
+{% block content %}
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+
+    .admin-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .admin-header h1 {
+        color: #000;
+        font-size: 32px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+    }
+
+    .admin-header p {
+        color: #8e8e93;
+        font-size: 16px;
+        margin: 0;
+    }
+
+    .admin-nav {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .nav-btn-primary {
+        background: #007aff;
+        color: white;
+    }
+
+    .nav-btn-primary:hover {
+        background: #0066d6;
+    }
+
+    .nav-btn-secondary {
+        background: #f7fafc;
+        color: #2d3748;
+        border: 1px solid #e2e8f0;
+    }
+
+    .nav-btn-secondary:hover {
+        background: #edf2f7;
+    }
+
+    .nav-btn-active {
+        background: #007aff;
+        color: white;
+    }
+
+    .nav-btn-active:hover {
+        background: #0066d6;
+    }
+
+    .admin-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .admin-section {
+        padding: 24px;
+    }
+
+    .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #000;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 16px 0;
+    }
+
+    .filter-bar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+        background: #f7fafc;
+    }
+
+    .filter-btn.active {
+        background: #007aff;
+        color: white;
+        border-color: #007aff;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #f7fafc;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .stat-card.critical {
+        background: rgba(255, 59, 48, 0.1);
+    }
+
+    .stat-card.high {
+        background: rgba(255, 149, 0, 0.1);
+    }
+
+    .stat-card.medium {
+        background: rgba(255, 204, 0, 0.1);
+    }
+
+    .stat-card.low {
+        background: rgba(52, 199, 89, 0.1);
+    }
+
+    .stat-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 4px;
+    }
+
+    .stat-card.critical .stat-number { color: #ff3b30; }
+    .stat-card.high .stat-number { color: #ff9500; }
+    .stat-card.medium .stat-number { color: #ffcc00; }
+    .stat-card.low .stat-number { color: #34c759; }
+
+    .stat-label {
+        font-size: 14px;
+        color: #8e8e93;
+    }
+
+    .risk-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .risk-table th {
+        text-align: left;
+        padding: 12px 16px;
+        background: #f7fafc;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #8e8e93;
+    }
+
+    .risk-table td {
+        padding: 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        vertical-align: middle;
+    }
+
+    .risk-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .risk-table tr:hover td {
+        background: #f7fafc;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: #4a5568;
+        font-size: 16px;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    .user-email {
+        font-size: 13px;
+        color: #8e8e93;
+    }
+
+    .risk-score {
+        font-size: 24px;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .risk-score.critical { color: #ff3b30; }
+    .risk-score.high { color: #ff9500; }
+    .risk-score.medium { color: #ffcc00; }
+    .risk-score.low { color: #34c759; }
+
+    .risk-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .risk-badge.critical {
+        background: rgba(255, 59, 48, 0.15);
+        color: #ff3b30;
+    }
+
+    .risk-badge.high {
+        background: rgba(255, 149, 0, 0.15);
+        color: #ff9500;
+    }
+
+    .risk-badge.medium {
+        background: rgba(255, 204, 0, 0.15);
+        color: #b8860b;
+    }
+
+    .risk-badge.low {
+        background: rgba(52, 199, 89, 0.15);
+        color: #34c759;
+    }
+
+    .risk-factors {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .risk-factor-tag {
+        display: inline-block;
+        padding: 3px 8px;
+        background: #f7fafc;
+        border-radius: 6px;
+        font-size: 11px;
+        color: #4a5568;
+        border: 1px solid #e2e8f0;
+    }
+
+    .badge-locked {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #ff3b30;
+        color: white;
+        margin-left: 8px;
+    }
+
+    .action-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .action-btn-contact {
+        background: #007aff;
+        color: white;
+    }
+
+    .action-btn-contact:hover {
+        background: #0056b3;
+    }
+
+    .action-btn-lock {
+        background: #ff9500;
+        color: white;
+    }
+
+    .action-btn-lock:hover {
+        background: #e68600;
+    }
+
+    .action-btn-view {
+        background: #f7fafc;
+        color: #4a5568;
+        border: 1px solid #e2e8f0;
+    }
+
+    .action-btn-view:hover {
+        background: #edf2f7;
+    }
+
+    .login-info {
+        font-size: 12px;
+        color: #8e8e93;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 40px;
+        color: #8e8e93;
+    }
+
+    @media (max-width: 768px) {
+        .risk-table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        .admin-nav {
+            flex-direction: column;
+        }
+
+        .nav-btn {
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>User Risk Scoring</h1>
+        <p>Monitor and manage user login risk levels from ML analysis</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('main.index') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Home
+        </a>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Users
+        </a>
+        <a href="{{ url_for('main.admin_filetransfer') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            File Transfer
+        </a>
+        <a href="{{ url_for('main.admin_devices') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            Devices
+        </a>
+        <a href="{{ url_for('main.admin_risk_scoring') }}" class="nav-btn nav-btn-active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            Risk Scoring
+        </a>
+        <a href="https://{{ request.host.split(':')[0] }}:5002" target="_blank" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            SIEM
+        </a>
+        <a href="{{ url_for('main.logout') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Log Out
+        </a>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">Risk Overview</div>
+            <div class="stats-grid">
+                <div class="stat-card critical">
+                    <div class="stat-number">{{ users|selectattr('risk_level', 'equalto', 'critical')|list|length }}</div>
+                    <div class="stat-label">Critical Risk</div>
+                </div>
+                <div class="stat-card high">
+                    <div class="stat-number">{{ users|selectattr('risk_level', 'equalto', 'high')|list|length }}</div>
+                    <div class="stat-label">High Risk</div>
+                </div>
+                <div class="stat-card medium">
+                    <div class="stat-number">{{ users|selectattr('risk_level', 'equalto', 'medium')|list|length }}</div>
+                    <div class="stat-label">Medium Risk</div>
+                </div>
+                <div class="stat-card low">
+                    <div class="stat-number">{{ users|selectattr('risk_level', 'equalto', 'low')|list|length }}</div>
+                    <div class="stat-label">Low Risk</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="filter-bar">
+                <span style="font-weight: 600; color: #4a5568;">Filter:</span>
+                <button class="filter-btn active" onclick="filterRisk('all')">All Users</button>
+                <button class="filter-btn" onclick="filterRisk('critical')">Critical</button>
+                <button class="filter-btn" onclick="filterRisk('high')">High</button>
+                <button class="filter-btn" onclick="filterRisk('medium')">Medium</button>
+                <button class="filter-btn" onclick="filterRisk('low')">Low</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Scoring Table -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">User Risk Scores</div>
+            {% if users %}
+            <table class="risk-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Score</th>
+                        <th>Level</th>
+                        <th>Risk Factors</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="riskTableBody">
+                    {% for user in users %}
+                    <tr data-risk-level="{{ user.risk_level }}">
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">{{ user.username[0].upper() }}</div>
+                                <div>
+                                    <div class="user-name">
+                                        {{ user.username }}
+                                        {% if user.account_locked %}
+                                        <span class="badge-locked">LOCKED</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="user-email">{{ user.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="risk-score {{ user.risk_level }}">{{ user.risk_score|int }}</div>
+                        </td>
+                        <td>
+                            <span class="risk-badge {{ user.risk_level }}">{{ user.risk_level }}</span>
+                        </td>
+                        <td>
+                            <div class="risk-factors">
+                                {% if user.risk_factors %}
+                                    {% for factor in user.risk_factors[:3] %}
+                                    <span class="risk-factor-tag">{{ factor }}</span>
+                                    {% endfor %}
+                                    {% if user.risk_factors|length > 3 %}
+                                    <span class="risk-factor-tag">+{{ user.risk_factors|length - 3 }} more</span>
+                                    {% endif %}
+                                {% else %}
+                                <span style="color: #8e8e93; font-size: 12px;">No risk factors</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if user.last_login %}
+                            <div class="login-info">
+                                <div>{{ user.last_login.strftime('%Y-%m-%d %H:%M') }}</div>
+                                <div>{{ user.ip_address or 'Unknown IP' }}</div>
+                                <div>{{ user.location or 'Unknown location' }}</div>
+                            </div>
+                            {% else %}
+                            <span style="color: #8e8e93; font-size: 12px;">Never logged in</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <a href="mailto:{{ user.email }}?subject=Security Alert - Your Account&body=Dear {{ user.username }},%0D%0A%0D%0AWe noticed unusual activity on your account with a risk score of {{ user.risk_score|int }}. Please verify your recent login activity.%0D%0A%0D%0ARisk Factors:%0D%0A{% for factor in user.risk_factors %}- {{ factor }}%0D%0A{% endfor %}%0D%0A%0D%0AIf this was not you, please change your password immediately and enable MFA.%0D%0A%0D%0ABest regards,%0D%0AMoveIt Security Team" class="action-btn action-btn-contact">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                    Contact
+                                </a>
+                                {% if user.risk_level in ['high', 'critical'] and not user.account_locked %}
+                                <button onclick="window.location.href='{{ url_for('main.admin_dashboard') }}'" class="action-btn action-btn-lock">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                    Lock
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2" style="margin-bottom: 16px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M16 16s-1.5-2-4-2-4 2-4 2"></path>
+                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                </svg>
+                <p>No login data available yet. Risk scores will appear after users log in.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function filterRisk(level) {
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    // Filter table rows
+    const rows = document.querySelectorAll('#riskTableBody tr');
+    rows.forEach(row => {
+        if (level === 'all') {
+            row.style.display = '';
+        } else {
+            const rowLevel = row.getAttribute('data-risk-level');
+            row.style.display = rowLevel === level ? '' : 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -2036,6 +2036,46 @@ def admin_dashboard():
     return render_template('admin_dashboard.html', users=all_users, current_user=user)
 
 
+@bp.route('/admin/risk-scoring')
+def admin_risk_scoring():
+    """Admin page showing user risk scores from ML analysis"""
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+
+    user = User.query.get(session['user_id'])
+
+    if not user or not user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('filetransfer.index'))
+
+    # Get all users with their latest login history and risk scores
+    users_with_risk = []
+    all_users = User.query.all()
+
+    for u in all_users:
+        # Get the user's most recent login history entry
+        latest_login = LoginHistory.query.filter_by(user_id=u.id).order_by(LoginHistory.timestamp.desc()).first()
+
+        user_data = {
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'risk_score': latest_login.risk_score if latest_login else 0,
+            'risk_level': latest_login.risk_level if latest_login else 'low',
+            'risk_factors': json.loads(latest_login.risk_factors) if latest_login and latest_login.risk_factors else [],
+            'last_login': latest_login.timestamp if latest_login else None,
+            'ip_address': latest_login.ip_address if latest_login else None,
+            'location': latest_login.location if latest_login else None,
+            'account_locked': u.account_locked
+        }
+        users_with_risk.append(user_data)
+
+    # Sort by risk score (highest first)
+    users_with_risk.sort(key=lambda x: x['risk_score'], reverse=True)
+
+    return render_template('admin_risk_scoring.html', users=users_with_risk, current_user=user)
+
+
 @bp.route('/admin/toggle-admin/<int:user_id>', methods=['POST'])
 def toggle_admin(user_id):
     """Toggle admin status for a user - requires TOTP verification"""
