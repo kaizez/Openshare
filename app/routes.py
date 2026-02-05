@@ -681,10 +681,10 @@ def login():
 
                             # Log keystroke analysis
                             if not ks_valid:
-                                siem.log(
+                                siem.custom_event(
                                     event_type='keystroke_mismatch',
-                                    severity='warning',
-                                    message=f'Keystroke pattern mismatch for {user.username}: {ks_msg}',
+                                    description=f'Keystroke pattern mismatch for {user.username}: {ks_msg}',
+                                    severity='High',
                                     user_id=user.username,
                                     ip=get_client_ip()
                                 )
@@ -721,13 +721,14 @@ def login():
 
                     # Handle high risk logins
                     if risk_level == 'critical':
-                        siem.log(
+                        siem.custom_event(
                             event_type='high_risk_login_blocked',
-                            severity='critical',
-                            message=f'Critical risk login blocked for {user.username}',
+                            description=f'Critical risk login blocked for {user.username}',
+                            severity='Critical',
                             user_id=user.username,
                             ip=current_ip,
-                            details={'risk_score': risk_score, 'risk_factors': risk_factors}
+                            risk_score=risk_score,
+                            risk_factors=risk_factors
                         )
                         flash('Login blocked due to suspicious activity. Please contact support.', 'error')
                         return render_template('login.html')
@@ -1348,18 +1349,16 @@ def check_location():
     )
 
     # Log to SIEM
-    siem.log(
+    siem.custom_event(
         event_type='impossible_travel_detected',
-        severity='critical',
-        message=f'Impossible travel detected for {user.username}: {last_location} -> {current_location}',
+        description=f'Impossible travel detected for {user.username}: {last_location} -> {current_location}',
+        severity='Critical',
         user_id=user.username,
         ip=current_ip,
-        details={
-            'last_location': last_location,
-            'current_location': current_location,
-            'last_ip': last_ip,
-            'current_ip': current_ip
-        }
+        last_location=last_location,
+        current_location=current_location,
+        last_ip=last_ip,
+        current_ip=current_ip
     )
 
     # Clear session
@@ -2193,12 +2192,13 @@ def lock_user(user_id):
     db.session.commit()
 
     # Log to SIEM
-    siem.log(
+    siem.custom_event(
         event_type='account_locked_by_admin',
-        severity='warning',
-        message=f'Account {target_user.username} locked by admin {current_user.username}',
+        description=f'Account {target_user.username} locked by admin {current_user.username}',
+        severity='High',
         user_id=target_user.username,
-        ip=get_client_ip()
+        ip=get_client_ip(),
+        locked_by=current_user.username
     )
 
     return jsonify({'success': True, 'message': f'{target_user.username} has been locked'})
@@ -2240,12 +2240,13 @@ def unlock_user(user_id):
     db.session.commit()
 
     # Log to SIEM
-    siem.log(
+    siem.custom_event(
         event_type='account_unlocked_by_admin',
-        severity='info',
-        message=f'Account {target_user.username} unlocked by admin {current_user.username}',
+        description=f'Account {target_user.username} unlocked by admin {current_user.username}',
+        severity='Info',
         user_id=target_user.username,
-        ip=get_client_ip()
+        ip=get_client_ip(),
+        unlocked_by=current_user.username
     )
 
     return jsonify({'success': True, 'message': f'{target_user.username} has been unlocked'})

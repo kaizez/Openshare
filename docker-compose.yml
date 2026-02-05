@@ -114,6 +114,9 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # Retention Policy
       RETENTION_CONFIG_PATH: /app/config/retention_policy.json
+      # SIEM (SECaaS) — points to the SIEM engine on the other docker-compose.
+      # On macOS, use host.docker.internal to reach a container on a different compose file.
+      SIEM_URL: ${SIEM_URL}
       # Force Python to not buffer stdout/stderr
       PYTHONUNBUFFERED: "1"
     depends_on:

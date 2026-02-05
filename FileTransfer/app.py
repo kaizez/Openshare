@@ -11,6 +11,11 @@ import json
 import magic
 import pyotp
 from functools import wraps
+from app.siem_logger import SIEMLogger
+
+# SIEM logger — reports file events to the same engine the auth module uses
+_siem_url = os.environ.get('SIEM_URL', 'http://siem:5001')
+siem = SIEMLogger(_siem_url, log_source="file_transfer")
 
 # ============================================
 # Security Module Import
@@ -548,6 +553,15 @@ def upload_file():
                 action='upload',
                 status='success',
                 details=f"File: {original_filename}, Size: {file_size}, Classification: {classification}, Scan: {scan_status}"
+            )
+
+            # Report upload to SIEM engine
+            siem.file_uploaded(
+                user_id=str(session.get('user_id', '')),
+                filename=original_filename,
+                file_size=file_size,
+                ip=request.remote_addr,
+                file_hash=file_hash
             )
 
             return jsonify(response_data)
@@ -1099,6 +1113,14 @@ def get_file(file_id):
     # Log successful download
     log_access_attempt(file_id, 'success', 'File downloaded successfully')
 
+    # Report download to SIEM engine
+    siem.file_downloaded(
+        user_id=str(session.get('user_id', '')),
+        filename=file_info['original_filename'],
+        file_size=file_info.get('file_size', 0),
+        ip=request.remote_addr
+    )
+
     # Increment download counter
     db.update_download_count(file_id)
 
@@ -1307,6 +1329,13 @@ def delete_file(file_id):
             action='delete',
             status='success',
             details=f"File: {file_info.get('original_filename', 'unknown')}, Archived: {is_archived}"
+        )
+
+        # Report deletion to SIEM engine
+        siem.file_deleted(
+            user_id=str(session.get('user_id', '')),
+            filename=file_info.get('original_filename', ''),
+            ip=request.remote_addr
         )
 
         return jsonify({

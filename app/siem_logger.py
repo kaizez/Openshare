@@ -17,6 +17,7 @@ Usage:
 
 import requests
 import hashlib
+import threading
 from datetime import datetime
 from typing import Optional
 
@@ -47,13 +48,10 @@ class SIEMLogger:
 
     def _send_event(self, event_data: dict) -> bool:
         """
-        Send event to SIEM.
-
-        Args:
-            event_data: Event dictionary
-
-        Returns:
-            True if successful, False otherwise
+        Send event to SIEM in a background thread (fire-and-forget).
+        The caller is never blocked — if the SIEM engine is unreachable
+        the thread fails silently (prints to stdout) and the user-facing
+        request returns immediately.
         """
         # Add timestamp if not present
         if 'timestamp' not in event_data:
@@ -67,17 +65,18 @@ class SIEMLogger:
         if self.api_key:
             headers['X-API-Key'] = self.api_key
 
-        try:
-            response = requests.post(
-                self.endpoint,
-                json=event_data,
-                headers=headers,
-                timeout=self.timeout
-            )
-            return response.status_code == 200
-        except requests.RequestException as e:
-            print(f"[SIEM Logger] Failed to send event: {e}")
-            return False
+        endpoint = self.endpoint
+        timeout = self.timeout
+
+        def _post():
+            try:
+                requests.post(endpoint, json=event_data, headers=headers, timeout=timeout)
+            except requests.RequestException as e:
+                print(f"[SIEM Logger] Failed to send event: {e}")
+
+        thread = threading.Thread(target=_post, daemon=True)
+        thread.start()
+        return True
 
     # ==================== AUTHENTICATION EVENTS ====================
 
