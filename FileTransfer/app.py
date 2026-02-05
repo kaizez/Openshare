@@ -4,13 +4,30 @@ import string
 import time
 import requests as http_requests  # Renamed to avoid conflict with flask.request
 from datetime import datetime, timedelta
-from flask import Blueprint, Flask, render_template, request, send_file, redirect, url_for, flash, jsonify, session, current_app
+from flask import Blueprint, Flask, render_template, request, send_file, redirect, url_for, flash, jsonify, session, current_app, g
 from werkzeug.utils import secure_filename
 import hashlib
 import json
 import magic
 import pyotp
 from functools import wraps
+
+# ============================================
+# Security Module Import
+# ============================================
+from security import (
+    secure_endpoint,
+    add_security_headers,
+    sanitize_input,
+    sanitize_filename as security_sanitize_filename,
+    validate_file_id,
+    validate_otp_code,
+    validate_classification,
+    log_file_access,
+    log_security_event,
+    ip_blocker,
+    sec_log
+)
 
 # ============================================
 # User Model Import (for MFA verification)
@@ -25,6 +42,14 @@ bp = Blueprint('filetransfer', __name__,
                template_folder='templates',
                static_folder='styles',
                static_url_path='/filetransfer/styles')
+
+# ============================================
+# Security Headers - Applied to all responses
+# ============================================
+@bp.after_request
+def apply_security_headers(response):
+    """Apply security headers to all FileTransfer responses"""
+    return add_security_headers(response)
 
 def csrf_exempt_view(f):
     """Mark a view as exempt from CSRF protection"""
@@ -327,6 +352,7 @@ def index():
 
 @bp.route('/upload', methods=['POST'])
 @login_required
+@secure_endpoint(endpoint_type='upload', require_auth=False)  # auth already checked by login_required
 def upload_file():
     """Handle file upload (POST)"""
     print(f"[Upload] Request received", flush=True)
@@ -348,13 +374,9 @@ def upload_file():
     if not allowed_file(file.filename):
         return jsonify({'error': 'File type not allowed'}), 400
 
-    # Get data classification from request
+    # Get data classification from request and validate
     classification = request.form.get('classification', 'Public')
-
-    # Validate classification
-    valid_classifications = ['Public', 'Internal Use', 'Classified']
-    if classification not in valid_classifications:
-        classification = 'Public'
+    _, classification = validate_classification(classification)  # Returns validated value
 
     try:
         # Generate unique ID and secure filename
@@ -520,6 +542,14 @@ def upload_file():
             if scan_status == 'clean':
                 response_data['otp_code'] = otp_code
 
+            # Audit log for successful upload
+            log_file_access(
+                file_id=file_id,
+                action='upload',
+                status='success',
+                details=f"File: {original_filename}, Size: {file_size}, Classification: {classification}, Scan: {scan_status}"
+            )
+
             return jsonify(response_data)
 
         finally:
@@ -538,11 +568,18 @@ def download_page():
 
 @bp.route('/verify-code', methods=['POST'])
 @login_required
+@secure_endpoint(endpoint_type='verify', require_auth=False)
 def verify_code():
     """Verify OTP code and create session for file access"""
     db = get_db()
     data = request.get_json()
     provided_code = data.get('code', '').strip()
+
+    # Validate OTP code format
+    is_valid, error_msg = validate_otp_code(provided_code)
+    if not is_valid:
+        ip_blocker.record_violation(request.remote_addr, 'invalid_otp_format')
+        return jsonify({'success': False, 'error': error_msg}), 400
 
     if not provided_code:
         return jsonify({'success': False, 'error': 'Please enter an access code'}), 400
@@ -607,11 +644,17 @@ def verify_code():
 
 @bp.route('/verify-totp', methods=['POST'])
 @login_required
+@secure_endpoint(endpoint_type='verify', require_auth=False)
 def verify_totp():
     """Verify TOTP for Internal Use classified files"""
     data = request.get_json()
     file_id = data.get('file_id', '').strip()
     totp_code = data.get('totp_code', '').strip()
+
+    # Validate file_id format
+    is_valid, error_msg = validate_file_id(file_id)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error_msg}), 400
 
     if not file_id or not totp_code:
         return jsonify({'success': False, 'error': 'File ID and TOTP code are required'}), 400
@@ -691,6 +734,7 @@ def verify_totp():
 
 @bp.route('/request-approval', methods=['POST'])
 @login_required
+@secure_endpoint(endpoint_type='verify', require_auth=False)
 def request_approval():
     """Create an approval request for Classified file access after OTP+TOTP verification"""
     db = get_db()
@@ -698,6 +742,11 @@ def request_approval():
     file_id = data.get('file_id', '').strip()
 
     print(f"[request_approval] file_id={file_id}", flush=True)
+
+    # Validate file_id format
+    is_valid, error_msg = validate_file_id(file_id)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error_msg}), 400
 
     if not file_id:
         return jsonify({'success': False, 'error': 'File ID is required'}), 400
@@ -771,8 +820,14 @@ def request_approval():
 
 @bp.route('/approval-status/<request_id>')
 @login_required
+@secure_endpoint(endpoint_type='default', require_auth=False)
 def check_approval_status(request_id):
     """Check the status of an approval request (for recipient polling)"""
+    # Validate request_id format
+    is_valid, error_msg = validate_file_id(request_id)
+    if not is_valid:
+        return jsonify({'success': False, 'error': 'Invalid request ID format'}), 400
+
     print(f"[check_approval_status] request_id={request_id}, user_id={session.get('user_id')}", flush=True)
     db = get_db()
     print(f"[check_approval_status] got db instance", flush=True)
@@ -871,12 +926,19 @@ def pending_approvals_page():
 
 @bp.route('/respond-approval/<request_id>', methods=['POST'])
 @login_required
+@secure_endpoint(endpoint_type='verify', require_auth=False)
 def respond_approval(request_id):
     """Approve or deny an access request"""
     print(f"[respond_approval] request_id={request_id}", flush=True)
+
+    # Validate request_id format (reuse file_id validation - same format)
+    is_valid, error_msg = validate_file_id(request_id)
+    if not is_valid:
+        return jsonify({'success': False, 'error': 'Invalid request ID format'}), 400
+
     db = get_db()
     data = request.get_json()
-    action = data.get('action', '').strip().lower()
+    action = sanitize_input(data.get('action', ''), max_length=10).strip().lower()
     print(f"[respond_approval] action={action}, user_id={session.get('user_id')}", flush=True)
 
     if action not in ['approve', 'deny']:
@@ -939,8 +1001,15 @@ def get_approval_count():
 
 @bp.route('/file/<file_id>')
 @login_required
+@secure_endpoint(endpoint_type='default', require_auth=False)
 def file_details(file_id):
     """Display file details page (requires valid session from code verification)"""
+    # Validate file_id format
+    is_valid, error_msg = validate_file_id(file_id)
+    if not is_valid:
+        return render_template('filetransfer/error.html',
+                             error_message='Invalid file ID'), 400
+
     db = get_db()
     file_info = db.get_file_metadata(file_id)
 
@@ -960,8 +1029,14 @@ def file_details(file_id):
 
 @bp.route('/get-file/<file_id>')
 @login_required
+@secure_endpoint(endpoint_type='download', require_auth=False)
 def get_file(file_id):
     """Download the actual file (requires valid verification session)"""
+    # Validate file_id format
+    is_valid, error_msg = validate_file_id(file_id)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
+
     db = get_db()
 
     # Verify user has verified this file
@@ -1079,8 +1154,14 @@ def list_files():
 
 @bp.route('/regenerate-otp/<file_id>', methods=['POST'])
 @login_required
+@secure_endpoint(endpoint_type='otp_regenerate', require_auth=False)
 def regenerate_otp_endpoint(file_id):
     """Manually regenerate OTP code for a file"""
+    # Validate file_id format
+    is_valid, error_msg = validate_file_id(file_id)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
+
     db = get_db()
     file_info = db.get_file_metadata(file_id)
 
@@ -1123,8 +1204,14 @@ def regenerate_otp_endpoint(file_id):
 
 @bp.route('/access-logs/<file_id>')
 @login_required
+@secure_endpoint(endpoint_type='default', require_auth=False)
 def get_access_logs(file_id):
     """Get access logs for a specific file"""
+    # Validate file_id format
+    is_valid, error_msg = validate_file_id(file_id)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
+
     db = get_db()
     file_info = db.get_file_metadata(file_id)
 
@@ -1146,8 +1233,14 @@ def get_access_logs(file_id):
 
 @bp.route('/delete/<file_id>', methods=['POST'])
 @login_required
+@secure_endpoint(endpoint_type='delete', require_auth=False)
 def delete_file(file_id):
     """Delete a file from both Working DB and Storage DB (if archived)"""
+    # Validate file_id format
+    is_valid, error_msg = validate_file_id(file_id)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
+
     db = get_db()
     file_info = db.get_file_metadata(file_id)
 
@@ -1208,6 +1301,14 @@ def delete_file(file_id):
 
         print(f"[App] Successfully deleted file {file_id} from Working DB")
 
+        # Audit log for successful deletion
+        log_file_access(
+            file_id=file_id,
+            action='delete',
+            status='success',
+            details=f"File: {file_info.get('original_filename', 'unknown')}, Archived: {is_archived}"
+        )
+
         return jsonify({
             'success': True,
             'message': 'File deleted successfully',
@@ -1219,10 +1320,11 @@ def delete_file(file_id):
 
 @bp.route('/failed-uploads')
 @login_required
+@secure_endpoint(endpoint_type='default', require_auth=False)
 def get_failed_uploads():
     """Get failed upload logs (admin view)"""
     db = get_db()
-    limit = request.args.get('limit', 100, type=int)
+    limit = min(request.args.get('limit', 100, type=int), 500)  # Cap at 500 max
     logs = db.get_failed_upload_logs(limit=limit)
 
     # Format file sizes for display
@@ -1239,10 +1341,11 @@ def get_failed_uploads():
 
 @bp.route('/virus-scan-logs')
 @login_required
+@secure_endpoint(endpoint_type='default', require_auth=False)
 def get_virus_scan_logs():
     """Get virus scan logs (admin view)"""
     db = get_db()
-    limit = request.args.get('limit', 100, type=int)
+    limit = min(request.args.get('limit', 100, type=int), 500)  # Cap at 500 max
     logs = db.get_virus_scan_logs(limit=limit)
 
     # Format file sizes for display
