@@ -23,9 +23,10 @@ import json
 bp = Blueprint('main', __name__)
 
 # Initialize SIEM Logger - connects to Ayden's SIEM system
-# The SIEM URL is configurable via environment variable
+# The SIEM URL and API key are configurable via environment variables
 SIEM_URL = os.environ.get('SIEM_URL', 'http://siem:5001')
-siem = SIEMLogger(SIEM_URL, log_source="authentication")
+SIEM_API_KEY = os.environ.get('SIEM_API_KEY')
+siem = SIEMLogger(SIEM_URL, api_key=SIEM_API_KEY, log_source="authentication")
 
 # Initialize ML Security Analyzer
 ml_analyzer = LoginBehaviorAnalyzer()
