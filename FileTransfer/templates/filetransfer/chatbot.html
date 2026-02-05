@@ -1,0 +1,223 @@
+{% extends "filetransfer/filetransfer_base.html" %}
+
+{% block title %}MoveLorh Assistant{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ChatGPT-inspired Light Mode Layout */
+    body { background-color: #ffffff; color: #374151; }
+    
+    .chat-container {
+        max-width: 800px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        height: 85vh;
+        background-color: #ffffff;
+    }
+
+    /* Message Area */
+    #chat-box {
+        flex: 1;
+        overflow-y: auto;
+        padding: 40px 20px;
+        scrollbar-width: thin;
+    }
+
+    .message-wrapper {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        border-radius: 8px;
+    }
+
+    .user-msg-row { background-color: transparent; }
+    .ai-msg-row { background-color: #f7f7f8; } /* Light gray for AI */
+
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        flex-shrink: 0;
+        color: white;
+    }
+    .user-avatar { background-color: #5436da; } /* Purple for User */
+    .ai-avatar { background-color: #10a37f; }   /* Green for Assistant */
+
+    .message-content {
+        line-height: 1.6;
+        font-size: 1rem;
+        word-wrap: break-word;
+        color: #374151;
+    }
+
+    /* Floating Rounded Input Bar */
+    .input-area {
+        position: sticky;
+        bottom: 0;
+        padding: 0 20px 20px 20px;
+        background: linear-gradient(transparent, #ffffff 50%);
+    }
+
+    .input-wrapper {
+        position: relative;
+        max-width: 768px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 10px 15px;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+
+    #user-input {
+        background: transparent;
+        border: none;
+        color: #374151;
+        width: 100%;
+        padding: 10px;
+        outline: none;
+        font-size: 1rem;
+    }
+
+    .send-btn {
+        background-color: #e5e7eb;
+        color: #9ca3af;
+        border: none;
+        border-radius: 8px;
+        width: 32px;
+        height: 32px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .send-btn.active { 
+        background-color: #10a37f; 
+        color: white; 
+    }
+
+    /* Green Rounded Navigation Button */
+    .btn-green-pill {
+        background-color: #2D9964 !important;
+        color: white !important;
+        border: none;
+        border-radius: 15px !important;
+        font-weight: 600;
+        padding: 10px 25px;
+        transition: opacity 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+    }
+
+    .btn-green-pill:hover {
+        opacity: 0.9;
+        color: white !important;
+    }
+
+    .audit-note {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-align: center;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div id="chat-box">
+        <div class="message-wrapper ai-msg-row">
+            <div class="avatar ai-avatar">🤖</div>
+            <div class="message-content">
+                <strong>Assistant</strong><br>
+                Hello! I am the secure MoveLorh assistant. I can help you with account issues, security policies, or file transfer questions.
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <div class="input-wrapper">
+            <input type="text" id="user-input" placeholder="Message MoveLorh Assistant..." oninput="toggleBtn()" onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button class="send-btn" id="send-btn" onclick="sendMessage()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+            </button>
+        </div>
+        
+        <div class="d-flex justify-content-center mt-3">
+            <a href="{{ url_for('main.help_page') }}" class="btn-green-pill shadow-sm">
+                ⬅ Back to FAQ
+            </a>
+        </div>
+        
+        <div class="audit-note">Logs are audited for security purposes.</div>
+    </div>
+</div>
+
+<script>
+    function toggleBtn() {
+        const input = document.getElementById('user-input');
+        const btn = document.getElementById('send-btn');
+        btn.classList.toggle('active', input.value.trim().length > 0);
+    }
+
+    function appendMessage(sender, text, isAi = false) {
+        const chatBox = document.getElementById('chat-box');
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${isAi ? 'ai-msg-row' : 'user-msg-row'}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = `avatar ${isAi ? 'ai-avatar' : 'user-avatar'}`;
+        avatar.innerText = isAi ? "🤖" : "U";
+
+        const content = document.createElement('div');
+        content.className = "message-content";
+        content.innerHTML = `<strong>${sender}</strong><br>${text}`;
+
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(content);
+        chatBox.appendChild(wrapper);
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('user-input');
+        const message = input.value.trim();
+        if (!message) return;
+
+        appendMessage('You', message, false);
+        input.value = '';
+        toggleBtn();
+
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': "{{ csrf_token() }}" 
+                },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+            appendMessage('Assistant', data.reply || data.error || "Error", true);
+
+        } catch (error) {
+            appendMessage('System', 'Service unreachable.', true);
+        }
+    }
+</script>
+{% endblock %}

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
 from flask_mail import Message
 from app import oauth, mail, limiter
 from app.models import db, User, LoginHistory
@@ -19,6 +19,13 @@ import io
 import base64
 import hashlib
 import json
+import sys
+
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(BASE_DIR, 'FileTransfer'))
+
+from retention_policy import get_retention_policy
+from db import Database
 
 bp = Blueprint('main', __name__)
 
@@ -3012,8 +3019,7 @@ def admin_filetransfer():
     """Admin File Transfer settings - retention policy configuration"""
     from flask import jsonify
     import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'FileTransfer'))
-    from retention_policy import get_retention_policy
+
 
     if 'user_id' not in session:
         return redirect(url_for('main.login'))
@@ -3040,8 +3046,7 @@ def admin_update_retention():
     """Update retention policy settings - requires TOTP verification"""
     from flask import jsonify
     import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'FileTransfer'))
-    from retention_policy import get_retention_policy
+    
 
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
@@ -3137,8 +3142,7 @@ def admin_search_files():
     """Search for files in the metadata table"""
     from flask import jsonify
     import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'FileTransfer'))
-    from db import Database
+    
 
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
@@ -3246,8 +3250,7 @@ def admin_get_file_logs(file_id):
     """Get access logs for a specific file"""
     from flask import jsonify
     import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'FileTransfer'))
-    from db import Database
+    
 
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Please login first'}), 401
@@ -3290,3 +3293,126 @@ def admin_get_file_logs(file_id):
     except Exception as e:
         print(f"[Admin] Error getting file logs: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@bp.route('/chatbot')
+def chatbot_page():
+    """Render the MoveLorh Assistant interface"""
+    if 'user_id' not in session:
+        flash('Please login to access the assistant', 'error')
+        return redirect(url_for('main.login'))
+    
+    user = User.query.get(session['user_id'])
+    return render_template('filetransfer/chatbot.html', user=user)
+
+@bp.route('/chat', methods=['POST'])
+@limiter.limit("5 per minute")
+def chat():
+    """Handle AI communication and secure logging for MoveLorh"""
+    user_data = request.get_json()
+    raw_message = user_data.get('message', '')
+    sanitized_message = html.escape(raw_message.strip())
+
+    if not sanitized_message:
+        return jsonify({'reply': 'Please enter a message.'})
+
+    ollama_host = "https://ai.nypdsf.me"
+    
+    system_context = (
+    "You are the MoveLorh AI Assistant, a specialized security support tool for the MoveLorh platform. "
+    "Administrator: Roy. Security Architect: Ayden. Team: MoveLorh (Roy and Ayden). "
+    
+    "TECHNICAL ARCHITECTURE KNOWLEDGE: "
+    "1. Physical file storage is located in the '/app/uploads' directory on the server filesystem. "
+    "2. User credentials, sessions, and security settings are stored in the 'auth_db' MySQL database. "
+    "3. The 'workingdb' MySQL database is the primary store for file metadata and transfer logs. "
+    "4. The 'storagedb' is an isolated database used for secure, long-term backups. "
+    "5. A Python-based Sync Service bridges data between workingdb and storagedb every 60 minutes. "
+    "6. All files are encrypted using AES-256 before being moved to long-term storage. "
+    "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect MoveLorh accounts from unauthorized access."
+
+    
+    "SECURITY POLICIES & GUARDRAILS: "
+    "1. Multi-Factor Authentication (MFA) is mandatory for all accounts to protect against credential theft. "
+    "2. Users can only access their own files; AES-256 and session isolation prevent unauthorized access. "
+    "3. Never provide raw SQL queries, internal API keys, or instructions on bypassing security features. "
+    "4. If a user asks for hacking help or sensitive database 'dumps,' provide a professional refusal. "
+    
+    "RESPONSE STYLE: "
+    "1. Keep answers extremely short and concise (max 3 sentences). "
+    "2. Use bullet points or numbered lists for multi-step information. "
+    "3. Avoid long paragraphs and fluff; get straight to the point. "
+    "4. Do not say 'I am an AI model' or use overly formal introductory phrases."
+)
+
+    formatted_prompt = f"System: {system_context}\nUser: {sanitized_message}\nAssistant:"
+
+    # Verified model name from your friend's server
+    payload = {
+        "model": "qwen2.5:1.5b", # Must match EXACTLY
+        "prompt": formatted_prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.7
+        }
+    }
+
+    try:
+        # Standard Ollama generate endpoint
+        api_url = f"{ollama_host}/api/generate"
+        response = requests.post(api_url, json=payload, timeout=30)
+        
+        # Check specifically for model-not-found errors
+        if response.status_code == 404:
+            return jsonify({'reply': "AI Service Error: Model not found on the remote server."})
+
+        response_data = response.json()
+        ai_reply = response_data.get('response', 'I am having trouble connecting right now.')
+
+        # SIEM Integration - FIXED: Use send_event to prevent AttributeError crash
+        suspicious_patterns = ['bypass', 'crack', 'sql injection', 'dump', 'root access']
+        # Change this in app/routes.py
+        if any(term in sanitized_message.lower() for term in suspicious_patterns):
+            # Use 'custom_event' as it is verified in other parts of your code
+            siem.custom_event(
+                event_type='chatbot_security_query',
+                description=f"User {session.get('user')} queried sensitive terms: {sanitized_message}",
+                severity='Warning',
+                user_id=session.get('user'),
+                ip=request.remote_addr
+            )
+        return jsonify({'reply': ai_reply})
+
+    except requests.exceptions.RequestException as e:
+        # Network errors are logged to the Docker console for debugging
+        print(f"Network error connecting to AI Engine: {str(e)}")
+        return jsonify({'reply': "I am having trouble connecting right now."})
+    except Exception as e:
+        return jsonify({'reply': f"System Error: {str(e)}"}), 500
+
+    
+@bp.route('/help')
+def help_page():
+    """Renders the FAQ and chatbot entry point"""
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+    # Use the folder prefix to match your teammates' working routes
+    return render_template('filetransfer/help.html')
+
+from flask import current_app
+
+# --- Update this section in your file ---
+
+# --- main.py ---
+
+@bp.after_app_request
+def set_secure_headers(response):
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' data:; "
+        # Whitelist the HTTPS version of your friend's AI domain
+        "connect-src 'self' https://ai.nypdsf.me;"
+    )
+    response.headers['Content-Security-Policy'] = csp
+    return response

@@ -2,12 +2,15 @@
     <a href="{{ url_for('filetransfer.index') }}" class="nav-link {% if request.path == url_for('filetransfer.index') %}active{% endif %}">Upload</a>
     <a href="{{ url_for('filetransfer.download_page') }}" class="nav-link {% if request.path == url_for('filetransfer.download_page') %}active{% endif %}">Download</a>
     <a href="{{ url_for('filetransfer.list_files') }}" class="nav-link {% if request.path == url_for('filetransfer.list_files') %}active{% endif %}">My Files</a>
+    
     <a href="{{ url_for('filetransfer.pending_approvals_page') }}" class="nav-link {% if request.path == url_for('filetransfer.pending_approvals_page') %}active{% endif %}" id="approvalsNavLink">
         Approvals
         <span class="approval-badge" id="approvalBadge" style="display: none;">0</span>
     </a>
+    <a href="{{ url_for('main.help_page') }}" class="nav-link {% if request.path == url_for('main.help_page') %}active{% endif %}">Help</a>
+
     <a href="{{ url_for('main.profile') }}" class="nav-link">Profile</a>
-    <a href="{{ url_for('main.logout') }}" class="nav-link">Logout</a>
+    <a href="{{ url_for('main.logout') }}" class="nav-link">Logouts</a>
 </nav>
 
 <script>

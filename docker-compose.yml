@@ -63,7 +63,7 @@ services:
     volumes:
       - storage_db_data:/var/lib/mysql
     networks:
-      - sync_network  # ONLY sync_network - isolated
+      - sync_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -84,18 +84,20 @@ services:
       DOCKER_ENV: "true"
       URL_SCHEME: "https"
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
-      # Auth Database (separate MySQL)
+      # Auth Database
       MYSQL_HOST: auth-db
       MYSQL_PORT: 3306
       MYSQL_USER: root
       MYSQL_PASSWORD: ${AUTH_DB_ROOT_PASSWORD:-your_secure_password}
       MYSQL_DATABASE: auth_db
-      # FileTransfer Working Database (separate MySQL)
+      # FileTransfer Working Database
       WORKING_DB_HOST: working-db
       WORKING_DB_PORT: 3306
       WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
       WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      # AI Engine Connection
+      OLLAMA_HOST: http://ai-engine:11434
       # VirusTotal
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
       VIRUSTOTAL_ENABLED: ${VIRUSTOTAL_ENABLED:-true}
@@ -114,18 +116,17 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # Retention Policy
       RETENTION_CONFIG_PATH: /app/config/retention_policy.json
-      # SIEM (SECaaS) — points to the SIEM engine on the other docker-compose.
-      # On macOS, use host.docker.internal to reach a container on a different compose file.
+      # SIEM
       SIEM_URL: ${SIEM_URL}
-      # API key for the SIEM engine. Create one from the SIEM dashboard first — see below.
       SIEM_API_KEY: ${SIEM_API_KEY:-}
-      # Force Python to not buffer stdout/stderr
       PYTHONUNBUFFERED: "1"
     depends_on:
       auth-db:
         condition: service_healthy
       working-db:
         condition: service_healthy
+      ai-engine:
+        condition: service_started
     volumes:
       - ./app:/app/app
       - ./FileTransfer:/app/FileTransfer
@@ -135,6 +136,21 @@ services:
     networks:
       - moveit-network
       - app_network
+
+  # ============================================
+  # AI Engine (Ollama)
+  # ============================================
+  ai-engine:
+    image: ollama/ollama:latest
+    container_name: ollama-service
+    volumes:
+      - ollama_storage:/root/.ollama
+    networks:
+      - app_network
+    deploy:
+      resources:
+        limits:
+          memory: 3G
 
   # ============================================
   # Sync Service - Bridges Working DB to Storage DB
@@ -195,6 +211,7 @@ services:
     depends_on:
       working-db:
         condition: service_healthy
+
   siem-dashboard:
     build:
       context: ./siem_dashboard
@@ -218,21 +235,17 @@ services:
     container_name: moveit-retention
     restart: always
     environment:
-      # Working DB connection
       WORKING_DB_HOST: working-db
       WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
       WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
       WORKING_DB_PORT: 3306
-      # Storage DB connection
       STORAGE_DB_HOST: storage-db
       STORAGE_DB_USER: ${STORAGE_DB_USER:-storage_user}
       STORAGE_DB_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
       STORAGE_DB_NAME: ${STORAGE_DB_NAME:-storagedb}
       STORAGE_DB_PORT: 3306
-      # Retention config file path
       RETENTION_CONFIG_PATH: /app/config/retention_policy.json
-      # Upload folder path (for filesystem cleanup)
       UPLOAD_FOLDER: /app/uploads
       PYTHONUNBUFFERED: "1"
     volumes:
@@ -254,7 +267,7 @@ networks:
     driver: bridge
   sync_network:
     driver: bridge
-    internal: true  # Isolated - no external access
+    internal: true
 
 volumes:
   auth_db_data:
@@ -262,3 +275,4 @@ volumes:
   storage_db_data:
   encryption_keys:
   retention_config:
+  ollama_storage:
