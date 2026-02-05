@@ -117,6 +117,8 @@ services:
       # SIEM (SECaaS) — points to the SIEM engine on the other docker-compose.
       # On macOS, use host.docker.internal to reach a container on a different compose file.
       SIEM_URL: ${SIEM_URL}
+      # API key for the SIEM engine. Create one from the SIEM dashboard first — see below.
+      SIEM_API_KEY: ${SIEM_API_KEY:-}
       # Force Python to not buffer stdout/stderr
       PYTHONUNBUFFERED: "1"
     depends_on:
