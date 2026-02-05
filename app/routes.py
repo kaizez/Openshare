@@ -75,6 +75,40 @@ def validate_password_strength(password):
 
     return True, None
 
+# Username blacklist - inappropriate or reserved words
+USERNAME_BLACKLIST = [
+    'admin', 'administrator', 'root', 'superuser', 'system', 'moderator', 'mod',
+    'support', 'helpdesk', 'staff', 'official', 'moveit', 'operator',
+    'fuck', 'shit', 'ass', 'bitch', 'damn', 'cunt', 'dick', 'pussy', 'nigger', 'nigga',
+    'bastard', 'whore', 'slut', 'fag', 'faggot', 'retard', 'idiot', 'stupid',
+    'null', 'undefined', 'none', 'test', 'user', 'guest', 'anonymous', 'default'
+]
+
+def validate_username(username):
+    """
+    Validate username for inappropriate or reserved words
+    Returns (is_valid, error_message)
+    """
+    if not username:
+        return False, "Username is required"
+
+    if len(username) < 3:
+        return False, "Username must be at least 3 characters long"
+
+    if len(username) > 20:
+        return False, "Username must be less than 20 characters"
+
+    if not re.match(r'^[a-zA-Z0-9_]+$', username):
+        return False, "Username can only contain letters, numbers, and underscores"
+
+    # Check blacklist (case-insensitive)
+    username_lower = username.lower()
+    for word in USERNAME_BLACKLIST:
+        if word in username_lower:
+            return False, f"Username contains inappropriate or reserved word"
+
+    return True, None
+
 def verify_recaptcha(recaptcha_response):
     """Verify reCAPTCHA response with Google"""
     secret_key = current_app.config.get('RECAPTCHA_SECRET_KEY')
@@ -882,6 +916,12 @@ def register():
         elif password != confirm_password:
             flash('Passwords do not match', 'error')
         else:
+            # Validate username
+            is_valid, error_message = validate_username(username)
+            if not is_valid:
+                flash(error_message, 'error')
+                return render_template('register.html')
+
             # Validate password strength
             is_valid, error_message = validate_password_strength(password)
             if not is_valid:
@@ -1384,6 +1424,7 @@ def logout():
     session.pop('mac_verify_user_id', None)
     session.pop('email', None)
     session.pop('picture', None)
+    session.pop('_flashes', None)  # Clear flash messages on logout
     return redirect(url_for('main.login'))
 
 @bp.route('/profile')

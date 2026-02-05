@@ -62,6 +62,16 @@
         </div>
 
         <h1 class="auth-title">Login to Your Account</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% set category, message = messages[-1] %}
+                <div class="alert alert-{{ category }}" style="background: {% if category == 'error' %}#ffebee{% else %}#e8f5e9{% endif %}; color: {% if category == 'error' %}#c62828{% else %}#2e7d32{% endif %}; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; border-left: 4px solid {% if category == 'error' %}#c62828{% else %}#2e7d32{% endif %};">
+                    {{ message }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
         <form method="POST" action="{{ url_for('main.login') }}" class="auth-form" id="loginForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="keystroke_data" id="keystroke_data" value="">
