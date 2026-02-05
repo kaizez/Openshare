@@ -1391,12 +1391,16 @@ def check_location():
     current_ip = get_client_ip()
     current_location = get_location_from_ip(current_ip)
 
+    # Skip impossible travel check for localhost/local development
+    if current_ip in ['127.0.0.1', 'localhost', '::1'] or current_location == 'Local Development':
+        return jsonify({'status': 'ok', 'location': current_location, 'note': 'localhost_skipped'})
+
     # Get last login info
     last_ip = user.last_login_ip
     last_location = user.last_login_location
 
-    # Skip if no previous location data
-    if not last_location or last_location == 'Location unavailable':
+    # Skip if no previous location data or last login was from localhost
+    if not last_location or last_location in ['Location unavailable', 'Local Development']:
         # Update location for next check
         user.last_login_ip = current_ip
         user.last_login_location = current_location

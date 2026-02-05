@@ -66,7 +66,7 @@ class Database:
                     download_count INT DEFAULT 0,
                     classification VARCHAR(50) NOT NULL,
                     detected_mime VARCHAR(100),
-                    current_otp_code VARCHAR(255),
+                    current_otp_code VARCHAR(512),
                     otp_generated_at DATETIME,
                     otp_expires_at DATETIME,
                     otp_used BOOLEAN DEFAULT FALSE,
