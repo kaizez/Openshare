@@ -77,11 +77,13 @@
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" class="form-control" required>
+                <div id="username-error" class="field-error" style="color: #c62828; font-size: 13px; margin-top: 6px; display: none;"></div>
             </div>
 
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" class="form-control" required>
+                <div id="email-error" class="field-error" style="color: #c62828; font-size: 13px; margin-top: 6px; display: none;"></div>
             </div>
 
             <div class="form-group">
@@ -163,5 +165,86 @@ function togglePassword(inputId, iconId) {
         icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
     }
 }
+
+// Inline validation for username and email
+const usernameInput = document.getElementById('username');
+const emailInput = document.getElementById('email');
+const usernameError = document.getElementById('username-error');
+const emailError = document.getElementById('email-error');
+const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+let usernameTimeout, emailTimeout;
+
+usernameInput.addEventListener('input', function() {
+    clearTimeout(usernameTimeout);
+    const username = this.value.trim();
+
+    if (username.length < 3) {
+        usernameError.style.display = 'none';
+        usernameInput.style.borderColor = '';
+        return;
+    }
+
+    usernameTimeout = setTimeout(async () => {
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('csrf_token', csrfToken);
+
+        try {
+            const response = await fetch('{{ url_for("main.check_username") }}', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (!data.available) {
+                usernameError.textContent = data.message;
+                usernameError.style.display = 'block';
+                usernameInput.style.borderColor = '#c62828';
+            } else {
+                usernameError.style.display = 'none';
+                usernameInput.style.borderColor = '#2e7d32';
+            }
+        } catch (error) {
+            console.error('Error checking username:', error);
+        }
+    }, 500);
+});
+
+emailInput.addEventListener('input', function() {
+    clearTimeout(emailTimeout);
+    const email = this.value.trim();
+
+    if (!email || !email.includes('@')) {
+        emailError.style.display = 'none';
+        emailInput.style.borderColor = '';
+        return;
+    }
+
+    emailTimeout = setTimeout(async () => {
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('csrf_token', csrfToken);
+
+        try {
+            const response = await fetch('{{ url_for("main.check_email") }}', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (!data.available) {
+                emailError.textContent = data.message;
+                emailError.style.display = 'block';
+                emailInput.style.borderColor = '#c62828';
+            } else {
+                emailError.style.display = 'none';
+                emailInput.style.borderColor = '#2e7d32';
+            }
+        } catch (error) {
+            console.error('Error checking email:', error);
+        }
+    }, 500);
+});
 </script>
 {% endblock %}

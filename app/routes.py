@@ -898,6 +898,48 @@ def login():
 
     return render_template('login.html')
 
+
+@bp.route('/check-username', methods=['POST'])
+def check_username():
+    """AJAX endpoint to check if username is available"""
+    from flask import jsonify
+    username = sanitize_input(request.form.get('username', ''))
+
+    if not username:
+        return jsonify({'available': False, 'message': 'Username is required'})
+
+    # Validate username format and blacklist
+    is_valid, error_message = validate_username(username)
+    if not is_valid:
+        return jsonify({'available': False, 'message': error_message})
+
+    # Check if username exists
+    existing = User.query.filter_by(username=username).first()
+    if existing:
+        return jsonify({'available': False, 'message': 'Username already exists'})
+
+    return jsonify({'available': True, 'message': 'Username is available'})
+
+
+@bp.route('/check-email', methods=['POST'])
+def check_email():
+    """AJAX endpoint to check if email is available"""
+    from flask import jsonify
+    email = sanitize_input(request.form.get('email', ''))
+
+    if not email:
+        return jsonify({'available': False, 'message': 'Email is required'})
+
+    # Check if email exists
+    existing = User.query.filter_by(email=email).first()
+    if existing:
+        if existing.oauth_provider == 'google':
+            return jsonify({'available': False, 'message': 'This email is linked to a Google account'})
+        return jsonify({'available': False, 'message': 'Email already in use'})
+
+    return jsonify({'available': True, 'message': 'Email is available'})
+
+
 @bp.route('/register', methods=['GET', 'POST'])
 @limiter.limit("50 per hour")
 def register():
