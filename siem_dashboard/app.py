@@ -40,18 +40,29 @@ def login():
         password = request.form.get('password', '')
 
         try:
+            print(f"[SIEM Login] Attempting login for user: {username}", flush=True)
+            print(f"[SIEM Login] Backend URL: {SIEM_URL}/api/auth/login", flush=True)
+
             resp = requests.post(
                 f'{SIEM_URL}/api/auth/login',
                 json={'username': username, 'password': password},
                 timeout=10
             )
+
+            print(f"[SIEM Login] Response status: {resp.status_code}", flush=True)
+            print(f"[SIEM Login] Response body: {resp.text[:500]}", flush=True)
+
             if resp.status_code == 200:
                 data = resp.json()
+                if 'session_token' not in data:
+                    print(f"[SIEM Login] ERROR: No session_token in response", flush=True)
+                    return render_template('login.html', error='Backend returned invalid response (no session_token)')
                 session['session_token'] = data['session_token']
-                session['username'] = data['username']
+                session['username'] = data.get('username', username)
                 return redirect(url_for('dashboard'))
-        except requests.RequestException:
-            return render_template('login.html', error='Cannot connect to SIEM backend. Check SIEM_URL.')
+        except requests.RequestException as e:
+            print(f"[SIEM Login] Connection error: {e}", flush=True)
+            return render_template('login.html', error=f'Cannot connect to SIEM backend: {e}')
 
         return render_template('login.html', error='Invalid username or password')
 
