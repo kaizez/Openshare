@@ -15,7 +15,8 @@ from app.siem_logger import SIEMLogger
 
 # SIEM logger — reports file events to the same engine the auth module uses
 _siem_url = os.environ.get('SIEM_URL', 'http://siem:5001')
-siem = SIEMLogger(_siem_url, log_source="file_transfer")
+_siem_api_key = os.environ.get('SIEM_API_KEY')
+siem = SIEMLogger(_siem_url, api_key=_siem_api_key, log_source="file_transfer")
 
 # ============================================
 # Security Module Import
