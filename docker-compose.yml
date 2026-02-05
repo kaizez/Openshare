@@ -112,6 +112,8 @@ services:
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
       # Google OAuth
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # Retention Policy
+      RETENTION_CONFIG_PATH: /app/config/retention_policy.json
       # Force Python to not buffer stdout/stderr
       PYTHONUNBUFFERED: "1"
     depends_on:
@@ -124,6 +126,7 @@ services:
       - ./FileTransfer:/app/FileTransfer
       - ./uploads:/app/uploads
       - encryption_keys:/app/keys
+      - retention_config:/app/config
     networks:
       - moveit-network
       - app_network
@@ -200,6 +203,45 @@ services:
     networks:
       - moveit-network
 
+  # ============================================
+  # Data Retention Service - Cleans up old files
+  # ============================================
+  retention-service:
+    build:
+      context: ./FileTransfer
+      dockerfile: Dockerfile.retention
+    container_name: moveit-retention
+    restart: always
+    environment:
+      # Working DB connection
+      WORKING_DB_HOST: working-db
+      WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
+      WORKING_DB_PORT: 3306
+      # Storage DB connection
+      STORAGE_DB_HOST: storage-db
+      STORAGE_DB_USER: ${STORAGE_DB_USER:-storage_user}
+      STORAGE_DB_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
+      STORAGE_DB_NAME: ${STORAGE_DB_NAME:-storagedb}
+      STORAGE_DB_PORT: 3306
+      # Retention config file path
+      RETENTION_CONFIG_PATH: /app/config/retention_policy.json
+      # Upload folder path (for filesystem cleanup)
+      UPLOAD_FOLDER: /app/uploads
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - retention_config:/app/config
+      - ./uploads:/app/uploads
+    networks:
+      - sync_network
+      - app_network
+    depends_on:
+      working-db:
+        condition: service_healthy
+      storage-db:
+        condition: service_healthy
+
 networks:
   moveit-network:
     driver: bridge
@@ -214,3 +256,4 @@ volumes:
   working_db_data:
   storage_db_data:
   encryption_keys:
+  retention_config:

@@ -66,7 +66,7 @@ class Database:
                     download_count INT DEFAULT 0,
                     classification VARCHAR(50) NOT NULL,
                     detected_mime VARCHAR(100),
-                    current_otp_code VARCHAR(16),
+                    current_otp_code VARCHAR(255),
                     otp_generated_at DATETIME,
                     otp_expires_at DATETIME,
                     otp_used BOOLEAN DEFAULT FALSE,
@@ -187,6 +187,10 @@ class Database:
                 file_id = row['file_id']
                 access_logs = self.get_access_logs(file_id)
 
+                # Decrypt OTP code for display
+                encrypted_otp = row['current_otp_code']
+                decrypted_otp = decrypt_otp(encrypted_otp) if encrypted_otp else None
+
                 result[file_id] = {
                     'original_filename': row['original_filename'],
                     'stored_filename': row['stored_filename'],
@@ -196,7 +200,7 @@ class Database:
                     'download_count': row['download_count'],
                     'classification': row['classification'],
                     'detected_mime': row['detected_mime'],
-                    'current_otp_code': row['current_otp_code'],
+                    'current_otp_code': decrypted_otp,
                     'otp_generated_at': row['otp_generated_at'].isoformat() if row['otp_generated_at'] else None,
                     'otp_expires_at': row['otp_expires_at'].isoformat() if row['otp_expires_at'] else None,
                     'otp_used': bool(row['otp_used']),
@@ -452,21 +456,27 @@ class Database:
             cursor.close()
 
     def find_file_by_otp(self, otp_code):
-        """Find file by OTP code (encrypts OTP for comparison)"""
+        """Find file by OTP code (decrypts stored OTPs for comparison)"""
         try:
             self.ensure_connection()
             cursor = self.connection.cursor(dictionary=True, buffered=True)
 
-            # Encrypt the OTP to match against stored encrypted OTP
-            encrypted_otp = encrypt_otp(otp_code)
-
+            # Get all files with OTP codes and decrypt to compare
+            # (Fernet encryption is non-deterministic, so we can't compare encrypted values)
             cursor.execute("""
-                SELECT file_id FROM file_metadata
-                WHERE current_otp_code = %s
-            """, (encrypted_otp,))
+                SELECT file_id, current_otp_code FROM file_metadata
+                WHERE current_otp_code IS NOT NULL
+            """)
 
-            row = cursor.fetchone()
-            return row['file_id'] if row else None
+            rows = cursor.fetchall()
+            for row in rows:
+                encrypted_otp = row['current_otp_code']
+                if encrypted_otp:
+                    decrypted_otp = decrypt_otp(encrypted_otp)
+                    if decrypted_otp == otp_code:
+                        return row['file_id']
+
+            return None
         except Error as e:
             print(f"Error finding file by OTP: {e}")
             return None

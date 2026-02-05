@@ -2362,3 +2362,292 @@ def admin_mac_verify():
     return render_template('admin_mac_verify.html',
                          user=user,
                          detected_mac=detected_mac)
+
+
+# ============================================
+# File Transfer Admin Routes
+# ============================================
+
+@bp.route('/admin/filetransfer')
+def admin_filetransfer():
+    """Admin File Transfer settings - retention policy configuration"""
+    from flask import jsonify
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'FileTransfer'))
+    from retention_policy import get_retention_policy
+
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+
+    user = User.query.get(session['user_id'])
+
+    if not user or not user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('filetransfer.index'))
+
+    # Get current retention policy
+    policy = get_retention_policy()
+    policy_data = policy.get_policy()
+    policy_summary = policy.get_policy_summary()
+
+    return render_template('admin_filetransfer.html',
+                         current_user=user,
+                         policy=policy_data,
+                         summary=policy_summary)
+
+
+@bp.route('/admin/filetransfer/retention', methods=['POST'])
+def admin_update_retention():
+    """Update retention policy settings - requires TOTP verification"""
+    from flask import jsonify
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'FileTransfer'))
+    from retention_policy import get_retention_policy
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    # Verify TOTP code
+    totp_code = request.form.get('totp_code')
+    if not totp_code:
+        return jsonify({'success': False, 'message': 'TOTP code is required'}), 400
+
+    if not user.mfa_secret:
+        return jsonify({'success': False, 'message': 'MFA not configured'}), 400
+
+    totp = pyotp.TOTP(user.mfa_secret)
+    if not totp.verify(totp_code, valid_window=1):
+        return jsonify({'success': False, 'message': 'Invalid TOTP code'}), 400
+
+    # Get the policy manager
+    policy = get_retention_policy()
+    updated_by = f"admin:{user.username}"
+    errors = []
+
+    # Update file retention settings
+    for storage_type in ['working_db', 'storage_db', 'filesystem']:
+        retention_key = f'retention_{storage_type}'
+        enabled_key = f'enabled_{storage_type}'
+
+        if retention_key in request.form:
+            try:
+                retention_minutes = int(request.form.get(retention_key, 0))
+                enabled = request.form.get(enabled_key) == 'on'
+                retention_seconds = retention_minutes * 60
+
+                if not policy.set_file_retention(storage_type, retention_seconds, enabled, updated_by):
+                    errors.append(f'Failed to update {storage_type}')
+            except ValueError:
+                errors.append(f'Invalid value for {storage_type}')
+
+    # Update log retention settings
+    for log_type in ['access_logs', 'failed_upload_logs', 'virus_scan_logs', 'approval_requests']:
+        retention_key = f'retention_{log_type}'
+        enabled_key = f'enabled_{log_type}'
+
+        if retention_key in request.form:
+            try:
+                retention_minutes = int(request.form.get(retention_key, 0))
+                enabled = request.form.get(enabled_key) == 'on'
+                retention_seconds = retention_minutes * 60
+
+                if not policy.set_log_retention(log_type, retention_seconds, enabled, updated_by):
+                    errors.append(f'Failed to update {log_type}')
+            except ValueError:
+                errors.append(f'Invalid value for {log_type}')
+
+    # Update cleanup interval
+    if 'cleanup_interval' in request.form:
+        try:
+            interval_minutes = int(request.form.get('cleanup_interval', 60))
+            if interval_minutes < 1:
+                interval_minutes = 1
+            if not policy.set_cleanup_interval(interval_minutes * 60, updated_by):
+                errors.append('Failed to update cleanup interval')
+        except ValueError:
+            errors.append('Invalid cleanup interval')
+
+    # Update dry run mode
+    dry_run = request.form.get('dry_run') == 'on'
+    policy.set_dry_run(dry_run, updated_by)
+
+    if errors:
+        return jsonify({'success': False, 'message': ', '.join(errors)}), 400
+
+    # Log the action
+    siem.permission_changed(
+        user_id=user.id,
+        username=user.username,
+        permission_type='retention_policy',
+        old_value='updated',
+        new_value='retention policy modified',
+        ip_address=get_client_ip(),
+        user_agent=request.headers.get('User-Agent', 'Unknown')
+    )
+
+    return jsonify({'success': True, 'message': 'Retention policy updated successfully'})
+
+
+@bp.route('/admin/filetransfer/search', methods=['GET'])
+def admin_search_files():
+    """Search for files in the metadata table"""
+    from flask import jsonify
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'FileTransfer'))
+    from db import Database
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    query = request.args.get('q', '').strip()
+    search_type = request.args.get('type', 'all')  # all, filename, file_id, hash
+
+    try:
+        db = Database()
+        db.ensure_connection()
+        cursor = db.connection.cursor(dictionary=True, buffered=True)
+
+        # Build search query based on type
+        if search_type == 'file_id' and query:
+            cursor.execute("""
+                SELECT file_id, original_filename, stored_filename, file_size, file_hash,
+                       upload_time, download_count, classification, detected_mime,
+                       scan_status, is_archived, uploaded_by, upload_ip
+                FROM file_metadata
+                WHERE file_id = %s
+            """, (query,))
+        elif search_type == 'filename' and query:
+            cursor.execute("""
+                SELECT file_id, original_filename, stored_filename, file_size, file_hash,
+                       upload_time, download_count, classification, detected_mime,
+                       scan_status, is_archived, uploaded_by, upload_ip
+                FROM file_metadata
+                WHERE original_filename LIKE %s
+                ORDER BY upload_time DESC
+                LIMIT 50
+            """, (f'%{query}%',))
+        elif search_type == 'hash' and query:
+            cursor.execute("""
+                SELECT file_id, original_filename, stored_filename, file_size, file_hash,
+                       upload_time, download_count, classification, detected_mime,
+                       scan_status, is_archived, uploaded_by, upload_ip
+                FROM file_metadata
+                WHERE file_hash LIKE %s
+                ORDER BY upload_time DESC
+                LIMIT 50
+            """, (f'%{query}%',))
+        else:
+            # Search all fields or get recent files
+            if query:
+                cursor.execute("""
+                    SELECT file_id, original_filename, stored_filename, file_size, file_hash,
+                           upload_time, download_count, classification, detected_mime,
+                           scan_status, is_archived, uploaded_by, upload_ip
+                    FROM file_metadata
+                    WHERE file_id LIKE %s
+                       OR original_filename LIKE %s
+                       OR file_hash LIKE %s
+                    ORDER BY upload_time DESC
+                    LIMIT 50
+                """, (f'%{query}%', f'%{query}%', f'%{query}%'))
+            else:
+                # Return recent files if no query
+                cursor.execute("""
+                    SELECT file_id, original_filename, stored_filename, file_size, file_hash,
+                           upload_time, download_count, classification, detected_mime,
+                           scan_status, is_archived, uploaded_by, upload_ip
+                    FROM file_metadata
+                    ORDER BY upload_time DESC
+                    LIMIT 20
+                """)
+
+        files = cursor.fetchall()
+        cursor.close()
+
+        # Format the results
+        results = []
+        for f in files:
+            results.append({
+                'file_id': f['file_id'],
+                'original_filename': f['original_filename'],
+                'stored_filename': f['stored_filename'],
+                'file_size': f['file_size'],
+                'file_hash': f['file_hash'],
+                'upload_time': f['upload_time'].isoformat() if f['upload_time'] else None,
+                'download_count': f['download_count'],
+                'classification': f['classification'],
+                'detected_mime': f['detected_mime'],
+                'scan_status': f['scan_status'],
+                'is_archived': bool(f['is_archived']),
+                'uploaded_by': f['uploaded_by'],
+                'upload_ip': f['upload_ip']
+            })
+
+        return jsonify({'success': True, 'files': results, 'count': len(results)})
+
+    except Exception as e:
+        print(f"[Admin] Error searching files: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/admin/filetransfer/file/<file_id>/logs', methods=['GET'])
+def admin_get_file_logs(file_id):
+    """Get access logs for a specific file"""
+    from flask import jsonify
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'FileTransfer'))
+    from db import Database
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    try:
+        db = Database()
+        db.ensure_connection()
+        cursor = db.connection.cursor(dictionary=True, buffered=True)
+
+        cursor.execute("""
+            SELECT id, file_id, timestamp, status, details, ip_address
+            FROM access_logs
+            WHERE file_id = %s
+            ORDER BY timestamp DESC
+            LIMIT 100
+        """, (file_id,))
+
+        logs = cursor.fetchall()
+        cursor.close()
+
+        # Format the results
+        results = []
+        for log in logs:
+            results.append({
+                'id': log['id'],
+                'file_id': log['file_id'],
+                'timestamp': log['timestamp'].isoformat() if log['timestamp'] else None,
+                'status': log['status'],
+                'details': log['details'],
+                'ip_address': log['ip_address']
+            })
+
+        return jsonify({'success': True, 'logs': results, 'count': len(results)})
+
+    except Exception as e:
+        print(f"[Admin] Error getting file logs: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500

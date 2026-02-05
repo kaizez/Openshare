@@ -16,6 +16,11 @@ csrf.exempt(filetransfer_bp)
 
 app.register_blueprint(filetransfer_bp, url_prefix='')
 
+# Register Retention Policy API blueprint (for future admin page)
+from FileTransfer.retention_api import retention_bp
+csrf.exempt(retention_bp)
+app.register_blueprint(retention_bp)
+
 # Debug: Catch 400 errors to see what's causing them
 @app.errorhandler(400)
 def handle_400(e):
