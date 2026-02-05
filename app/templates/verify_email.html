@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Email - MoveIt{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('main.register') }}" class="home-button">
+    <svg class="home-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" fill="none"/>
+    </svg>
+    <span class="home-text">Back to Register</span>
+</a>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <h2 class="brand-name">MoveIt</h2>
+        </div>
+
+        <div class="email-icon" style="text-align: center; margin: 20px 0;">
+            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #007aff, #5856d6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+            </div>
+        </div>
+
+        <h1 class="auth-title">Verify Your Email</h1>
+        <p style="color: #718096; text-align: center; margin-bottom: 24px; font-size: 14px;">
+            We've sent a 6-digit code to<br>
+            <strong style="color: #2d3748;">{{ email }}</strong>
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% set category, message = messages[-1] %}
+                <div class="alert alert-{{ category }}" style="background: {% if category == 'error' %}#ffebee{% else %}#e8f5e9{% endif %}; color: {% if category == 'error' %}#c62828{% else %}#2e7d32{% endif %}; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; border-left: 4px solid {% if category == 'error' %}#c62828{% else %}#2e7d32{% endif %};">
+                    {{ message }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('main.verify_email') }}" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="otp">Verification Code</label>
+                <input type="text" id="otp" name="otp" class="form-control otp-input"
+                       placeholder="000000" maxlength="6" required
+                       style="font-size: 24px; text-align: center; letter-spacing: 12px; font-weight: 600;">
+            </div>
+
+            <button type="submit" class="btn btn-primary">Verify Email</button>
+        </form>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <p style="color: #718096; font-size: 14px; margin-bottom: 12px;">Didn't receive the code?</p>
+            <button type="button" onclick="resendCode()" id="resendBtn" class="btn btn-outline" style="font-size: 14px;">
+                Resend Code
+            </button>
+            <p id="resendStatus" style="color: #718096; font-size: 13px; margin-top: 12px; display: none;"></p>
+        </div>
+
+        <div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <p style="color: #718096; font-size: 13px;">
+                Code expires in <span id="countdown" style="font-weight: 600; color: #007aff;">10:00</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+.otp-input:focus {
+    outline: none;
+    border-color: #007aff;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid #e2e8f0;
+    color: #4a5568;
+    padding: 10px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-outline:hover {
+    border-color: #007aff;
+    color: #007aff;
+}
+
+.btn-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+</style>
+
+<script>
+const csrfToken = "{{ csrf_token() }}";
+
+// Auto-focus and format OTP input
+const otpInput = document.getElementById('otp');
+otpInput.focus();
+otpInput.addEventListener('input', function(e) {
+    this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+});
+
+// Countdown timer
+let timeLeft = 10 * 60; // 10 minutes in seconds
+const countdownEl = document.getElementById('countdown');
+
+function updateCountdown() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    countdownEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    if (timeLeft <= 60) {
+        countdownEl.style.color = '#e53e3e';
+    }
+
+    if (timeLeft > 0) {
+        timeLeft--;
+        setTimeout(updateCountdown, 1000);
+    } else {
+        countdownEl.textContent = 'Expired';
+        countdownEl.style.color = '#e53e3e';
+    }
+}
+updateCountdown();
+
+// Resend code function
+async function resendCode() {
+    const btn = document.getElementById('resendBtn');
+    const status = document.getElementById('resendStatus');
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    try {
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+
+        const response = await fetch('{{ url_for("main.resend_verification") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            status.textContent = 'New code sent! Check your email.';
+            status.style.color = '#2e7d32';
+            status.style.display = 'block';
+
+            // Reset countdown
+            timeLeft = 10 * 60;
+            countdownEl.style.color = '#007aff';
+
+            // Disable resend for 60 seconds
+            let cooldown = 60;
+            const interval = setInterval(() => {
+                btn.textContent = `Resend in ${cooldown}s`;
+                cooldown--;
+                if (cooldown < 0) {
+                    clearInterval(interval);
+                    btn.textContent = 'Resend Code';
+                    btn.disabled = false;
+                }
+            }, 1000);
+        } else {
+            status.textContent = data.message;
+            status.style.color = '#e53e3e';
+            status.style.display = 'block';
+            btn.textContent = 'Resend Code';
+            btn.disabled = false;
+        }
+    } catch (error) {
+        status.textContent = 'Failed to send code';
+        status.style.color = '#e53e3e';
+        status.style.display = 'block';
+        btn.textContent = 'Resend Code';
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

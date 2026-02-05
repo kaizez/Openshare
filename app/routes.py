@@ -943,6 +943,8 @@ def check_email():
 @bp.route('/register', methods=['GET', 'POST'])
 @limiter.limit("50 per hour")
 def register():
+    import random
+
     if request.method == 'POST':
         username = sanitize_input(request.form.get('username'))
         email = sanitize_input(request.form.get('email'))
@@ -962,7 +964,7 @@ def register():
             is_valid, error_message = validate_username(username)
             if not is_valid:
                 flash(error_message, 'error')
-                return render_template('register.html')
+                return render_template('register.html', recaptcha_site_key=current_app.config.get('RECAPTCHA_SITE_KEY'))
 
             # Validate password strength
             is_valid, error_message = validate_password_strength(password)
@@ -982,46 +984,155 @@ def register():
                     else:
                         flash('Email already exists. Please sign in or use a different email.', 'error')
                 else:
-                    # Get IP and location
-                    ip_address = get_client_ip()
-                    location = get_location_from_ip(ip_address)
+                    # Generate 6-digit OTP for email verification
+                    otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
 
-                    # Create new user with Argon2id hashed password and MFA enabled
-                    new_user = User(
-                        username=username,
-                        email=email,
-                        last_login_ip=ip_address,
-                        last_login_location=location
-                    )
-                    new_user.set_password(password)
+                    # Store pending registration data in session
+                    session['pending_registration'] = {
+                        'username': username,
+                        'email': email,
+                        'password': password,
+                        'otp': otp,
+                        'otp_expiry': (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+                    }
 
-                    # Generate MFA secret and enable MFA by default
-                    new_user.mfa_secret = pyotp.random_base32()
-                    new_user.mfa_enabled = True
-
-                    db.session.add(new_user)
-                    db.session.commit()
-
-                    # Log user creation to SIEM
-                    siem.user_created(
-                        admin_id="self-registration",
-                        new_user_id=username,
-                        ip=ip_address,
-                        user_role="standard"
-                    )
-
-                    # Send account creation email
-                    send_account_creation_email(email, username, ip_address, location)
-
-                    # Log the user in temporarily to set up MFA
-                    session['user'] = new_user.username
-                    session['user_id'] = new_user.id
-                    session['email'] = new_user.email
-                    session['needs_mfa_setup'] = True
-
-                    return redirect(url_for('main.mfa_setup_required'))
+                    # Send OTP email
+                    try:
+                        msg = Message(
+                            'Verify Your Email - MoveIt',
+                            recipients=[email]
+                        )
+                        msg.html = f'''
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                            <h2 style="color: #007aff;">Welcome to MoveIt!</h2>
+                            <p>Hi {username},</p>
+                            <p>Thank you for registering. Please verify your email address using the code below:</p>
+                            <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #007aff;">{otp}</span>
+                            </div>
+                            <p>This code expires in <strong>10 minutes</strong>.</p>
+                            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                            <p style="color: #718096; font-size: 12px;">If you did not create this account, please ignore this email.</p>
+                        </div>
+                        '''
+                        mail.send(msg)
+                        return redirect(url_for('main.verify_email'))
+                    except Exception as e:
+                        print(f"Failed to send verification email: {e}")
+                        flash('Failed to send verification email. Please try again.', 'error')
 
     return render_template('register.html', recaptcha_site_key=current_app.config.get('RECAPTCHA_SITE_KEY'))
+
+
+@bp.route('/verify-email', methods=['GET', 'POST'])
+def verify_email():
+    """Verify email with OTP before completing registration"""
+    # Check if there's pending registration
+    if 'pending_registration' not in session:
+        flash('Please register first', 'error')
+        return redirect(url_for('main.register'))
+
+    pending = session['pending_registration']
+
+    if request.method == 'POST':
+        otp = request.form.get('otp', '').strip()
+
+        # Check OTP expiry
+        otp_expiry = datetime.fromisoformat(pending['otp_expiry'])
+        if datetime.utcnow() > otp_expiry:
+            session.pop('pending_registration', None)
+            flash('Verification code expired. Please register again.', 'error')
+            return redirect(url_for('main.register'))
+
+        # Verify OTP
+        if otp != pending['otp']:
+            flash('Invalid verification code', 'error')
+        else:
+            # OTP verified - create the user account
+            ip_address = get_client_ip()
+            location = get_location_from_ip(ip_address)
+
+            new_user = User(
+                username=pending['username'],
+                email=pending['email'],
+                email_verified=True,
+                last_login_ip=ip_address,
+                last_login_location=location
+            )
+            new_user.set_password(pending['password'])
+
+            # Generate MFA secret and enable MFA by default
+            new_user.mfa_secret = pyotp.random_base32()
+            new_user.mfa_enabled = True
+
+            db.session.add(new_user)
+            db.session.commit()
+
+            # Clear pending registration
+            session.pop('pending_registration', None)
+
+            # Log user creation to SIEM
+            siem.user_created(
+                admin_id="self-registration",
+                new_user_id=pending['username'],
+                ip=ip_address,
+                user_role="standard"
+            )
+
+            # Send account creation email
+            send_account_creation_email(pending['email'], pending['username'], ip_address, location)
+
+            # Log the user in temporarily to set up MFA
+            session['user'] = new_user.username
+            session['user_id'] = new_user.id
+            session['email'] = new_user.email
+            session['needs_mfa_setup'] = True
+
+            flash('Email verified successfully!', 'success')
+            return redirect(url_for('main.mfa_setup_required'))
+
+    return render_template('verify_email.html', email=pending['email'])
+
+
+@bp.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend email verification OTP"""
+    import random
+    from flask import jsonify
+
+    if 'pending_registration' not in session:
+        return jsonify({'success': False, 'message': 'No pending registration'}), 400
+
+    pending = session['pending_registration']
+
+    # Generate new OTP
+    otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    pending['otp'] = otp
+    pending['otp_expiry'] = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    session['pending_registration'] = pending
+
+    # Send new OTP email
+    try:
+        msg = Message(
+            'Verify Your Email - MoveIt',
+            recipients=[pending['email']]
+        )
+        msg.html = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #007aff;">Email Verification</h2>
+            <p>Hi {pending['username']},</p>
+            <p>Here is your new verification code:</p>
+            <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #007aff;">{otp}</span>
+            </div>
+            <p>This code expires in <strong>10 minutes</strong>.</p>
+        </div>
+        '''
+        mail.send(msg)
+        return jsonify({'success': True, 'message': 'Verification code sent'})
+    except Exception as e:
+        print(f"Failed to resend verification email: {e}")
+        return jsonify({'success': False, 'message': 'Failed to send email'}), 500
 
 @bp.route('/oauth-confirm', methods=['GET', 'POST'])
 def oauth_confirm():
@@ -2064,6 +2175,220 @@ def mfa_disable():
 
     return jsonify({'success': True, 'message': 'MFA has been disabled'})
 
+
+@bp.route('/send-secondary-verification', methods=['POST'])
+def send_secondary_verification():
+    """Send verification code to secondary email"""
+    from flask import jsonify
+    import random
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    secondary_email = request.form.get('email', '').strip()
+
+    if not secondary_email:
+        return jsonify({'success': False, 'message': 'Email is required'}), 400
+
+    # Validate email format
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', secondary_email):
+        return jsonify({'success': False, 'message': 'Invalid email format'}), 400
+
+    # Can't use same email as primary
+    if secondary_email.lower() == user.email.lower():
+        return jsonify({'success': False, 'message': 'Secondary email must be different from your primary email'}), 400
+
+    # Generate 6-digit OTP
+    otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+
+    # Store in session for verification
+    session['secondary_email_pending'] = secondary_email
+    session['secondary_email_otp'] = otp
+    session['secondary_email_otp_expiry'] = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+
+    # Send OTP email
+    try:
+        msg = Message(
+            'Verify Secondary Email - MoveIt',
+            recipients=[secondary_email]
+        )
+        msg.html = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #007aff;">Verify Your Secondary Email</h2>
+            <p>Hi,</p>
+            <p>You are adding this email as a secondary verification email for the MoveIt account: <strong>{user.username}</strong></p>
+            <p>Use the code below to verify:</p>
+            <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #007aff;">{otp}</span>
+            </div>
+            <p>This code expires in <strong>10 minutes</strong>.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+            <p style="color: #718096; font-size: 12px;">If you did not request this, please ignore this email.</p>
+        </div>
+        '''
+        mail.send(msg)
+        return jsonify({'success': True, 'message': 'Verification code sent'})
+    except Exception as e:
+        print(f"Failed to send secondary email verification: {e}")
+        return jsonify({'success': False, 'message': 'Failed to send verification email'}), 500
+
+
+@bp.route('/verify-secondary-email', methods=['POST'])
+def verify_secondary_email():
+    """Verify secondary email with OTP"""
+    from flask import jsonify
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    otp = request.form.get('otp', '').strip()
+
+    if not otp:
+        return jsonify({'success': False, 'message': 'Verification code is required'}), 400
+
+    # Check if there's a pending verification
+    if 'secondary_email_pending' not in session:
+        return jsonify({'success': False, 'message': 'No pending verification. Please enter email first.'}), 400
+
+    # Check OTP expiry
+    otp_expiry = datetime.fromisoformat(session.get('secondary_email_otp_expiry', '2000-01-01'))
+    if datetime.utcnow() > otp_expiry:
+        session.pop('secondary_email_pending', None)
+        session.pop('secondary_email_otp', None)
+        session.pop('secondary_email_otp_expiry', None)
+        return jsonify({'success': False, 'message': 'Verification code expired. Please try again.'}), 400
+
+    # Verify OTP
+    if otp != session.get('secondary_email_otp'):
+        return jsonify({'success': False, 'message': 'Invalid verification code'}), 400
+
+    # OTP verified - save secondary email
+    secondary_email = session['secondary_email_pending']
+    user.secondary_email = secondary_email
+    user.secondary_email_verified = True
+    user.secondary_verification_enabled = True
+    db.session.commit()
+
+    # Clear session data
+    session.pop('secondary_email_pending', None)
+    session.pop('secondary_email_otp', None)
+    session.pop('secondary_email_otp_expiry', None)
+
+    # Send confirmation to both emails
+    try:
+        ip_address = get_client_ip()
+        location = get_location_from_ip(ip_address)
+
+        # Notify primary email
+        msg = Message(
+            'Secondary Email Verified - MoveIt',
+            recipients=[user.email]
+        )
+        msg.html = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #007aff;">Secondary Email Added</h2>
+            <p>Hi {user.username},</p>
+            <p>A secondary verification email has been added to your account:</p>
+            <p style="background: #f7fafc; padding: 12px; border-radius: 8px; text-align: center;"><strong>{secondary_email}</strong></p>
+            <p>This email will receive alerts for:</p>
+            <ul>
+                <li>Password changes</li>
+                <li>Logins from new devices or locations</li>
+                <li>Security setting changes</li>
+            </ul>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+            <p style="color: #718096; font-size: 12px;">This action was performed from IP: {ip_address} ({location})</p>
+        </div>
+        '''
+        mail.send(msg)
+
+        # Notify secondary email
+        msg2 = Message(
+            'You are now a verification contact - MoveIt',
+            recipients=[secondary_email]
+        )
+        msg2.html = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #34c759;">Email Verified Successfully</h2>
+            <p>Hi,</p>
+            <p>Your email has been verified as a secondary contact for the MoveIt account: <strong>{user.username}</strong></p>
+            <p>You will receive security alerts when sensitive actions are performed on this account.</p>
+        </div>
+        '''
+        mail.send(msg2)
+    except Exception as e:
+        print(f"Failed to send confirmation emails: {e}")
+
+    return jsonify({'success': True, 'message': 'Secondary email verified successfully', 'email': secondary_email})
+
+
+@bp.route('/disable-secondary-verification', methods=['POST'])
+def disable_secondary_verification():
+    """Disable secondary email verification"""
+    from flask import jsonify
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    old_secondary_email = user.secondary_email
+
+    user.secondary_verification_enabled = False
+    user.secondary_email = None
+    user.secondary_email_verified = False
+    db.session.commit()
+
+    # Notify both emails
+    try:
+        ip_address = get_client_ip()
+        location = get_location_from_ip(ip_address)
+
+        msg = Message(
+            'Secondary Verification Disabled - MoveIt',
+            recipients=[user.email]
+        )
+        msg.html = f'''
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #ff9500;">Security Setting Updated</h2>
+            <p>Hi {user.username},</p>
+            <p>Secondary email verification has been <strong>disabled</strong> for your account.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+            <p style="color: #718096; font-size: 12px;">This action was performed from IP: {ip_address} ({location})</p>
+        </div>
+        '''
+        mail.send(msg)
+
+        if old_secondary_email:
+            msg2 = Message(
+                'Removed as verification contact - MoveIt',
+                recipients=[old_secondary_email]
+            )
+            msg2.html = f'''
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #ff9500;">Verification Contact Removed</h2>
+                <p>Hi,</p>
+                <p>You have been removed as a secondary verification contact for the MoveIt account: <strong>{user.username}</strong></p>
+                <p>You will no longer receive security alerts for this account.</p>
+            </div>
+            '''
+            mail.send(msg2)
+    except Exception as e:
+        print(f"Failed to send notification emails: {e}")
+
+    return jsonify({'success': True, 'message': 'Secondary verification disabled'})
+
+
 @bp.route('/admin/devices', methods=['GET'])
 def admin_devices():
     """Admin device management page"""
@@ -2443,8 +2768,9 @@ def delete_user(user_id):
     if target_user.id == current_user.id:
         return jsonify({'success': False, 'message': 'Cannot delete your own account'}), 403
 
-    # Store username for logging before deletion
+    # Store username and email for logging before deletion
     deleted_username = target_user.username
+    deleted_email = target_user.email
 
     # Log to SIEM before deletion
     siem.user_deleted(
@@ -2452,6 +2778,9 @@ def delete_user(user_id):
         deleted_user_id=deleted_username,
         ip=get_client_ip()
     )
+
+    # Delete user's login history first (foreign key constraint)
+    LoginHistory.query.filter_by(user_id=target_user.id).delete()
 
     # Delete the user
     db.session.delete(target_user)

@@ -59,6 +59,14 @@ class User(db.Model):
     # Keystroke dynamics profile (JSON)
     keystroke_profile = db.Column(db.Text, nullable=True)
 
+    # Email verification
+    email_verified = db.Column(db.Boolean, default=False)
+
+    # Secondary account verification (sends email alerts for sensitive actions)
+    secondary_verification_enabled = db.Column(db.Boolean, default=False)
+    secondary_email = db.Column(db.String(120), nullable=True)
+    secondary_email_verified = db.Column(db.Boolean, default=False)
+
     def set_password(self, password):
         self.password_hash = ph.hash(password)
 

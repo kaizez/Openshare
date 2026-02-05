@@ -370,6 +370,76 @@ input:checked + .toggle-slider:before {
                 </label>
             </div>
 
+            <div class="setting-item" style="flex-direction: column; align-items: stretch;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="setting-info">
+                        <p class="setting-label">Secondary Email Verification</p>
+                        <p class="setting-description">Receive email alerts for sensitive account actions</p>
+                    </div>
+                    {% if user.secondary_verification_enabled and user.secondary_email_verified %}
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="color: #34c759; font-size: 14px; display: flex; align-items: center; gap: 4px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            Verified
+                        </span>
+                        <button type="button" onclick="toggleSecondaryPanel()" class="change-password-btn" style="font-size: 14px;">Edit</button>
+                    </div>
+                    {% else %}
+                    <button type="button" onclick="toggleSecondaryPanel()" class="change-password-btn">Setup</button>
+                    {% endif %}
+                </div>
+
+                {% if user.secondary_verification_enabled and user.secondary_email %}
+                <div style="margin-top: 8px; padding: 8px 12px; background: #f0fff4; border-radius: 8px; font-size: 13px; color: #276749;">
+                    Alerts sent to: <strong>{{ user.secondary_email }}</strong>
+                </div>
+                {% endif %}
+
+                <!-- Secondary Email Setup Panel -->
+                <div id="secondaryEmailPanel" style="display: none; margin-top: 16px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <div id="emailInputSection">
+                        <p style="font-size: 14px; color: #4a5568; margin-bottom: 12px;">Enter the email address that will receive security alerts:</p>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="email" id="secondaryEmailInput" placeholder="backup@example.com"
+                                   style="flex: 1; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px;"
+                                   value="{{ user.secondary_email or '' }}">
+                            <button type="button" onclick="sendSecondaryCode()" id="sendCodeBtn"
+                                    style="padding: 12px 20px; background: #007aff; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                                Send Code
+                            </button>
+                        </div>
+                        <p id="emailError" style="color: #e53e3e; font-size: 13px; margin-top: 8px; display: none;"></p>
+                    </div>
+
+                    <div id="verifyCodeSection" style="display: none; margin-top: 16px;">
+                        <p style="font-size: 14px; color: #4a5568; margin-bottom: 12px;">Enter the 6-digit code sent to <strong id="sentToEmail"></strong>:</p>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="secondaryOtpInput" placeholder="000000" maxlength="6"
+                                   style="flex: 1; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 20px; text-align: center; letter-spacing: 8px; font-weight: 600;">
+                            <button type="button" onclick="verifySecondaryCode()" id="verifyCodeBtn"
+                                    style="padding: 12px 20px; background: #34c759; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                                Verify
+                            </button>
+                        </div>
+                        <p id="otpError" style="color: #e53e3e; font-size: 13px; margin-top: 8px; display: none;"></p>
+                        <p style="font-size: 13px; color: #718096; margin-top: 12px;">
+                            Didn't receive it? <button type="button" onclick="sendSecondaryCode()" style="background: none; border: none; color: #007aff; cursor: pointer; font-size: 13px;">Resend code</button>
+                        </p>
+                    </div>
+
+                    {% if user.secondary_verification_enabled %}
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+                        <button type="button" onclick="disableSecondaryVerification()"
+                                style="padding: 10px 16px; background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                            Disable Secondary Verification
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
             {% if not user.oauth_provider %}
             <div class="setting-item">
                 <div class="setting-info">
@@ -519,6 +589,143 @@ function toggleMFA(checkbox) {
         showModal();
     }
 }
+
+// Secondary Email Verification Functions
+function toggleSecondaryPanel() {
+    const panel = document.getElementById('secondaryEmailPanel');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+async function sendSecondaryCode() {
+    const email = document.getElementById('secondaryEmailInput').value.trim();
+    const errorEl = document.getElementById('emailError');
+    const btn = document.getElementById('sendCodeBtn');
+
+    if (!email) {
+        errorEl.textContent = 'Please enter an email address';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    errorEl.style.display = 'none';
+
+    try {
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('csrf_token', '{{ csrf_token() }}');
+
+        const response = await fetch("{{ url_for('main.send_secondary_verification') }}", {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Show verification code section
+            document.getElementById('emailInputSection').style.display = 'none';
+            document.getElementById('verifyCodeSection').style.display = 'block';
+            document.getElementById('sentToEmail').textContent = email;
+            document.getElementById('secondaryOtpInput').value = '';
+            document.getElementById('secondaryOtpInput').focus();
+        } else {
+            errorEl.textContent = result.message;
+            errorEl.style.display = 'block';
+        }
+    } catch (error) {
+        errorEl.textContent = 'An error occurred. Please try again.';
+        errorEl.style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Send Code';
+}
+
+async function verifySecondaryCode() {
+    const otp = document.getElementById('secondaryOtpInput').value.trim();
+    const errorEl = document.getElementById('otpError');
+    const btn = document.getElementById('verifyCodeBtn');
+
+    if (!otp || otp.length !== 6) {
+        errorEl.textContent = 'Please enter the 6-digit code';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+    errorEl.style.display = 'none';
+
+    try {
+        const formData = new FormData();
+        formData.append('otp', otp);
+        formData.append('csrf_token', '{{ csrf_token() }}');
+
+        const response = await fetch("{{ url_for('main.verify_secondary_email') }}", {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Reload page to show verified status
+            window.location.reload();
+        } else {
+            errorEl.textContent = result.message;
+            errorEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Verify';
+        }
+    } catch (error) {
+        errorEl.textContent = 'An error occurred. Please try again.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Verify';
+    }
+}
+
+async function disableSecondaryVerification() {
+    if (!confirm('Are you sure you want to disable secondary email verification?')) {
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
+
+        const response = await fetch("{{ url_for('main.disable_secondary_verification') }}", {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert(result.message || 'Failed to disable');
+        }
+    } catch (error) {
+        alert('An error occurred. Please try again.');
+    }
+}
+
+// Auto-format OTP input
+document.addEventListener('DOMContentLoaded', function() {
+    const otpInput = document.getElementById('secondaryOtpInput');
+    if (otpInput) {
+        otpInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+        });
+    }
+});
 
 function showModal() {
     const modal = document.getElementById('disableMfaModal');
