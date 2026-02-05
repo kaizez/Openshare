@@ -727,11 +727,12 @@
                 <ul class="login-list">
                     {% for login in login_history %}
                     {% set sgt_time = login.timestamp + timedelta(hours=8) %}
+                    {% set display_location = 'Singapore' if (not login.location or login.location in ['Unknown location', 'Location unavailable', 'Local Development', 'Unknown']) else login.location %}
                     <li class="login-item">
                         <div class="login-indicator {{ 'safe' if login.risk_level == 'low' else 'warning' if login.risk_level == 'medium' else 'danger' }}"></div>
                         <div class="login-details">
                             <div class="login-time">{{ sgt_time.strftime('%b %d, %Y at %I:%M %p') }} SGT</div>
-                            <div class="login-meta">{{ login.location or 'Unknown location' }} • {{ login.ip_address or 'Unknown IP' }}</div>
+                            <div class="login-meta">{{ display_location }} • {{ login.ip_address or 'Unknown IP' }}</div>
                         </div>
                         <span class="login-badge {{ 'safe' if login.risk_level == 'low' else 'warning' if login.risk_level == 'medium' else 'danger' }}">
                             {{ 'Safe' if login.risk_level == 'low' else 'Warning' if login.risk_level == 'medium' else 'Risk' }}
