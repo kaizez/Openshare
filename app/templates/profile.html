@@ -3,79 +3,947 @@
 {% block title %}Profile - MoveIt{% endblock %}
 
 {% block content %}
-<a href="{{ url_for('filetransfer.index') }}" class="home-button">
-    <svg class="home-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-    </svg>
-    <span class="home-text">Back to Home</span>
-</a>
+<style>
+    * { box-sizing: border-box; }
 
-<div class="auth-container" style="margin-top: 50px;">
-    <div class="auth-card" style="max-width: 700px;">
-        <h1 class="auth-title">My Profile</h1>
+    .profile-wrapper {
+        min-height: 100vh;
+        padding: 40px 20px;
+    }
 
-        <div style="background: white; border-radius: 8px; padding: 30px; margin-top: 20px;">
-            {% if user.profile_picture_url %}
-            <div style="text-align: center; margin-bottom: 30px;">
-                <img src="{{ user.profile_picture_url }}" alt="Profile Picture" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid #48bb78;">
-            </div>
-            {% endif %}
+    .profile-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
 
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Username</h3>
-                <p style="font-size: 18px; color: #2d3748; margin: 0;">{{ user.username }}</p>
-            </div>
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #4a5568;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 24px;
+        transition: all 0.2s;
+    }
 
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Email</h3>
-                <p style="font-size: 18px; color: #2d3748; margin: 0;">{{ user.email }}</p>
-            </div>
+    .back-btn:hover {
+        color: #007aff;
+    }
 
-            {% if user.oauth_provider %}
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Sign-in Method</h3>
-                <p style="font-size: 18px; color: #2d3748; margin: 0;">
-                    <span style="background-color: #e6fffa; color: #047857; padding: 5px 12px; border-radius: 20px; display: inline-block;">
-                        {{ user.oauth_provider.title() }} OAuth
-                    </span>
-                </p>
-            </div>
-            {% endif %}
+    /* Profile Header Card */
+    .profile-header-card {
+        background: white;
+        border-radius: 24px;
+        padding: 40px 24px 24px;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 0;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
 
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Account Created</h3>
-                <p style="font-size: 18px; color: #2d3748; margin: 0;">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</p>
-            </div>
+    .avatar-wrapper {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 16px;
+    }
 
-            {% if user.last_login_ip %}
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Last Login From</h3>
-                <p style="font-size: 18px; color: #2d3748; margin: 0;">
-                    {{ user.last_login_location or 'Unknown' }}
-                    <span style="color: #718096; font-size: 14px;">({{ user.last_login_ip }})</span>
-                </p>
-            </div>
-            {% endif %}
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #007aff, #5856d6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        font-weight: 600;
+        color: white;
+        border: 4px solid white;
+        box-shadow: 0 8px 24px rgba(0, 122, 255, 0.3);
+        overflow: hidden;
+    }
 
-            <div style="margin-bottom: 25px;">
-                <h3 style="color: #2d3748; margin-bottom: 5px; font-size: 14px; text-transform: uppercase; color: #718096;">Two-Factor Authentication</h3>
-                <p style="font-size: 18px; color: #2d3748; margin: 0;">
-                    {% if user.mfa_enabled %}
-                    <span style="background-color: #c6f6d5; color: #276749; padding: 5px 12px; border-radius: 20px; display: inline-block;">
-                        ✓ Enabled
-                    </span>
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-edit-btn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 32px;
+        height: 32px;
+        background: #007aff;
+        border: 3px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .avatar-edit-btn:hover {
+        background: #0066d6;
+        transform: scale(1.1);
+    }
+
+    .avatar-edit-btn svg {
+        color: white;
+        width: 14px;
+        height: 14px;
+    }
+
+    .profile-name {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1a202c;
+        margin: 0 0 4px 0;
+    }
+
+    .profile-email {
+        color: #718096;
+        font-size: 14px;
+        margin: 0 0 12px 0;
+    }
+
+    .profile-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #edf2f7;
+        color: #4a5568;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    /* Tab Navigation */
+    .tab-nav {
+        display: flex;
+        background: white;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 0;
+    }
+
+    .tab-btn {
+        flex: 1;
+        padding: 16px 8px;
+        background: none;
+        border: none;
+        font-size: 13px;
+        font-weight: 600;
+        color: #718096;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .tab-btn:hover {
+        color: #4a5568;
+        background: #f7fafc;
+    }
+
+    .tab-btn.active {
+        color: #007aff;
+    }
+
+    .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 3px;
+        background: #007aff;
+        border-radius: 3px 3px 0 0;
+    }
+
+    .tab-icon {
+        font-size: 20px;
+    }
+
+    /* Tab Content */
+    .tab-content {
+        background: white;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .tab-panel {
+        display: none;
+        padding: 24px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .tab-panel.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 16px 8px;
+        background: #f7fafc;
+        border-radius: 12px;
+    }
+
+    .stat-icon {
+        font-size: 24px;
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1a202c;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        color: #718096;
+        text-transform: uppercase;
+    }
+
+    /* Security Items */
+    .security-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .security-item {
+        padding: 16px;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .security-item.success { background: #f0fff4; border: 1px solid #c6f6d5; }
+    .security-item.warning { background: #fffaf0; border: 1px solid #feebc8; }
+    .security-item.danger { background: #fff5f5; border: 1px solid #fed7d7; }
+
+    .security-icon {
+        font-size: 24px;
+        margin-bottom: 4px;
+    }
+
+    .security-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a202c;
+    }
+
+    .security-label {
+        font-size: 10px;
+        color: #718096;
+        text-transform: uppercase;
+        margin-top: 2px;
+    }
+
+    /* Login History */
+    .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #4a5568;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .login-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .login-item {
+        display: flex;
+        align-items: center;
+        padding: 14px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+        background: #f8fafc;
+        transition: all 0.2s;
+    }
+
+    .login-item:hover {
+        background: #edf2f7;
+    }
+
+    .login-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .login-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 14px;
+        flex-shrink: 0;
+    }
+
+    .login-indicator.safe { background: #48bb78; }
+    .login-indicator.warning { background: #ed8936; }
+    .login-indicator.danger { background: #f56565; }
+
+    .login-details { flex: 1; }
+
+    .login-time {
+        font-size: 14px;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    .login-meta {
+        font-size: 12px;
+        color: #718096;
+        margin-top: 2px;
+    }
+
+    .login-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .login-badge.safe { background: #c6f6d5; color: #276749; }
+    .login-badge.warning { background: #feebc8; color: #c05621; }
+    .login-badge.danger { background: #fed7d7; color: #c53030; }
+
+    /* Settings Items */
+    .settings-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .settings-item {
+        display: flex;
+        align-items: center;
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+        text-decoration: none;
+        color: #2d3748;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+        width: 100%;
+        text-align: left;
+        font-size: 15px;
+    }
+
+    .settings-item:hover {
+        background: #edf2f7;
+    }
+
+    .settings-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 14px;
+        font-size: 18px;
+    }
+
+    .settings-icon.blue { background: #ebf4ff; }
+    .settings-icon.purple { background: #faf5ff; }
+    .settings-icon.green { background: #f0fff4; }
+    .settings-icon.red { background: #fff5f5; }
+
+    .settings-text {
+        flex: 1;
+    }
+
+    .settings-title {
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    .settings-desc {
+        font-size: 12px;
+        color: #718096;
+        margin-top: 2px;
+    }
+
+    .settings-arrow {
+        color: #a0aec0;
+    }
+
+    .settings-item.danger {
+        background: #fff5f5;
+        border: 1px solid #fed7d7;
+    }
+
+    .settings-item.danger:hover {
+        background: #fed7d7;
+    }
+
+    .settings-item.danger .settings-title {
+        color: #c53030;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 380px;
+        box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 20px;
+        background: #fff5f5;
+        text-align: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: #c53030;
+        font-size: 18px;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .modal-body p {
+        color: #4a5568;
+        margin-bottom: 16px;
+        text-align: center;
+        font-size: 14px;
+    }
+
+    .otp-input {
+        width: 100%;
+        padding: 14px;
+        font-size: 24px;
+        text-align: center;
+        letter-spacing: 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .otp-input:focus {
+        outline: none;
+        border-color: #007aff;
+    }
+
+    .modal-footer {
+        padding: 16px 20px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .modal-btn {
+        flex: 1;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+    }
+
+    .modal-btn-cancel {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .modal-btn-confirm {
+        background: #e53e3e;
+        color: white;
+    }
+
+    .no-history {
+        text-align: center;
+        color: #a0aec0;
+        padding: 40px 20px;
+        font-size: 14px;
+    }
+
+    /* Hidden file input */
+    #avatarInput { display: none; }
+
+    /* MFA Toggle in Security */
+    .mfa-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+        margin-top: 16px;
+    }
+
+    .mfa-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .mfa-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    .mfa-icon.enabled { background: #c6f6d5; }
+    .mfa-icon.disabled { background: #fed7d7; }
+
+    .mfa-text strong {
+        display: block;
+        color: #2d3748;
+        font-size: 14px;
+    }
+
+    .mfa-text span {
+        font-size: 12px;
+        color: #718096;
+    }
+
+    .mfa-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .mfa-btn.setup {
+        background: #007aff;
+        color: white;
+    }
+
+    .mfa-btn.manage {
+        background: #edf2f7;
+        color: #4a5568;
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .security-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .tab-btn {
+            padding: 12px 4px;
+            font-size: 11px;
+        }
+        .tab-icon {
+            font-size: 18px;
+        }
+    }
+</style>
+
+<div class="profile-wrapper">
+    <div class="profile-container">
+        <a href="{{ url_for('filetransfer.index') }}" class="back-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Home
+        </a>
+
+        <!-- Profile Header -->
+        <div class="profile-header-card">
+            <div class="avatar-wrapper">
+                <div class="profile-avatar" id="avatarDisplay">
+                    {% if user.profile_picture_url %}
+                    <img src="{{ user.profile_picture_url }}" alt="{{ user.username }}" id="avatarImg">
                     {% else %}
-                    <span style="background-color: #fff5f5; color: #742a2a; padding: 5px 12px; border-radius: 20px; display: inline-block;">
-                        ✗ Disabled
-                    </span>
+                    <span id="avatarInitial">{{ user.username[0].upper() }}</span>
                     {% endif %}
-                </p>
+                </div>
+                <div class="avatar-edit-btn" onclick="document.getElementById('avatarInput').click()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                </div>
+                <input type="file" id="avatarInput" accept=".png,.jpg,.jpeg,.gif" onchange="uploadAvatar(this)">
             </div>
+            <h1 class="profile-name">{{ user.username }}</h1>
+            <p class="profile-email">{{ user.email }}</p>
+            <span class="profile-badge">Member since {{ user.created_at.strftime('%B %Y') if user.created_at else 'N/A' }}</span>
         </div>
 
-        <div style="margin-top: 30px; text-align: center;">
-            <a href="{{ url_for('main.settings') }}" class="btn btn-primary">Edit Settings</a>
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('overview')">
+                <span class="tab-icon">📊</span>
+                Overview
+            </button>
+            <button class="tab-btn" onclick="switchTab('security')">
+                <span class="tab-icon">🛡️</span>
+                Security
+            </button>
+            <button class="tab-btn" onclick="switchTab('activity')">
+                <span class="tab-icon">📋</span>
+                Activity
+            </button>
+            <button class="tab-btn" onclick="switchTab('settings')">
+                <span class="tab-icon">⚙️</span>
+                Settings
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-panel active">
+                <div class="section-title">📁 My Stats</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-icon">📁</div>
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Files</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">⬆️</div>
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Uploads</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">⬇️</div>
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Downloads</div>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top: 24px;">🔐 Quick Security Overview</div>
+                <div class="security-grid">
+                    <div class="security-item {{ 'success' if user.mfa_enabled else 'danger' }}">
+                        <div class="security-icon">{{ '🔐' if user.mfa_enabled else '🔓' }}</div>
+                        <div class="security-value">{{ 'ON' if user.mfa_enabled else 'OFF' }}</div>
+                        <div class="security-label">MFA Status</div>
+                    </div>
+                    <div class="security-item {{ 'success' if risk_level == 'low' else 'warning' if risk_level == 'medium' else 'danger' }}">
+                        <div class="security-icon">📈</div>
+                        <div class="security-value">{{ risk_level.upper() }}</div>
+                        <div class="security-label">Risk Level</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div id="security" class="tab-panel">
+                <div class="section-title">🛡️ Security Status</div>
+                <div class="security-grid">
+                    <div class="security-item {{ 'success' if user.mfa_enabled else 'danger' }}">
+                        <div class="security-icon">{{ '🔐' if user.mfa_enabled else '🔓' }}</div>
+                        <div class="security-value">{{ 'Enabled' if user.mfa_enabled else 'Disabled' }}</div>
+                        <div class="security-label">MFA</div>
+                    </div>
+                    <div class="security-item {{ 'success' if password_days < 60 else 'warning' if password_days < 80 else 'danger' }}">
+                        <div class="security-icon">🔑</div>
+                        <div class="security-value">{{ 90 - password_days }}d</div>
+                        <div class="security-label">Password Expiry</div>
+                    </div>
+                    <div class="security-item {{ 'success' if risk_level == 'low' else 'warning' if risk_level == 'medium' else 'danger' }}">
+                        <div class="security-icon">📈</div>
+                        <div class="security-value">{{ risk_level.upper() }}</div>
+                        <div class="security-label">Risk Level</div>
+                    </div>
+                    <div class="security-item success">
+                        <div class="security-icon">💻</div>
+                        <div class="security-value">1</div>
+                        <div class="security-label">Active Session</div>
+                    </div>
+                </div>
+
+                <div class="mfa-status">
+                    <div class="mfa-info">
+                        <div class="mfa-icon {{ 'enabled' if user.mfa_enabled else 'disabled' }}">
+                            {{ '🔐' if user.mfa_enabled else '🔓' }}
+                        </div>
+                        <div class="mfa-text">
+                            <strong>Two-Factor Authentication</strong>
+                            <span>{{ 'Your account is protected' if user.mfa_enabled else 'Add extra security to your account' }}</span>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('main.settings') }}?from=profile" class="mfa-btn {{ 'manage' if user.mfa_enabled else 'setup' }}">
+                        {{ 'Manage' if user.mfa_enabled else 'Setup' }}
+                    </a>
+                </div>
+            </div>
+
+            <!-- Activity Tab -->
+            <div id="activity" class="tab-panel">
+                <div class="section-title">📋 Recent Login Activity (Singapore Time)</div>
+                {% if login_history %}
+                <ul class="login-list">
+                    {% for login in login_history %}
+                    {% set sgt_time = login.timestamp + timedelta(hours=8) %}
+                    <li class="login-item">
+                        <div class="login-indicator {{ 'safe' if login.risk_level == 'low' else 'warning' if login.risk_level == 'medium' else 'danger' }}"></div>
+                        <div class="login-details">
+                            <div class="login-time">{{ sgt_time.strftime('%b %d, %Y at %I:%M %p') }} SGT</div>
+                            <div class="login-meta">{{ login.location or 'Unknown location' }} • {{ login.ip_address or 'Unknown IP' }}</div>
+                        </div>
+                        <span class="login-badge {{ 'safe' if login.risk_level == 'low' else 'warning' if login.risk_level == 'medium' else 'danger' }}">
+                            {{ 'Safe' if login.risk_level == 'low' else 'Warning' if login.risk_level == 'medium' else 'Risk' }}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="no-history">
+                    <p>No login history available</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-panel">
+                <div class="section-title">⚙️ Account Settings</div>
+                <div class="settings-list">
+                    <a href="{{ url_for('main.change_password') }}" class="settings-item">
+                        <div class="settings-icon blue">🔑</div>
+                        <div class="settings-text">
+                            <div class="settings-title">Change Password</div>
+                            <div class="settings-desc">Update your account password</div>
+                        </div>
+                        <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
+                    </a>
+
+                    <a href="{{ url_for('main.settings') }}?from=profile" class="settings-item">
+                        <div class="settings-icon purple">🔐</div>
+                        <div class="settings-text">
+                            <div class="settings-title">Security Settings</div>
+                            <div class="settings-desc">Manage MFA and security options</div>
+                        </div>
+                        <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
+                    </a>
+
+                    <div style="border-top: 1px solid #e2e8f0; margin: 16px 0;"></div>
+
+                    <button type="button" class="settings-item danger" onclick="requestDeleteAccount()">
+                        <div class="settings-icon red">🗑️</div>
+                        <div class="settings-text">
+                            <div class="settings-title">Delete Account</div>
+                            <div class="settings-desc">Permanently remove your account and data</div>
+                        </div>
+                        <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Delete Account Modal -->
+<div id="deleteModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🗑️ Delete Account</h3>
+        </div>
+        <div class="modal-body">
+            <p id="deleteModalText">A verification code has been sent to your email. Enter it below to confirm deletion.</p>
+            <input type="text" id="deleteOtp" class="otp-input" placeholder="000000" maxlength="6">
+            <p id="deleteError" style="color: #c53030; font-size: 13px; display: none; margin-top: 12px; text-align: center;"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+            <button class="modal-btn modal-btn-confirm" id="confirmDeleteBtn" onclick="confirmDeleteAccount()">Delete Forever</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const csrfToken = "{{ csrf_token() }}";
+
+// Tab Switching
+function switchTab(tabId) {
+    // Remove active from all tabs and panels
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+
+    // Add active to clicked tab and corresponding panel
+    event.currentTarget.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+}
+
+// Avatar Upload
+async function uploadAvatar(input) {
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    const maxSize = 2 * 1024 * 1024; // 2MB
+
+    if (file.size > maxSize) {
+        alert('File too large. Maximum size is 2MB.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+    formData.append('csrf_token', csrfToken);
+
+    try {
+        const response = await fetch('{{ url_for("main.upload_avatar") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const avatarDisplay = document.getElementById('avatarDisplay');
+            const initial = document.getElementById('avatarInitial');
+            if (initial) initial.remove();
+
+            let img = document.getElementById('avatarImg');
+            if (!img) {
+                img = document.createElement('img');
+                img.id = 'avatarImg';
+                avatarDisplay.appendChild(img);
+            }
+            img.src = data.url + '?' + Date.now();
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        alert('Failed to upload avatar');
+    }
+}
+
+// Delete Account
+async function requestDeleteAccount() {
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+
+    try {
+        const response = await fetch('{{ url_for("main.delete_account_request") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('deleteModal').style.display = 'flex';
+            document.getElementById('deleteOtp').value = '';
+            document.getElementById('deleteError').style.display = 'none';
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        alert('Failed to send verification code');
+    }
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+}
+
+async function confirmDeleteAccount() {
+    const otp = document.getElementById('deleteOtp').value;
+
+    if (!otp || otp.length !== 6) {
+        document.getElementById('deleteError').textContent = 'Please enter the 6-digit code';
+        document.getElementById('deleteError').style.display = 'block';
+        return;
+    }
+
+    const btn = document.getElementById('confirmDeleteBtn');
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+
+    const formData = new FormData();
+    formData.append('otp', otp);
+    formData.append('csrf_token', csrfToken);
+
+    try {
+        const response = await fetch('{{ url_for("main.delete_account_confirm") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.href = '{{ url_for("main.login") }}';
+        } else {
+            document.getElementById('deleteError').textContent = data.message;
+            document.getElementById('deleteError').style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Delete Forever';
+        }
+    } catch (error) {
+        document.getElementById('deleteError').textContent = 'An error occurred';
+        document.getElementById('deleteError').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Delete Forever';
+    }
+}
+
+// Close modal on escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDeleteModal();
+});
+
+// Close modal on overlay click
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+});
+</script>
 {% endblock %}
