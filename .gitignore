@@ -214,3 +214,6 @@ certs/
 *.pem
 *.key
 *.crt
+
+# GeoIP database (download from MaxMind)
+*.mmdb

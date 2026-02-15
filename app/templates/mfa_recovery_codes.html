@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Recovery Codes - MoveIt{% endblock %}
+
+{% block content %}
+<style>
+.recovery-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.recovery-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.recovery-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.recovery-header h1 {
+    color: #1a202c;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+}
+
+.recovery-header p {
+    color: #718096;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.warning-box {
+    background: #fff5f5;
+    border: 2px solid #fc8181;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.warning-box h3 {
+    color: #c53030;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.warning-box p {
+    color: #742a2a;
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.info-box {
+    background: #ebf8ff;
+    border: 2px solid #90cdf4;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.info-box p {
+    color: #2a4365;
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.shares-list {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.share-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #e2e8f0;
+    gap: 12px;
+}
+
+.share-item:last-child {
+    border-bottom: none;
+}
+
+.share-number {
+    background: #4299e1;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.share-code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #2d3748;
+    word-break: break-all;
+    line-height: 1.4;
+    flex: 1;
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.btn-action {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-copy {
+    background: #ebf8ff;
+    color: #2b6cb0;
+    border: 2px solid #90cdf4;
+}
+
+.btn-copy:hover {
+    background: #bee3f8;
+}
+
+.btn-download {
+    background: #f0fff4;
+    color: #276749;
+    border: 2px solid #9ae6b4;
+}
+
+.btn-download:hover {
+    background: #c6f6d5;
+}
+
+.btn-continue {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-continue:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+.copied-toast {
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #48bb78;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+
+<div class="copied-toast" id="copiedToast">Copied to clipboard!</div>
+
+<div class="recovery-container">
+    <div class="recovery-card">
+        <div class="recovery-header">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#48bb78" stroke-width="2" style="margin-bottom: 12px;">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <h1>Save Your Recovery Codes</h1>
+            <p>These codes can recover your account if you lose access to your authenticator app. Each code is a <strong>share</strong> — you need <strong>any 3 of 5</strong> to recover.</p>
+        </div>
+
+        <div class="warning-box">
+            <h3>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Save these codes now — you won't see them again!
+            </h3>
+            <p>Store them in a secure location. Consider saving them in different places (password manager, printed copy, secure USB drive).</p>
+        </div>
+
+        <div class="info-box">
+            <p><strong>How Shamir's Secret Sharing works:</strong> Your TOTP secret has been split into 5 shares using cryptographic secret sharing. Any 3 shares can reconstruct your secret — but 2 or fewer shares reveal nothing about it. This means you can store shares in different locations for extra safety.</p>
+        </div>
+
+        <div class="shares-list" id="sharesList">
+            {% for share in shares %}
+            <div class="share-item">
+                <div class="share-number">{{ loop.index }}</div>
+                <div class="share-code">{{ share }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="actions">
+            <button class="btn-action btn-copy" onclick="copyShares()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                Copy All
+            </button>
+            <button class="btn-action btn-download" onclick="downloadShares()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download
+            </button>
+        </div>
+
+        <a href="{{ redirect_url }}" class="btn-continue" style="display: block; text-align: center; text-decoration: none;">
+            I've saved my recovery codes
+        </a>
+    </div>
+</div>
+
+<script>
+const shares = {{ shares | tojson }};
+
+function copyShares() {
+    const text = shares.map((s, i) => `Share ${i + 1}: ${s}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('copiedToast');
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    });
+}
+
+function downloadShares() {
+    const text = [
+        'MoveIt - MFA Recovery Codes (Shamir Secret Sharing)',
+        '====================================================',
+        '',
+        'You need ANY 3 of these 5 shares to recover your account.',
+        'Store them in separate, secure locations.',
+        '',
+        ...shares.map((s, i) => `Share ${i + 1}: ${s}`),
+        '',
+        'Generated: ' + new Date().toISOString(),
+        '',
+        'WARNING: Keep these codes secret. Anyone with 3 codes can access your account.'
+    ].join('\n');
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'moveit-recovery-codes.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

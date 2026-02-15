@@ -34,6 +34,9 @@ class User(db.Model):
     mfa_enabled = db.Column(db.Boolean, default=False)
     mfa_secret = db.Column(db.String(32), nullable=True)
 
+    # Shamir's Secret Sharing recovery (JSON array of hashed shares)
+    recovery_shares_hash = db.Column(db.Text, nullable=True)
+
     # Admin security fields
     is_admin = db.Column(db.Boolean, default=False)
     is_super_admin = db.Column(db.Boolean, default=False)  # First admin, no MAC check needed

@@ -12,7 +12,7 @@
     }
 
     .profile-container {
-        max-width: 600px;
+        max-width: 1100px;
         margin: 0 auto;
     }
 
@@ -32,34 +32,84 @@
         color: #007aff;
     }
 
+    /* Dashboard Rows */
+    .dashboard-row {
+        margin-bottom: 20px;
+    }
+
+    .dashboard-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 20px 24px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .card-header-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .card-header-icon.blue { background: #ebf4ff; }
+    .card-header-icon.green { background: #f0fff4; }
+    .card-header-icon.purple { background: #faf5ff; }
+    .card-header-icon.orange { background: #fffaf0; }
+    .card-header-icon.red { background: #fff5f5; }
+
+    .card-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a202c;
+        margin: 0;
+    }
+
+    .card-body {
+        padding: 0 24px 24px;
+    }
+
     /* Profile Header Card */
     .profile-header-card {
-        background: white;
-        border-radius: 24px;
-        padding: 40px 24px 24px;
-        text-align: center;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        margin-bottom: 0;
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 0;
+        display: flex;
+        align-items: center;
+        padding: 40px 36px;
+    }
+
+    .profile-left {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        flex: 1;
     }
 
     .avatar-wrapper {
         position: relative;
-        width: 100px;
-        height: 100px;
-        margin: 0 auto 16px;
+        width: 90px;
+        height: 90px;
+        flex-shrink: 0;
     }
 
     .profile-avatar {
-        width: 100px;
-        height: 100px;
+        width: 90px;
+        height: 90px;
         border-radius: 50%;
         background: linear-gradient(135deg, #007aff, #5856d6);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 40px;
+        font-size: 36px;
         font-weight: 600;
         color: white;
         border: 4px solid white;
@@ -77,8 +127,8 @@
         position: absolute;
         bottom: 0;
         right: 0;
-        width: 32px;
-        height: 32px;
+        width: 30px;
+        height: 30px;
         background: #007aff;
         border: 3px solid white;
         border-radius: 50%;
@@ -97,8 +147,12 @@
 
     .avatar-edit-btn svg {
         color: white;
-        width: 14px;
-        height: 14px;
+        width: 13px;
+        height: 13px;
+    }
+
+    .profile-info {
+        flex: 1;
     }
 
     .profile-name {
@@ -111,7 +165,7 @@
     .profile-email {
         color: #718096;
         font-size: 14px;
-        margin: 0 0 12px 0;
+        margin: 0 0 10px 0;
     }
 
     .profile-badge {
@@ -124,121 +178,73 @@
         font-weight: 500;
     }
 
-    /* Tab Navigation */
-    .tab-nav {
+    .settings-link {
         display: flex;
-        background: white;
-        border-bottom: 1px solid #e2e8f0;
-        padding: 0;
-    }
-
-    .tab-btn {
-        flex: 1;
-        padding: 16px 8px;
-        background: none;
-        border: none;
-        font-size: 13px;
-        font-weight: 600;
-        color: #718096;
-        cursor: pointer;
-        transition: all 0.2s;
-        position: relative;
-        display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 4px;
-    }
-
-    .tab-btn:hover {
-        color: #4a5568;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
         background: #f7fafc;
+        color: #718096;
+        text-decoration: none;
+        transition: all 0.2s;
+        flex-shrink: 0;
     }
 
-    .tab-btn.active {
-        color: #007aff;
-    }
-
-    .tab-btn.active::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 40px;
-        height: 3px;
-        background: #007aff;
-        border-radius: 3px 3px 0 0;
-    }
-
-    .tab-icon {
-        font-size: 20px;
-    }
-
-    /* Tab Content */
-    .tab-content {
-        background: white;
-        border-radius: 0 0 24px 24px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        overflow: hidden;
-    }
-
-    .tab-panel {
-        display: none;
-        padding: 24px;
-        animation: fadeIn 0.3s ease;
-    }
-
-    .tab-panel.active {
-        display: block;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+    .settings-link:hover {
+        background: #edf2f7;
+        color: #4a5568;
     }
 
     /* Stats Grid */
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-bottom: 20px;
+        gap: 16px;
     }
 
     .stat-item {
         text-align: center;
-        padding: 16px 8px;
+        padding: 24px 12px;
         background: #f7fafc;
-        border-radius: 12px;
+        border-radius: 14px;
+        transition: transform 0.2s;
+    }
+
+    .stat-item:hover {
+        transform: translateY(-2px);
     }
 
     .stat-icon {
-        font-size: 24px;
-        margin-bottom: 4px;
+        margin-bottom: 8px;
     }
 
     .stat-value {
-        font-size: 24px;
+        font-size: 32px;
         font-weight: 700;
         color: #1a202c;
     }
 
     .stat-label {
-        font-size: 11px;
+        font-size: 12px;
         color: #718096;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
     }
 
     /* Security Items */
     .security-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
     }
 
     .security-item {
-        padding: 16px;
-        border-radius: 12px;
+        padding: 20px 16px;
+        border-radius: 14px;
         text-align: center;
     }
 
@@ -247,8 +253,8 @@
     .security-item.danger { background: #fff5f5; border: 1px solid #fed7d7; }
 
     .security-icon {
-        font-size: 24px;
-        margin-bottom: 4px;
+        font-size: 22px;
+        margin-bottom: 6px;
     }
 
     .security-value {
@@ -264,15 +270,66 @@
         margin-top: 2px;
     }
 
-    /* Login History */
-    .section-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: #4a5568;
-        margin-bottom: 16px;
+    /* MFA Status Row */
+    .mfa-status {
         display: flex;
         align-items: center;
-        gap: 8px;
+        justify-content: space-between;
+        padding: 14px 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+    }
+
+    .mfa-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .mfa-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    .mfa-icon.enabled { background: #c6f6d5; }
+    .mfa-icon.disabled { background: #fed7d7; }
+
+    .mfa-text strong {
+        display: block;
+        color: #2d3748;
+        font-size: 14px;
+    }
+
+    .mfa-text span {
+        font-size: 12px;
+        color: #718096;
+    }
+
+    .mfa-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .mfa-btn.setup { background: #007aff; color: white; }
+    .mfa-btn.manage { background: #edf2f7; color: #4a5568; }
+
+    /* Login History */
+    .section-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #a0aec0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
     }
 
     .login-list {
@@ -284,9 +341,9 @@
     .login-item {
         display: flex;
         align-items: center;
-        padding: 14px;
+        padding: 12px 14px;
         border-radius: 12px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         background: #f8fafc;
         transition: all 0.2s;
     }
@@ -314,7 +371,7 @@
     .login-details { flex: 1; }
 
     .login-time {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         color: #2d3748;
     }
@@ -346,7 +403,7 @@
     .settings-item {
         display: flex;
         align-items: center;
-        padding: 16px;
+        padding: 14px 16px;
         background: #f8fafc;
         border-radius: 12px;
         text-decoration: none;
@@ -364,8 +421,8 @@
     }
 
     .settings-icon {
-        width: 40px;
-        height: 40px;
+        width: 38px;
+        height: 38px;
         border-radius: 10px;
         display: flex;
         align-items: center;
@@ -379,9 +436,7 @@
     .settings-icon.green { background: #f0fff4; }
     .settings-icon.red { background: #fff5f5; }
 
-    .settings-text {
-        flex: 1;
-    }
+    .settings-text { flex: 1; }
 
     .settings-title {
         font-weight: 600;
@@ -398,17 +453,25 @@
         color: #a0aec0;
     }
 
-    .settings-item.danger {
+    .settings-item.danger-btn {
         background: #fff5f5;
         border: 1px solid #fed7d7;
     }
 
-    .settings-item.danger:hover {
+    .settings-item.danger-btn:hover {
         background: #fed7d7;
     }
 
-    .settings-item.danger .settings-title {
+    .settings-item.danger-btn .settings-title {
         color: #c53030;
+    }
+
+    /* No History */
+    .no-history {
+        text-align: center;
+        color: #a0aec0;
+        padding: 30px 20px;
+        font-size: 14px;
     }
 
     /* Modal */
@@ -500,90 +563,23 @@
         color: white;
     }
 
-    .no-history {
-        text-align: center;
-        color: #a0aec0;
-        padding: 40px 20px;
-        font-size: 14px;
-    }
-
     /* Hidden file input */
     #avatarInput { display: none; }
 
-    /* MFA Toggle in Security */
-    .mfa-status {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px;
-        background: #f8fafc;
-        border-radius: 12px;
-        margin-top: 16px;
-    }
-
-    .mfa-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .mfa-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-    }
-
-    .mfa-icon.enabled { background: #c6f6d5; }
-    .mfa-icon.disabled { background: #fed7d7; }
-
-    .mfa-text strong {
-        display: block;
-        color: #2d3748;
-        font-size: 14px;
-    }
-
-    .mfa-text span {
-        font-size: 12px;
-        color: #718096;
-    }
-
-    .mfa-btn {
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s;
-    }
-
-    .mfa-btn.setup {
-        background: #007aff;
-        color: white;
-    }
-
-    .mfa-btn.manage {
-        background: #edf2f7;
-        color: #4a5568;
-    }
-
-    @media (max-width: 480px) {
+    /* Responsive */
+    @media (max-width: 768px) {
+        .profile-header-card {
+            flex-direction: column;
+        }
+        .profile-left {
+            flex-direction: column;
+            text-align: center;
+        }
         .stats-grid {
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
+            gap: 10px;
         }
         .security-grid {
             grid-template-columns: repeat(2, 1fr);
-        }
-        .tab-btn {
-            padding: 12px 4px;
-            font-size: 11px;
-        }
-        .tab-icon {
-            font-size: 18px;
         }
     }
 </style>
@@ -598,193 +594,225 @@
         </a>
 
         <!-- Profile Header -->
-        <div class="profile-header-card">
-            <div class="avatar-wrapper">
-                <div class="profile-avatar" id="avatarDisplay">
-                    {% if user.profile_picture_url %}
-                    <img src="{{ user.profile_picture_url }}" alt="{{ user.username }}" id="avatarImg">
+        <div class="dashboard-row">
+            <div class="dashboard-card">
+                <div class="profile-header-card">
+                    <div class="profile-left">
+                        <div class="avatar-wrapper">
+                            <div class="profile-avatar" id="avatarDisplay">
+                                {% if user.profile_picture_url %}
+                                <img src="{{ user.profile_picture_url }}" alt="{{ user.username }}" id="avatarImg">
+                                {% else %}
+                                <span id="avatarInitial">{{ user.username[0].upper() }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="avatar-edit-btn" onclick="document.getElementById('avatarInput').click()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </div>
+                            <input type="file" id="avatarInput" accept=".png,.jpg,.jpeg" onchange="uploadAvatar(this)">
+                        </div>
+                        <div class="profile-info">
+                            <h1 class="profile-name">{{ user.username }}</h1>
+                            <p class="profile-email">{{ user.email }}</p>
+                            <span class="profile-badge">Member since {{ user.created_at.strftime('%B %Y') if user.created_at else 'N/A' }}</span>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('main.settings') }}?from=profile" class="settings-link" title="Settings">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Stats -->
+        <div class="dashboard-row">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <div class="card-header-icon blue">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3182ce" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                    </div>
+                    <h3 class="card-title">File Stats</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3182ce" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                            </div>
+                            <div class="stat-value">{{ file_count }}</div>
+                            <div class="stat-label">Files</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38a169" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg>
+                            </div>
+                            <div class="stat-value">{{ upload_count }}</div>
+                            <div class="stat-label">Uploads</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#805ad5" stroke-width="2"><polyline points="7 15 3 19 7 23"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                            </div>
+                            <div class="stat-value">{{ download_count }}</div>
+                            <div class="stat-label">Downloads</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Overview -->
+        <div class="dashboard-row">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <div class="card-header-icon green">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38a169" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3 class="card-title">Security Overview</h3>
+                </div>
+                <div class="card-body">
+                    <div class="security-grid">
+                        <div class="security-item {{ 'success' if user.mfa_enabled else 'danger' }}">
+                            <div class="security-icon">{% if user.mfa_enabled %}&#x1f510;{% else %}&#x1f513;{% endif %}</div>
+                            <div class="security-value">{{ 'Enabled' if user.mfa_enabled else 'Disabled' }}</div>
+                            <div class="security-label">MFA</div>
+                        </div>
+                        <div class="security-item {{ 'success' if password_days < 60 else 'warning' if password_days < 80 else 'danger' }}">
+                            <div class="security-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </div>
+                            <div class="security-value">{{ 90 - password_days }}d</div>
+                            <div class="security-label">Password Expiry</div>
+                        </div>
+                        <div class="security-item {{ 'success' if risk_level == 'low' else 'warning' if risk_level == 'medium' else 'danger' }}">
+                            <div class="security-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            </div>
+                            <div class="security-value">{{ risk_level.upper() }}</div>
+                            <div class="security-label">Risk Level</div>
+                        </div>
+                        <div class="security-item success">
+                            <div class="security-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            </div>
+                            <div class="security-value">1</div>
+                            <div class="security-label">Active Session</div>
+                        </div>
+                    </div>
+
+                    <div class="mfa-status">
+                        <div class="mfa-info">
+                            <div class="mfa-icon {{ 'enabled' if user.mfa_enabled else 'disabled' }}">
+                                {% if user.mfa_enabled %}&#x1f510;{% else %}&#x1f513;{% endif %}
+                            </div>
+                            <div class="mfa-text">
+                                <strong>Two-Factor Auth</strong>
+                                <span>{{ 'Account protected' if user.mfa_enabled else 'Add extra security' }}</span>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('main.settings') }}?from=profile" class="mfa-btn {{ 'manage' if user.mfa_enabled else 'setup' }}">
+                            {{ 'Manage' if user.mfa_enabled else 'Setup' }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="dashboard-row">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <div class="card-header-icon orange">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dd6b20" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <h3 class="card-title">Recent Activity</h3>
+                </div>
+                <div class="card-body">
+                    <div class="section-label">Login History (SGT)</div>
+                    {% if login_history %}
+                    <ul class="login-list">
+                        {% for login in login_history %}
+                        {% set sgt_time = login.timestamp + timedelta(hours=8) %}
+                        {% set display_location = 'Singapore' if (not login.location or login.location in ['Unknown location', 'Location unavailable', 'Local Development', 'Unknown']) else login.location %}
+                        <li class="login-item">
+                            <div class="login-indicator {{ 'safe' if login.risk_level == 'low' else 'warning' if login.risk_level == 'medium' else 'danger' }}"></div>
+                            <div class="login-details">
+                                <div class="login-time">{{ sgt_time.strftime('%b %d, %Y at %I:%M %p') }} SGT</div>
+                                <div class="login-meta">{{ display_location }} &bull; {{ login.ip_address or 'Unknown IP' }}</div>
+                            </div>
+                            <span class="login-badge {{ 'safe' if login.risk_level == 'low' else 'warning' if login.risk_level == 'medium' else 'danger' }}">
+                                {{ 'Safe' if login.risk_level == 'low' else 'Warning' if login.risk_level == 'medium' else 'Risk' }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
                     {% else %}
-                    <span id="avatarInitial">{{ user.username[0].upper() }}</span>
+                    <div class="no-history">
+                        <p>No login history available</p>
+                    </div>
                     {% endif %}
                 </div>
-                <div class="avatar-edit-btn" onclick="document.getElementById('avatarInput').click()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                </div>
-                <input type="file" id="avatarInput" accept=".png,.jpg,.jpeg,.gif" onchange="uploadAvatar(this)">
             </div>
-            <h1 class="profile-name">{{ user.username }}</h1>
-            <p class="profile-email">{{ user.email }}</p>
-            <span class="profile-badge">Member since {{ user.created_at.strftime('%B %Y') if user.created_at else 'N/A' }}</span>
         </div>
 
-        <!-- Tab Navigation -->
-        <div class="tab-nav">
-            <button class="tab-btn active" onclick="switchTab('overview')">
-                <span class="tab-icon">📊</span>
-                Overview
-            </button>
-            <button class="tab-btn" onclick="switchTab('security')">
-                <span class="tab-icon">🛡️</span>
-                Security
-            </button>
-            <button class="tab-btn" onclick="switchTab('activity')">
-                <span class="tab-icon">📋</span>
-                Activity
-            </button>
-            <button class="tab-btn" onclick="switchTab('settings')">
-                <span class="tab-icon">⚙️</span>
-                Settings
-            </button>
-        </div>
-
-        <!-- Tab Content -->
-        <div class="tab-content">
-            <!-- Overview Tab -->
-            <div id="overview" class="tab-panel active">
-                <div class="section-title">📁 My Stats</div>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-icon">📁</div>
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Files</div>
+        <!-- Account Settings -->
+        <div class="dashboard-row">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <div class="card-header-icon purple">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b46c1" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-icon">⬆️</div>
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Uploads</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-icon">⬇️</div>
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Downloads</div>
-                    </div>
+                    <h3 class="card-title">Account Settings</h3>
                 </div>
+                <div class="card-body">
+                    <div class="settings-list">
+                        <a href="{{ url_for('main.change_password') }}" class="settings-item">
+                            <div class="settings-icon blue">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3182ce" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </div>
+                            <div class="settings-text">
+                                <div class="settings-title">Change Password</div>
+                                <div class="settings-desc">Update your account password</div>
+                            </div>
+                            <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                        </a>
 
-                <div class="section-title" style="margin-top: 24px;">🔐 Quick Security Overview</div>
-                <div class="security-grid">
-                    <div class="security-item {{ 'success' if user.mfa_enabled else 'danger' }}">
-                        <div class="security-icon">{{ '🔐' if user.mfa_enabled else '🔓' }}</div>
-                        <div class="security-value">{{ 'ON' if user.mfa_enabled else 'OFF' }}</div>
-                        <div class="security-label">MFA Status</div>
+                        <a href="{{ url_for('main.settings') }}?from=profile" class="settings-item">
+                            <div class="settings-icon purple">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b46c1" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <div class="settings-text">
+                                <div class="settings-title">Security Settings</div>
+                                <div class="settings-desc">Manage MFA and security options</div>
+                            </div>
+                            <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                        </a>
+
+                        <div style="border-top: 1px solid #e2e8f0; margin: 8px 0;"></div>
+
+                        <button type="button" class="settings-item danger-btn" onclick="requestDeleteAccount()">
+                            <div class="settings-icon red">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e53e3e" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </div>
+                            <div class="settings-text">
+                                <div class="settings-title">Delete Account</div>
+                                <div class="settings-desc">Permanently remove your account and data</div>
+                            </div>
+                            <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                        </button>
                     </div>
-                    <div class="security-item {{ 'success' if risk_level == 'low' else 'warning' if risk_level == 'medium' else 'danger' }}">
-                        <div class="security-icon">📈</div>
-                        <div class="security-value">{{ risk_level.upper() }}</div>
-                        <div class="security-label">Risk Level</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Security Tab -->
-            <div id="security" class="tab-panel">
-                <div class="section-title">🛡️ Security Status</div>
-                <div class="security-grid">
-                    <div class="security-item {{ 'success' if user.mfa_enabled else 'danger' }}">
-                        <div class="security-icon">{{ '🔐' if user.mfa_enabled else '🔓' }}</div>
-                        <div class="security-value">{{ 'Enabled' if user.mfa_enabled else 'Disabled' }}</div>
-                        <div class="security-label">MFA</div>
-                    </div>
-                    <div class="security-item {{ 'success' if password_days < 60 else 'warning' if password_days < 80 else 'danger' }}">
-                        <div class="security-icon">🔑</div>
-                        <div class="security-value">{{ 90 - password_days }}d</div>
-                        <div class="security-label">Password Expiry</div>
-                    </div>
-                    <div class="security-item {{ 'success' if risk_level == 'low' else 'warning' if risk_level == 'medium' else 'danger' }}">
-                        <div class="security-icon">📈</div>
-                        <div class="security-value">{{ risk_level.upper() }}</div>
-                        <div class="security-label">Risk Level</div>
-                    </div>
-                    <div class="security-item success">
-                        <div class="security-icon">💻</div>
-                        <div class="security-value">1</div>
-                        <div class="security-label">Active Session</div>
-                    </div>
-                </div>
-
-                <div class="mfa-status">
-                    <div class="mfa-info">
-                        <div class="mfa-icon {{ 'enabled' if user.mfa_enabled else 'disabled' }}">
-                            {{ '🔐' if user.mfa_enabled else '🔓' }}
-                        </div>
-                        <div class="mfa-text">
-                            <strong>Two-Factor Authentication</strong>
-                            <span>{{ 'Your account is protected' if user.mfa_enabled else 'Add extra security to your account' }}</span>
-                        </div>
-                    </div>
-                    <a href="{{ url_for('main.settings') }}?from=profile" class="mfa-btn {{ 'manage' if user.mfa_enabled else 'setup' }}">
-                        {{ 'Manage' if user.mfa_enabled else 'Setup' }}
-                    </a>
-                </div>
-            </div>
-
-            <!-- Activity Tab -->
-            <div id="activity" class="tab-panel">
-                <div class="section-title">📋 Recent Login Activity (Singapore Time)</div>
-                {% if login_history %}
-                <ul class="login-list">
-                    {% for login in login_history %}
-                    {% set sgt_time = login.timestamp + timedelta(hours=8) %}
-                    {% set display_location = 'Singapore' if (not login.location or login.location in ['Unknown location', 'Location unavailable', 'Local Development', 'Unknown']) else login.location %}
-                    <li class="login-item">
-                        <div class="login-indicator {{ 'safe' if login.risk_level == 'low' else 'warning' if login.risk_level == 'medium' else 'danger' }}"></div>
-                        <div class="login-details">
-                            <div class="login-time">{{ sgt_time.strftime('%b %d, %Y at %I:%M %p') }} SGT</div>
-                            <div class="login-meta">{{ display_location }} • {{ login.ip_address or 'Unknown IP' }}</div>
-                        </div>
-                        <span class="login-badge {{ 'safe' if login.risk_level == 'low' else 'warning' if login.risk_level == 'medium' else 'danger' }}">
-                            {{ 'Safe' if login.risk_level == 'low' else 'Warning' if login.risk_level == 'medium' else 'Risk' }}
-                        </span>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <div class="no-history">
-                    <p>No login history available</p>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Settings Tab -->
-            <div id="settings" class="tab-panel">
-                <div class="section-title">⚙️ Account Settings</div>
-                <div class="settings-list">
-                    <a href="{{ url_for('main.change_password') }}" class="settings-item">
-                        <div class="settings-icon blue">🔑</div>
-                        <div class="settings-text">
-                            <div class="settings-title">Change Password</div>
-                            <div class="settings-desc">Update your account password</div>
-                        </div>
-                        <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 18l6-6-6-6"/>
-                        </svg>
-                    </a>
-
-                    <a href="{{ url_for('main.settings') }}?from=profile" class="settings-item">
-                        <div class="settings-icon purple">🔐</div>
-                        <div class="settings-text">
-                            <div class="settings-title">Security Settings</div>
-                            <div class="settings-desc">Manage MFA and security options</div>
-                        </div>
-                        <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 18l6-6-6-6"/>
-                        </svg>
-                    </a>
-
-                    <div style="border-top: 1px solid #e2e8f0; margin: 16px 0;"></div>
-
-                    <button type="button" class="settings-item danger" onclick="requestDeleteAccount()">
-                        <div class="settings-icon red">🗑️</div>
-                        <div class="settings-text">
-                            <div class="settings-title">Delete Account</div>
-                            <div class="settings-desc">Permanently remove your account and data</div>
-                        </div>
-                        <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 18l6-6-6-6"/>
-                        </svg>
-                    </button>
                 </div>
             </div>
         </div>
@@ -795,7 +823,7 @@
 <div id="deleteModal" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>🗑️ Delete Account</h3>
+            <h3>Delete Account</h3>
         </div>
         <div class="modal-body">
             <p id="deleteModalText">A verification code has been sent to your email. Enter it below to confirm deletion.</p>
@@ -811,17 +839,6 @@
 
 <script>
 const csrfToken = "{{ csrf_token() }}";
-
-// Tab Switching
-function switchTab(tabId) {
-    // Remove active from all tabs and panels
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
-
-    // Add active to clicked tab and corresponding panel
-    event.currentTarget.classList.add('active');
-    document.getElementById(tabId).classList.add('active');
-}
 
 // Avatar Upload
 async function uploadAvatar(input) {

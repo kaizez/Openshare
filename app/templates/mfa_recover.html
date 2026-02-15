@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Recover MFA - MoveIt{% endblock %}
+
+{% block content %}
+<style>
+.recover-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.recover-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.recover-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.recover-header h1 {
+    color: #1a202c;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+}
+
+.recover-header p {
+    color: #718096;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.info-box {
+    background: #ebf8ff;
+    border: 2px solid #90cdf4;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.info-box p {
+    color: #2a4365;
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.share-input-group {
+    margin-bottom: 16px;
+}
+
+.share-input-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 6px;
+}
+
+.share-input-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 50px;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    color: #1a202c;
+}
+
+.share-input-group textarea::placeholder {
+    color: #a0aec0;
+    font-size: 14px;
+}
+
+.share-input-group textarea:focus {
+    outline: none;
+    border-color: #4299e1;
+}
+
+.share-input-group textarea.filled {
+    border-color: #48bb78;
+    background: #f0fff4;
+}
+
+.share-counter {
+    text-align: center;
+    margin: 20px 0;
+    font-size: 14px;
+    color: #718096;
+}
+
+.share-counter strong {
+    color: #2d3748;
+}
+
+.share-counter .enough {
+    color: #48bb78;
+}
+
+.btn-recover {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 20px;
+}
+
+.btn-recover:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+}
+
+.btn-recover:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.auth-footer a {
+    color: #4299e1;
+    text-decoration: none;
+    font-size: 15px;
+}
+</style>
+
+<div class="recover-container">
+    <div class="recover-card">
+        <div class="recover-header">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4299e1" stroke-width="2" style="margin-bottom: 12px;">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <h1>Recover Your Account</h1>
+            <p>Enter at least <strong>3 of your 5</strong> recovery codes to restore access to your authenticator.</p>
+        </div>
+
+        <div class="info-box">
+            <p>Paste each recovery code exactly as it was given to you. You need a minimum of 3 codes — any combination of 3 will work.</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('main.mfa_recover') }}" id="recoverForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% for i in range(5) %}
+            <div class="share-input-group">
+                <label for="share{{ i + 1 }}">Recovery Code {{ i + 1 }} ({{ "required" if i < 3 else "optional" }})</label>
+                <textarea id="share{{ i + 1 }}" name="share{{ i + 1 }}" rows="2"
+                          placeholder="Paste recovery code {{ i + 1 }} here..."
+                          oninput="updateCounter()" {% if i < 3 %}required{% endif %}></textarea>
+            </div>
+            {% endfor %}
+
+            <div class="share-counter">
+                <span id="counterText">Enter at least <strong>3</strong> recovery codes</span>
+            </div>
+
+            <button type="submit" class="btn-recover" id="recoverBtn" disabled>
+                Recover Account
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p><a href="{{ url_for('main.login') }}">Back to Login</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateCounter() {
+    let filled = 0;
+    for (let i = 1; i <= 5; i++) {
+        const textarea = document.getElementById('share' + i);
+        const val = textarea.value.trim();
+        if (val.length > 0) {
+            filled++;
+            textarea.classList.add('filled');
+        } else {
+            textarea.classList.remove('filled');
+        }
+    }
+
+    const counterText = document.getElementById('counterText');
+    const btn = document.getElementById('recoverBtn');
+
+    if (filled >= 3) {
+        counterText.innerHTML = '<span class="enough">' + filled + ' of 5 codes entered — ready to recover!</span>';
+        btn.disabled = false;
+    } else {
+        counterText.innerHTML = filled + ' of 5 entered — need at least <strong>' + (3 - filled) + ' more</strong>';
+        btn.disabled = true;
+    }
+}
+</script>
+{% endblock %}

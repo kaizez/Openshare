@@ -5,6 +5,7 @@ from app.models import db, User, LoginHistory
 from app.siem_logger import SIEMLogger
 from app.ml_security import LoginBehaviorAnalyzer, build_login_data
 from app.keystroke_dynamics import keystroke_analyzer
+from app.shamir_recovery import generate_recovery_shares, recover_mfa_secret, hash_share
 import geoip2.database
 import geoip2.errors
 import os
@@ -1615,12 +1616,37 @@ def profile():
     if user.password_changed_at:
         password_days = (datetime.utcnow() - user.password_changed_at).days
 
+    # Query workingdb for file transfer stats
+    file_count = 0
+    upload_count = 0
+    download_count = 0
+    try:
+        working_db = Database()
+        working_db.ensure_connection()
+        cursor = working_db.connection.cursor(dictionary=True, buffered=True)
+        cursor.execute(
+            "SELECT COUNT(*) as files, COALESCE(SUM(download_count), 0) as downloads FROM file_metadata WHERE uploaded_by = %s",
+            (user.id,)
+        )
+        row = cursor.fetchone()
+        if row:
+            file_count = row['files'] or 0
+            upload_count = row['files'] or 0
+            download_count = int(row['downloads'] or 0)
+        cursor.close()
+        working_db.close()
+    except Exception as e:
+        print(f"[Profile] Error querying workingdb for file stats: {e}")
+
     return render_template('profile.html',
                            user=user,
                            login_history=login_history,
                            risk_level=risk_level,
                            risk_score=risk_score,
                            password_days=password_days,
+                           file_count=file_count,
+                           upload_count=upload_count,
+                           download_count=download_count,
                            timedelta=timedelta)
 
 
@@ -1645,14 +1671,14 @@ def upload_avatar():
         return jsonify({'success': False, 'message': 'No file selected'}), 400
 
     # Allowed extensions
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
 
     # Check file extension
     filename = file.filename.lower()
     ext = filename.rsplit('.', 1)[1] if '.' in filename else ''
     if ext not in ALLOWED_EXTENSIONS:
-        return jsonify({'success': False, 'message': 'Invalid file type. Allowed: PNG, JPG, JPEG, GIF'}), 400
+        return jsonify({'success': False, 'message': 'Invalid file type. Allowed: PNG, JPG'}), 400
 
     # Check file size
     file.seek(0, 2)
@@ -1879,9 +1905,20 @@ def mfa_setup_required():
             totp = pyotp.TOTP(user.mfa_secret)
             if totp.verify(verification_code, valid_window=1):
                 # Code is correct, MFA setup complete
+                user.mfa_enabled = True
+
+                # Generate Shamir's Secret Sharing recovery codes
+                shares, hashed_shares = generate_recovery_shares(user.mfa_secret)
+                user.recovery_shares_hash = json.dumps(hashed_shares)
+                db.session.commit()
+
                 session.pop('needs_mfa_setup', None)
                 session['mfa_enabled'] = True
-                return redirect(url_for('filetransfer.index'))
+
+                # Show recovery codes to the user
+                return render_template('mfa_recovery_codes.html',
+                                     shares=shares,
+                                     redirect_url=url_for('filetransfer.index'))
 
     # Generate QR code
     totp = pyotp.TOTP(user.mfa_secret)
@@ -1928,6 +1965,10 @@ def admin_mfa_setup():
             if totp.verify(verification_code, valid_window=1):
                 # Code is correct, enable MFA
                 user.mfa_enabled = True
+
+                # Generate Shamir's Secret Sharing recovery codes
+                shares, hashed_shares = generate_recovery_shares(user.mfa_secret)
+                user.recovery_shares_hash = json.dumps(hashed_shares)
                 db.session.commit()
 
                 # Clear setup session
@@ -1962,8 +2003,10 @@ def admin_mfa_setup():
                     mfa_used=True
                 )
 
-                flash('MFA enabled successfully! Welcome to the admin dashboard.', 'success')
-                return redirect(url_for('main.admin_dashboard'))
+                # Show recovery codes before dashboard
+                return render_template('mfa_recovery_codes.html',
+                                     shares=shares,
+                                     redirect_url=url_for('main.admin_dashboard'))
             else:
                 flash('Invalid verification code. Please try again.', 'error')
 
@@ -2019,12 +2062,19 @@ def mfa_setup():
                 # Code is correct, enable MFA
                 user.mfa_enabled = True
                 user.mfa_secret = mfa_secret
+
+                # Generate Shamir's Secret Sharing recovery codes
+                shares, hashed_shares = generate_recovery_shares(mfa_secret)
+                user.recovery_shares_hash = json.dumps(hashed_shares)
                 db.session.commit()
 
                 # Clear temporary secret
                 session.pop('temp_mfa_secret', None)
 
-                return redirect(url_for('filetransfer.index'))
+                # Show recovery codes to the user
+                return render_template('mfa_recovery_codes.html',
+                                     shares=shares,
+                                     redirect_url=url_for('filetransfer.index'))
 
     # Generate new TOTP secret for this user
     if 'temp_mfa_secret' not in session:
@@ -2182,6 +2232,111 @@ def mfa_disable():
     send_mfa_disabled_email(user.email, user.username, ip_address, location)
 
     return jsonify({'success': True, 'message': 'MFA has been disabled'})
+
+
+@bp.route('/mfa-recover', methods=['GET', 'POST'])
+def mfa_recover():
+    """Recover MFA using Shamir's Secret Sharing recovery codes"""
+    if request.method == 'POST':
+        # Collect all non-empty shares
+        shares = []
+        for i in range(1, 6):
+            share = request.form.get(f'share{i}', '').strip()
+            if share:
+                shares.append(share)
+
+        if len(shares) < 3:
+            flash('You need at least 3 recovery codes.', 'error')
+            return render_template('mfa_recover.html')
+
+        # Try to reconstruct the secret
+        recovered_secret = recover_mfa_secret(shares)
+
+        if not recovered_secret:
+            flash('Invalid recovery codes. Please check and try again.', 'error')
+            return render_template('mfa_recover.html')
+
+        # Find the user whose MFA secret matches
+        # Verify against stored hashed shares
+        users = User.query.filter_by(mfa_enabled=True).all()
+        target_user = None
+        for user in users:
+            if user.mfa_secret == recovered_secret:
+                target_user = user
+                break
+
+        if not target_user:
+            flash('Recovery failed. No matching account found.', 'error')
+            return render_template('mfa_recover.html')
+
+        # Verify the shares match stored hashes
+        if target_user.recovery_shares_hash:
+            stored_hashes = json.loads(target_user.recovery_shares_hash)
+            valid_shares = sum(1 for s in shares if hash_share(s) in stored_hashes)
+            if valid_shares < 3:
+                flash('Invalid recovery codes for this account.', 'error')
+                return render_template('mfa_recover.html')
+
+        # Recovery successful - log the user in with MFA verified
+        init_user_session(target_user)
+        session['email'] = target_user.email
+        session['picture'] = target_user.profile_picture_url
+        session['mfa_enabled'] = True
+
+        # Log to SIEM
+        siem.custom_event(
+            event_type='mfa_recovery',
+            description=f'MFA recovered via Shamir Secret Sharing for user {target_user.username}',
+            severity='Warning',
+            ip=get_client_ip(),
+            user_id=target_user.username
+        )
+
+        flash('Account recovered successfully! Please re-setup your authenticator app.', 'success')
+
+        # Redirect to MFA setup so they can re-provision their authenticator
+        return redirect(url_for('main.mfa_setup'))
+
+    return render_template('mfa_recover.html')
+
+
+@bp.route('/regenerate-recovery-codes', methods=['POST'])
+def regenerate_recovery_codes():
+    """Regenerate Shamir recovery codes (invalidates old ones)"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    if not user.mfa_enabled or not user.mfa_secret:
+        return jsonify({'success': False, 'message': 'MFA is not enabled'}), 400
+
+    # Require password confirmation (skip for OAuth users)
+    if not user.oauth_provider:
+        password = request.form.get('password')
+        if not password or not user.verify_password(password):
+            return jsonify({'success': False, 'message': 'Incorrect password'}), 400
+
+    # Generate new shares
+    shares, hashed_shares = generate_recovery_shares(user.mfa_secret)
+    user.recovery_shares_hash = json.dumps(hashed_shares)
+    db.session.commit()
+
+    # Log to SIEM
+    siem.custom_event(
+        event_type='recovery_codes_regenerated',
+        description=f'Recovery codes regenerated for user {user.username}',
+        severity='Info',
+        ip=get_client_ip(),
+        user_id=user.username
+    )
+
+    # Return the shares as a rendered page
+    return render_template('mfa_recovery_codes.html',
+                         shares=shares,
+                         redirect_url=url_for('main.settings'))
 
 
 @bp.route('/send-secondary-verification', methods=['POST'])

@@ -1,30 +1,46 @@
 """
-Keystroke Dynamics Authentication
-Analyzes typing patterns as a biometric identifier
+Keystroke Dynamics Authentication with Autoencoder-Based Anomaly Detection
+
+Analyzes typing patterns as a biometric identifier using:
+1. Feature extraction from keystroke timings (hold time, flight time, digraph latency)
+2. Autoencoder neural network for anomaly detection (learns normal typing patterns)
+3. Falls back to statistical matching when insufficient training data
 """
 
 import json
 import numpy as np
+from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import StandardScaler
 from typing import Dict, List, Tuple, Optional
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+
 
 class KeystrokeDynamics:
     """
-    Analyzes keystroke timing patterns for user authentication.
+    Analyzes keystroke timing patterns for user authentication using
+    an autoencoder-based anomaly detection approach.
 
-    Captures:
-    - Hold time: How long each key is pressed
-    - Flight time: Time between releasing one key and pressing next
-    - Digraph latency: Time between pressing two consecutive keys
+    The autoencoder learns a user's normal typing pattern. When a new
+    keystroke sample has high reconstruction error, it indicates an anomaly
+    (potentially a different person typing).
     """
 
-    # Similarity threshold (0-1, lower = stricter)
-    SIMILARITY_THRESHOLD = 0.65
-    MIN_SAMPLES = 3  # Minimum login samples before enforcing
+    # Thresholds
+    ANOMALY_MULTIPLIER = 3.0        # Flag if error > mean + multiplier * std of training errors
+    SIMILARITY_THRESHOLD = 0.65     # Statistical fallback threshold
+    MIN_SAMPLES_STATISTICAL = 3     # Min samples for statistical matching
+    MIN_SAMPLES_AUTOENCODER = 5     # Min samples to train autoencoder
+    MAX_STORED_SAMPLES = 30         # Max keystroke samples to store per user
+
+    # Autoencoder architecture: 6 -> 4 -> 2 -> 4 -> 6 (bottleneck = 2)
+    HIDDEN_LAYERS = (4, 2, 4)
+    MAX_ITER = 500
 
     def __init__(self):
         pass
 
-    def extract_features(self, keystroke_data: List[Dict]) -> Dict:
+    def extract_features(self, keystroke_data: List[Dict]) -> Optional[Dict]:
         """
         Extract features from raw keystroke data.
 
@@ -66,25 +82,104 @@ class KeystrokeDynamics:
             return None
 
         return {
-            'hold_mean': np.mean(hold_times),
-            'hold_std': np.std(hold_times) if len(hold_times) > 1 else 0,
-            'flight_mean': np.mean(flight_times),
-            'flight_std': np.std(flight_times) if len(flight_times) > 1 else 0,
-            'digraph_mean': np.mean(digraph_times) if digraph_times else 0,
-            'digraph_std': np.std(digraph_times) if len(digraph_times) > 1 else 0,
+            'hold_mean': float(np.mean(hold_times)),
+            'hold_std': float(np.std(hold_times)) if len(hold_times) > 1 else 0.0,
+            'flight_mean': float(np.mean(flight_times)),
+            'flight_std': float(np.std(flight_times)) if len(flight_times) > 1 else 0.0,
+            'digraph_mean': float(np.mean(digraph_times)) if digraph_times else 0.0,
+            'digraph_std': float(np.std(digraph_times)) if len(digraph_times) > 1 else 0.0,
             'total_time': keystroke_data[-1].get('release', 0) - keystroke_data[0].get('press', 0),
             'num_keys': len(keystroke_data)
         }
 
+    def _features_to_vector(self, features: Dict) -> np.ndarray:
+        """Convert feature dict to numpy array for ML processing."""
+        return np.array([
+            features['hold_mean'],
+            features['hold_std'],
+            features['flight_mean'],
+            features['flight_std'],
+            features['digraph_mean'],
+            features['digraph_std']
+        ])
+
+    def _train_autoencoder(self, samples: List[List[float]]) -> Tuple[MLPRegressor, StandardScaler, float]:
+        """
+        Train an autoencoder on the user's keystroke history.
+
+        The autoencoder is an MLPRegressor trained to reconstruct its own input.
+        Input = Output = keystroke feature vector.
+        The bottleneck forces it to learn a compressed representation of
+        the user's normal typing pattern.
+
+        Returns:
+            (autoencoder, scaler, adaptive_threshold)
+        """
+        X = np.array(samples)
+
+        # Standardize features (zero mean, unit variance)
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        # Train autoencoder (input = target = same data)
+        autoencoder = MLPRegressor(
+            hidden_layer_sizes=self.HIDDEN_LAYERS,
+            activation='relu',
+            solver='adam',
+            max_iter=self.MAX_ITER,
+            random_state=42,
+            early_stopping=True,
+            validation_fraction=0.2 if len(samples) >= 10 else 0.0,
+            n_iter_no_change=20,
+            learning_rate='adaptive',
+            learning_rate_init=0.001
+        )
+
+        # For small datasets, disable early stopping
+        if len(samples) < 10:
+            autoencoder.set_params(early_stopping=False)
+
+        autoencoder.fit(X_scaled, X_scaled)
+
+        # Compute adaptive threshold from training data reconstruction errors
+        X_reconstructed = autoencoder.predict(X_scaled)
+        training_errors = np.mean((X_scaled - X_reconstructed) ** 2, axis=1)
+        max_training_error = np.max(training_errors)
+        mean_error = np.mean(training_errors)
+        std_error = np.std(training_errors)
+
+        # Use the larger of two strategies:
+        # 1. Mean + multiplier * std (statistical approach)
+        # 2. Max training error * multiplier (accounts for generalization gap)
+        stat_threshold = mean_error + self.ANOMALY_MULTIPLIER * max(std_error, mean_error)
+        max_threshold = max_training_error * self.ANOMALY_MULTIPLIER
+
+        adaptive_threshold = max(stat_threshold, max_threshold, 0.5)
+
+        return autoencoder, scaler, adaptive_threshold
+
+    def _compute_reconstruction_error(self, autoencoder: MLPRegressor,
+                                       scaler: StandardScaler,
+                                       features: np.ndarray) -> float:
+        """
+        Compute normalized reconstruction error for a single sample.
+        Returns a value where lower = more similar to training data.
+        """
+        X = features.reshape(1, -1)
+        X_scaled = scaler.transform(X)
+        X_reconstructed = autoencoder.predict(X_scaled)
+        # Mean squared error
+        mse = np.mean((X_scaled - X_reconstructed) ** 2)
+        return float(mse)
+
     def calculate_similarity(self, profile: Dict, current: Dict) -> float:
         """
-        Calculate similarity between stored profile and current typing.
+        Statistical fallback: Calculate similarity between stored profile and current typing.
         Returns value 0-1 (1 = identical).
         """
         if not profile or not current:
             return 0.0
 
-        # Features to compare with weights
         features = [
             ('hold_mean', 0.25),
             ('hold_std', 0.10),
@@ -106,7 +201,6 @@ class KeystrokeDynamics:
             elif profile_val == 0 or current_val == 0:
                 similarity = 0.5
             else:
-                # Calculate percentage difference
                 diff = abs(profile_val - current_val) / max(profile_val, current_val)
                 similarity = max(0, 1 - diff)
 
@@ -118,8 +212,18 @@ class KeystrokeDynamics:
     def update_profile(self, existing_profile: Optional[Dict], new_features: Dict) -> Dict:
         """
         Update user's keystroke profile with new sample.
-        Uses exponential moving average for adaptation.
+        Stores both the running average (for statistical fallback) and
+        raw feature history (for autoencoder training).
         """
+        feature_vector = [
+            new_features['hold_mean'],
+            new_features['hold_std'],
+            new_features['flight_mean'],
+            new_features['flight_std'],
+            new_features['digraph_mean'],
+            new_features['digraph_std']
+        ]
+
         if not existing_profile:
             return {
                 'samples': 1,
@@ -128,7 +232,8 @@ class KeystrokeDynamics:
                 'flight_mean': new_features['flight_mean'],
                 'flight_std': new_features['flight_std'],
                 'digraph_mean': new_features['digraph_mean'],
-                'digraph_std': new_features['digraph_std']
+                'digraph_std': new_features['digraph_std'],
+                'history': [feature_vector]
             }
 
         # Exponential moving average (alpha = 0.3 for recent bias)
@@ -142,44 +247,80 @@ class KeystrokeDynamics:
             'flight_mean': (1 - alpha) * existing_profile['flight_mean'] + alpha * new_features['flight_mean'],
             'flight_std': (1 - alpha) * existing_profile['flight_std'] + alpha * new_features['flight_std'],
             'digraph_mean': (1 - alpha) * existing_profile['digraph_mean'] + alpha * new_features['digraph_mean'],
-            'digraph_std': (1 - alpha) * existing_profile['digraph_std'] + alpha * new_features['digraph_std']
+            'digraph_std': (1 - alpha) * existing_profile['digraph_std'] + alpha * new_features['digraph_std'],
         }
 
+        # Maintain feature history for autoencoder training
+        history = existing_profile.get('history', [])
+        history.append(feature_vector)
+
+        # Keep only the last MAX_STORED_SAMPLES
+        if len(history) > self.MAX_STORED_SAMPLES:
+            history = history[-self.MAX_STORED_SAMPLES:]
+
+        updated['history'] = history
         return updated
 
     def verify(self, user_profile_json: Optional[str], keystroke_data: List[Dict]) -> Tuple[bool, float, str]:
         """
         Verify user based on keystroke dynamics.
 
+        Uses autoencoder-based anomaly detection when enough samples exist,
+        falls back to statistical comparison otherwise.
+
         Returns:
             (is_valid, similarity_score, message)
         """
-        # Extract features from current typing
         current_features = self.extract_features(keystroke_data)
 
         if not current_features:
             return True, 0.0, "Insufficient keystroke data"
 
-        # No profile yet - accept and will build profile
         if not user_profile_json:
             return True, 1.0, "No profile yet - building"
 
         try:
             profile = json.loads(user_profile_json)
-        except:
+        except (json.JSONDecodeError, TypeError):
             return True, 1.0, "Invalid profile - rebuilding"
 
-        # Not enough samples yet - accept but flag
-        if profile.get('samples', 0) < self.MIN_SAMPLES:
-            return True, 1.0, f"Building profile ({profile.get('samples', 0)}/{self.MIN_SAMPLES})"
+        samples = profile.get('samples', 0)
+        history = profile.get('history', [])
 
-        # Calculate similarity
+        # Not enough samples yet - accept but flag
+        if samples < self.MIN_SAMPLES_STATISTICAL:
+            return True, 1.0, f"Building profile ({samples}/{self.MIN_SAMPLES_STATISTICAL})"
+
+        current_vector = self._features_to_vector(current_features)
+
+        # Try autoencoder-based detection if enough history
+        if len(history) >= self.MIN_SAMPLES_AUTOENCODER:
+            try:
+                autoencoder, scaler, threshold = self._train_autoencoder(history)
+                reconstruction_error = self._compute_reconstruction_error(
+                    autoencoder, scaler, current_vector
+                )
+
+                # Convert reconstruction error to a similarity-like score (0-1)
+                # Lower error = higher similarity
+                anomaly_score = max(0.0, 1.0 - min(reconstruction_error / threshold, 1.0))
+
+                if reconstruction_error <= threshold:
+                    return True, anomaly_score, f"Autoencoder match (error: {reconstruction_error:.4f}, threshold: {threshold:.4f})"
+                else:
+                    return False, anomaly_score, f"Autoencoder anomaly detected (error: {reconstruction_error:.4f}, threshold: {threshold:.4f})"
+
+            except Exception:
+                # Autoencoder failed, fall back to statistical
+                pass
+
+        # Statistical fallback
         similarity = self.calculate_similarity(profile, current_features)
 
         if similarity >= self.SIMILARITY_THRESHOLD:
-            return True, similarity, f"Keystroke match ({similarity:.1%})"
+            return True, similarity, f"Statistical match ({similarity:.1%})"
         else:
-            return False, similarity, f"Keystroke mismatch ({similarity:.1%})"
+            return False, similarity, f"Statistical mismatch ({similarity:.1%})"
 
 
 # Global instance

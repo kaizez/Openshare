@@ -3,64 +3,326 @@
 {% block title %}Setup Two-Factor Authentication - MoveIt{% endblock %}
 
 {% block content %}
-<div class="auth-container">
-    <div class="auth-card" style="max-width: 600px;">
-        <div class="auth-logo">
-            <h2 class="brand-name">MoveIt</h2>
-        </div>
+<style>
+    .mfa-setup-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+    }
 
-        <h1 class="auth-title">Setup Two-Factor Authentication</h1>
-        <p style="text-align: center; color: #718096; margin-bottom: 20px;">
-            For your security, MFA is required for all accounts. Please complete the setup below.
-        </p>
+    .mfa-setup-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+        max-width: 520px;
+        width: 100%;
+        overflow: hidden;
+    }
 
-        <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0; border-radius: 4px;">
-            <h3 style="margin-top: 0; color: #c53030;">Step 1: Download Authenticator App</h3>
-            <p style="margin: 5px 0; color: #742a2a;">
-                Download <strong>Microsoft Authenticator</strong> or <strong>Google Authenticator</strong> on your phone from the App Store or Google Play.
-            </p>
-        </div>
+    .mfa-setup-header {
+        background: linear-gradient(135deg, #007aff, #5856d6);
+        padding: 32px 28px;
+        text-align: center;
+        color: white;
+    }
 
-        <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0; border-radius: 4px;">
-            <h3 style="margin-top: 0; color: #c53030;">Step 2: Scan QR Code</h3>
-            <p style="margin: 5px 0; color: #742a2a;">
-                Open the app and scan this QR code:
-            </p>
-            <div style="text-align: center; margin: 20px 0;">
-                <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" style="max-width: 300px; border: 2px solid #e2e8f0; padding: 10px; background: white;">
+    .mfa-setup-header h1 {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+    }
+
+    .mfa-setup-header p {
+        font-size: 14px;
+        opacity: 0.9;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .mfa-setup-header .shield-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 16px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .mfa-setup-body {
+        padding: 28px;
+    }
+
+    /* Step Cards */
+    .step-card {
+        display: flex;
+        gap: 16px;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 16px;
+        margin-bottom: 16px;
+        transition: all 0.2s;
+    }
+
+    .step-card:hover {
+        background: #edf2f7;
+    }
+
+    .step-number {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #007aff, #5856d6);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .step-content {
+        flex: 1;
+    }
+
+    .step-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1a202c;
+        margin: 0 0 6px 0;
+    }
+
+    .step-desc {
+        font-size: 13px;
+        color: #718096;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* QR Code Section */
+    .qr-section {
+        text-align: center;
+        padding: 24px 20px;
+        background: #f8fafc;
+        border-radius: 16px;
+        margin-bottom: 16px;
+    }
+
+    .qr-code-wrapper {
+        display: inline-block;
+        padding: 16px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        margin-bottom: 16px;
+    }
+
+    .qr-code-wrapper img {
+        max-width: 220px;
+        display: block;
+    }
+
+    /* Manual Entry Collapsible */
+    .manual-entry-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: none;
+        color: #007aff;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 6px 12px;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+
+    .manual-entry-toggle:hover {
+        background: #ebf4ff;
+    }
+
+    .manual-entry-toggle svg {
+        transition: transform 0.2s;
+    }
+
+    .manual-entry-toggle.open svg {
+        transform: rotate(180deg);
+    }
+
+    .manual-entry-content {
+        display: none;
+        margin-top: 12px;
+        padding: 14px 16px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .manual-entry-content.show {
+        display: block;
+    }
+
+    .secret-key {
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        font-weight: 600;
+        color: #2d3748;
+        word-break: break-all;
+        letter-spacing: 1px;
+        user-select: all;
+    }
+
+    .copy-hint {
+        font-size: 11px;
+        color: #a0aec0;
+        margin-top: 6px;
+    }
+
+    /* Verification Form */
+    .verify-section {
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 16px;
+    }
+
+    .verify-section .step-card-inline {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .verify-input {
+        width: 100%;
+        padding: 16px;
+        font-size: 28px;
+        text-align: center;
+        letter-spacing: 10px;
+        border: 2px solid #e2e8f0;
+        border-radius: 14px;
+        font-weight: 700;
+        color: #1a202c;
+        transition: border-color 0.2s;
+        margin-bottom: 16px;
+    }
+
+    .verify-input:focus {
+        outline: none;
+        border-color: #007aff;
+        box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+    }
+
+    .verify-input::placeholder {
+        color: #cbd5e0;
+        font-weight: 400;
+    }
+
+    .submit-btn {
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, #007aff, #5856d6);
+        color: white;
+        border: none;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .submit-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(0,122,255,0.3);
+    }
+
+    .submit-btn:active {
+        transform: translateY(0);
+    }
+</style>
+
+<div class="mfa-setup-wrapper">
+    <div class="mfa-setup-card">
+        <div class="mfa-setup-header">
+            <div class="shield-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
             </div>
-            <p style="margin: 10px 0; color: #742a2a; font-size: 12px;">
-                <strong>Can't scan?</strong> Enter this code manually: <code style="background: #f7fafc; padding: 2px 6px; border-radius: 3px;">{{ secret_key }}</code>
-            </p>
+            <h1>Setup Two-Factor Authentication</h1>
+            <p>For your security, MFA is required for all accounts. Complete the steps below.</p>
         </div>
 
-        <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0; border-radius: 4px;">
-            <h3 style="margin-top: 0; color: #c53030;">Step 3: Verify Code</h3>
-            <p style="margin: 5px 0; color: #742a2a;">
-                Enter the 6-digit code from your authenticator app to complete setup:
-            </p>
-        </div>
-
-        <form method="POST" action="{{ url_for('main.mfa_setup_required') }}" class="auth-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label for="verification_code">Verification Code</label>
-                <input
-                    type="text"
-                    id="verification_code"
-                    name="verification_code"
-                    class="form-control"
-                    maxlength="6"
-                    pattern="[0-9]{6}"
-                    placeholder="000000"
-                    style="text-align: center; font-size: 24px; letter-spacing: 8px;"
-                    required
-                    autofocus
-                >
+        <div class="mfa-setup-body">
+            <!-- Step 1 -->
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <p class="step-title">Download Authenticator App</p>
+                    <p class="step-desc">Get <strong>Microsoft Authenticator</strong> or <strong>Google Authenticator</strong> from the App Store or Google Play.</p>
+                </div>
             </div>
 
-            <button type="submit" class="btn btn-primary">Complete Setup</button>
-        </form>
+            <!-- Step 2 -->
+            <div class="step-card" style="flex-direction: column; align-items: stretch;">
+                <div style="display: flex; gap: 16px;">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <p class="step-title">Scan QR Code</p>
+                        <p class="step-desc">Open the authenticator app and scan the code below.</p>
+                    </div>
+                </div>
+
+                <div class="qr-section" style="margin-top: 12px; margin-bottom: 0;">
+                    <div class="qr-code-wrapper">
+                        <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code">
+                    </div>
+
+                    <div>
+                        <button type="button" class="manual-entry-toggle" onclick="toggleManualEntry(this)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            Can't scan? Enter manually
+                        </button>
+                        <div class="manual-entry-content" id="manualEntry">
+                            <div class="secret-key">{{ secret_key }}</div>
+                            <div class="copy-hint">Click to select, then copy</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="verify-section">
+                <div class="verify-section-header" style="display: flex; gap: 12px; margin-bottom: 16px;">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <p class="step-title">Verify Code</p>
+                        <p class="step-desc">Enter the 6-digit code from your authenticator app.</p>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('main.mfa_setup_required') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input
+                        type="text"
+                        id="verification_code"
+                        name="verification_code"
+                        class="verify-input"
+                        maxlength="6"
+                        pattern="[0-9]{6}"
+                        placeholder="000000"
+                        required
+                        autofocus
+                        autocomplete="one-time-code"
+                    >
+                    <button type="submit" class="submit-btn">Complete Setup</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -69,5 +331,11 @@
 document.getElementById('verification_code').addEventListener('input', function(e) {
     this.value = this.value.replace(/[^0-9]/g, '');
 });
+
+function toggleManualEntry(btn) {
+    const content = document.getElementById('manualEntry');
+    btn.classList.toggle('open');
+    content.classList.toggle('show');
+}
 </script>
 {% endblock %}

@@ -171,13 +171,17 @@ input:checked + .toggle-slider:before {
     color: #007aff;
     text-decoration: none;
     font-size: 17px;
-    font-weight: 500;
+    font-weight: 525;
     cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
 }
 
 .change-password-btn:hover {
     opacity: 0.7;
 }
+
 
 /* Modal Styles */
 .modal-overlay {
@@ -370,6 +374,16 @@ input:checked + .toggle-slider:before {
                 </label>
             </div>
 
+            {% if user.mfa_enabled %}
+            <div class="setting-item">
+                <div class="setting-info">
+                    <p class="setting-label">Recovery Codes</p>
+                    <p class="setting-description">Shamir's Secret Sharing — regenerate 5 recovery codes (3 needed to recover)</p>
+                </div>
+                <button type="button" onclick="showRegenerateModal()" class="change-password-btn">Regenerate</button>
+            </div>
+            {% endif %}
+
             <div class="setting-item" style="flex-direction: column; align-items: stretch;">
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <div class="setting-info">
@@ -525,6 +539,51 @@ input:checked + .toggle-slider:before {
     </div>
 </div>
 
+<!-- Regenerate Recovery Codes Modal -->
+<div class="modal-overlay" id="regenerateModal">
+    <div class="modal-content">
+        <div class="modal-header" style="background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <h2>Regenerate Recovery Codes</h2>
+            <p>This will invalidate all existing recovery codes</p>
+        </div>
+        <div class="modal-body">
+            <div class="danger-warning" style="border-color: #90cdf4; background: #ebf8ff;">
+                <h3 style="color: #2b6cb0;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    Important
+                </h3>
+                <ul style="color: #2a4365;">
+                    <li>Your old recovery codes will stop working immediately</li>
+                    <li>You will receive 5 new recovery codes</li>
+                    <li>Save them in a secure location</li>
+                </ul>
+            </div>
+
+            <form id="regenerateForm">
+                {% if not user.oauth_provider %}
+                <div class="form-group-modal">
+                    <label for="regenPassword">Enter your password to confirm</label>
+                    <input type="password" id="regenPassword" name="password" placeholder="Your password" required autocomplete="current-password">
+                </div>
+                <div class="error-message" id="regenErrorMessage"></div>
+                {% endif %}
+
+                <div class="modal-actions">
+                    <button type="button" class="modal-btn modal-btn-cancel" onclick="closeRegenerateModal()">Cancel</button>
+                    <button type="submit" class="modal-btn" style="background: #4299e1; color: white;">Regenerate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Disable MFA Modal -->
 <div class="modal-overlay" id="disableMfaModal">
     <div class="modal-content">
@@ -578,6 +637,58 @@ input:checked + .toggle-slider:before {
 </div>
 
 <script>
+function showRegenerateModal() {
+    const modal = document.getElementById('regenerateModal');
+    modal.classList.add('show');
+    const pw = document.getElementById('regenPassword');
+    if (pw) { pw.value = ''; pw.focus(); }
+}
+
+function closeRegenerateModal() {
+    document.getElementById('regenerateModal').classList.remove('show');
+}
+
+document.getElementById('regenerateModal').addEventListener('click', function(e) {
+    if (e.target === this) closeRegenerateModal();
+});
+
+document.getElementById('regenerateForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const pw = document.getElementById('regenPassword');
+    const password = pw ? pw.value : '';
+    const errEl = document.getElementById('regenErrorMessage');
+
+    try {
+        const formData = new FormData();
+        if (password) formData.append('password', password);
+        formData.append('csrf_token', '{{ csrf_token() }}');
+
+        const response = await fetch("{{ url_for('main.regenerate_recovery_codes') }}", {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            // The response is an HTML page with new recovery codes
+            const html = await response.text();
+            document.open();
+            document.write(html);
+            document.close();
+        } else {
+            const result = await response.json();
+            if (errEl) {
+                errEl.textContent = result.message || 'Failed to regenerate codes.';
+                errEl.classList.add('show');
+            }
+        }
+    } catch (error) {
+        if (errEl) {
+            errEl.textContent = 'An error occurred. Please try again.';
+            errEl.classList.add('show');
+        }
+    }
+});
+
 function toggleMFA(checkbox) {
     const isEnabled = checkbox.checked;
 
