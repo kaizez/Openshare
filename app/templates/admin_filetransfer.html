@@ -568,6 +568,83 @@
         color: #ff3b30;
     }
 
+    /* ML Trust Score badges */
+    .badge-trust {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
+    .badge-trust-trustworthy { background: #dcfce7; color: #166534; }
+    .badge-trust-caution     { background: #fef9c3; color: #854d0e; }
+    .badge-trust-suspicious  { background: #ffedd5; color: #9a3412; }
+    .badge-trust-high_risk   { background: #fee2e2; color: #991b1b; }
+    .badge-trust-unknown     { background: #f3f4f6; color: #6b7280; }
+
+    /* ML Analysis section in file details modal */
+    .ml-analysis-section {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+    .ml-score-gauge {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .ml-score-circle {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+    .ml-score-trustworthy { background: #dcfce7; color: #166534; }
+    .ml-score-caution     { background: #fef9c3; color: #854d0e; }
+    .ml-score-suspicious  { background: #ffedd5; color: #9a3412; }
+    .ml-score-high_risk   { background: #fee2e2; color: #991b1b; }
+    .ml-score-unknown     { background: #f3f4f6; color: #6b7280; }
+
+    .ml-risk-signal {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        font-size: 13px;
+    }
+    .ml-risk-signal-critical { border-left: 3px solid #dc2626; }
+    .ml-risk-signal-high     { border-left: 3px solid #f97316; }
+    .ml-risk-signal-medium   { border-left: 3px solid #eab308; }
+    .ml-risk-signal-low      { border-left: 3px solid #3b82f6; }
+    .ml-deduction { font-weight: 700; color: #dc2626; white-space: nowrap; }
+    .ml-features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+    }
+    .ml-feature-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    .ml-feature-label { color: #6b7280; margin-bottom: 2px; }
+    .ml-feature-value { font-weight: 600; color: #1a202c; font-family: monospace; }
+
     .view-logs-btn {
         padding: 6px 12px;
         background: #f7fafc;
@@ -674,6 +751,200 @@
             flex-direction: column;
         }
     }
+
+    /* ── ML Trust Scores Tab ────────────────────────────────────────── */
+    .ml-stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .ml-stat-card {
+        padding: 14px 16px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        text-align: center;
+    }
+    .ml-stat-card .stat-value {
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+    .ml-stat-card .stat-label {
+        font-size: 11px;
+        color: #6b7280;
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .ml-stat-card .stat-avg {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 2px;
+    }
+    .ml-stat-trustworthy { background:#f0fdf4; border-color:#bbf7d0; }
+    .ml-stat-trustworthy .stat-value { color:#166534; }
+    .ml-stat-caution     { background:#fefce8; border-color:#fef08a; }
+    .ml-stat-caution     .stat-value { color:#854d0e; }
+    .ml-stat-suspicious  { background:#fff7ed; border-color:#fed7aa; }
+    .ml-stat-suspicious  .stat-value { color:#9a3412; }
+    .ml-stat-high_risk   { background:#fef2f2; border-color:#fecaca; }
+    .ml-stat-high_risk   .stat-value { color:#991b1b; }
+    .ml-stat-total       { background:#f8fafc; border-color:#e2e8f0; }
+    .ml-stat-total       .stat-value { color:#1e293b; }
+
+    .ml-filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+        align-items: center;
+    }
+    .ml-filter-btn {
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        color: #4b5563;
+    }
+    .ml-filter-btn:hover { border-color: #94a3b8; background: #f1f5f9; }
+    .ml-filter-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+    .ml-filter-btn.active-trustworthy { background:#166534; border-color:#166534; color:#fff; }
+    .ml-filter-btn.active-caution     { background:#854d0e; border-color:#854d0e; color:#fff; }
+    .ml-filter-btn.active-suspicious  { background:#9a3412; border-color:#9a3412; color:#fff; }
+    .ml-filter-btn.active-high_risk   { background:#991b1b; border-color:#991b1b; color:#fff; }
+
+    .ml-sort-bar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+    .ml-sort-label { font-size: 12px; color:#6b7280; }
+    .ml-sort-select {
+        font-size: 12px;
+        padding: 5px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: #fff;
+        color: #1e293b;
+        cursor: pointer;
+    }
+    .ml-refresh-btn {
+        margin-left: auto;
+        padding: 6px 14px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        color: #374151;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.15s;
+    }
+    .ml-refresh-btn:hover { background: #e2e8f0; }
+    .ml-refresh-btn.spinning svg { animation: ml-spin 0.8s linear infinite; }
+    @keyframes ml-spin { to { transform: rotate(360deg); } }
+
+    .ml-scores-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .ml-scores-table th {
+        padding: 10px 12px;
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .ml-scores-table th:hover { background: #f1f5f9; color: #374151; }
+    .ml-scores-table th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+    .ml-scores-table th.sorted .sort-arrow { opacity: 1; }
+    .ml-scores-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .ml-scores-table tr:hover td { background: #fafbfc; }
+    .ml-score-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .ml-score-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 28px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+    .ml-score-pill-trustworthy { background:#dcfce7; color:#166534; }
+    .ml-score-pill-caution     { background:#fef9c3; color:#854d0e; }
+    .ml-score-pill-suspicious  { background:#ffedd5; color:#9a3412; }
+    .ml-score-pill-high_risk   { background:#fee2e2; color:#991b1b; }
+    .ml-score-pill-unknown     { background:#f3f4f6; color:#6b7280; }
+    .ml-mini-bar {
+        height: 6px;
+        border-radius: 3px;
+        background: #e5e7eb;
+        width: 60px;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .ml-mini-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+    .ml-fill-trustworthy { background:#22c55e; }
+    .ml-fill-caution     { background:#eab308; }
+    .ml-fill-suspicious  { background:#f97316; }
+    .ml-fill-high_risk   { background:#ef4444; }
+    .ml-fill-unknown     { background:#94a3b8; }
+
+    .ml-signal-chip {
+        display: inline-block;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        background: #fef2f2;
+        color: #991b1b;
+        margin: 1px 2px;
+        white-space: nowrap;
+    }
+    .ml-no-signals { font-size: 12px; color: #9ca3af; font-style: italic; }
+    .ml-filename-cell {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+    .ml-empty-state {
+        text-align: center;
+        padding: 48px 24px;
+        color: #6b7280;
+    }
+    .ml-empty-state svg { opacity: 0.3; margin-bottom: 12px; }
+    .ml-empty-state p { font-size: 14px; margin: 4px 0; }
 </style>
 
 <div class="admin-container">
@@ -744,6 +1015,249 @@
             </svg>
             Log Out
         </a>
+    </div>
+
+    <!-- Current Policy Summary -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                Current Policy Summary
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                {% for key, value in summary.items() %}
+                <div style="padding: 12px; background: #f7fafc; border-radius: 8px;">
+                    <div style="font-size: 12px; color: #8e8e93; text-transform: uppercase;">{{ key.replace('_', '
+                        ').replace('.', ' > ') }}</div>
+                    <div style="font-weight: 600; color: #2d3748; margin-top: 4px;">{{ value }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ML Trust Scores -->
+    <div class="admin-card" id="mlTrustScoresCard">
+        <div class="admin-section">
+            <div class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2z"/>
+                    <path d="M15 13v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2z"/>
+                    <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+                    <path d="M9 7h6"/>
+                </svg>
+                ML Trust Score Dashboard
+            </div>
+            <p class="section-description">Machine-learning anomaly scores for every uploaded file. Scores are computed at upload time using entropy analysis, MIME detection, PE header checks, and an IsolationForest model.</p>
+
+            <!-- Stats bar -->
+            <div class="ml-stats-bar" id="mlStatsBar">
+                <div class="ml-stat-card ml-stat-total">
+                    <div class="stat-value" id="mlTotalCount">—</div>
+                    <div class="stat-label">Files Analyzed</div>
+                </div>
+                <div class="ml-stat-card ml-stat-trustworthy">
+                    <div class="stat-value" id="mlCountTrustworthy">—</div>
+                    <div class="stat-label">Trustworthy</div>
+                    <div class="stat-avg" id="mlAvgTrustworthy"></div>
+                </div>
+                <div class="ml-stat-card ml-stat-caution">
+                    <div class="stat-value" id="mlCountCaution">—</div>
+                    <div class="stat-label">Caution</div>
+                    <div class="stat-avg" id="mlAvgCaution"></div>
+                </div>
+                <div class="ml-stat-card ml-stat-suspicious">
+                    <div class="stat-value" id="mlCountSuspicious">—</div>
+                    <div class="stat-label">Suspicious</div>
+                    <div class="stat-avg" id="mlAvgSuspicious"></div>
+                </div>
+                <div class="ml-stat-card ml-stat-high_risk">
+                    <div class="stat-value" id="mlCountHighRisk">—</div>
+                    <div class="stat-label">High Risk</div>
+                    <div class="stat-avg" id="mlAvgHighRisk"></div>
+                </div>
+            </div>
+
+            <!-- Filter + sort controls -->
+            <div class="ml-filter-bar" id="mlFilterBar">
+                <button class="ml-filter-btn active" data-filter="all" onclick="mlSetFilter('all', this)">All</button>
+                <button class="ml-filter-btn" data-filter="high_risk"   onclick="mlSetFilter('high_risk', this)">🔴 High Risk</button>
+                <button class="ml-filter-btn" data-filter="suspicious"  onclick="mlSetFilter('suspicious', this)">🟠 Suspicious</button>
+                <button class="ml-filter-btn" data-filter="caution"     onclick="mlSetFilter('caution', this)">🟡 Caution</button>
+                <button class="ml-filter-btn" data-filter="trustworthy" onclick="mlSetFilter('trustworthy', this)">🟢 Trustworthy</button>
+                <button class="ml-refresh-btn" id="mlRefreshBtn" onclick="loadMlScores()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+
+            <div class="ml-sort-bar">
+                <span class="ml-sort-label">Sort by:</span>
+                <select class="ml-sort-select" id="mlSortSelect" onchange="loadMlScores()">
+                    <option value="analyzed_at">Analysis Date</option>
+                    <option value="trust_score">Trust Score</option>
+                    <option value="original_filename">Filename</option>
+                    <option value="risk_level">Risk Level</option>
+                </select>
+                <select class="ml-sort-select" id="mlOrderSelect" onchange="loadMlScores()">
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                </select>
+            </div>
+
+            <!-- Results table -->
+            <div id="mlScoresTableContainer">
+                <div class="ml-empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2z"/>
+                        <path d="M15 13v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2z"/>
+                    </svg>
+                    <p>Loading trust scores...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Metadata Search -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <div class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                File Metadata Search
+            </div>
+            <p class="section-description">Search for files by ID, filename, or hash. View metadata and access logs.</p>
+
+            <div class="search-box">
+                <input type="text" id="searchQuery" class="search-input" placeholder="Search files...">
+                <select id="searchType" class="search-select">
+                    <option value="all">All Fields</option>
+                    <option value="filename">Filename</option>
+                    <option value="file_id">File ID</option>
+                    <option value="hash">Hash</option>
+                </select>
+                <button type="button" class="search-btn" onclick="searchFiles()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="display: inline; vertical-align: middle;">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    Search
+                </button>
+            </div>
+
+            <div id="searchResults">
+                <div class="no-results">
+                    <p>Enter a search term or click Search to view recent files</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forensic Watermark Analysis -->
+    <div class="admin-card" style="padding:0; overflow:hidden;">
+        <div class="forensic-card" style="border-radius:12px; box-shadow:none; margin:0;">
+<div class="forensic-header">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1967d2" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="M9 12l2 2 4-4"></path>
+        </svg>
+        <h2>Forensic Watermark Analysis</h2>
+        <span class="forensic-badge">Admin Only</span>
+    </div>
+    <p class="forensic-desc">
+        Upload a potentially leaked file. The system will compute its SHA-256 hash, check whether it
+        originated from this platform, and display all encrypted download watermarks — showing who
+        retrieved the file, when, and from which IP address.
+    </p>
+
+    <div class="forensic-drop-zone" id="forensicDropZone">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p><strong>Drop a file here</strong> or click to browse</p>
+        <p class="drop-hint">Any file type &bull; Max 500 MB &bull; File is not stored</p>
+        <input type="file" id="forensicFileInput" accept="*/*">
+    </div>
+
+    <div id="forensicFileInfo" class="forensic-file-selected" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span id="forensicFileName">—</span>
+        <span id="forensicFileSize" style="color:#6b7280;flex-shrink:0;"></span>
+    </div>
+
+    <button class="forensic-run-btn" id="forensicRunBtn" onclick="runForensicCheck()" disabled>
+        <div class="forensic-spinner" id="forensicSpinner"></div>
+        <svg id="forensicBtnIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Run Forensic Check
+    </button>
+
+    <!-- Result area -->
+    <div class="forensic-result" id="forensicResult">
+
+        <!-- Not Found -->
+        <div id="forensicNotFound" class="forensic-not-found" style="display:none;">
+            <strong>File Not Found in System</strong>
+            This file hash does not match any file in our database.
+            This file did not originate from this platform, or it was permanently deleted before watermark records were created.
+            <div class="forensic-hash-display" id="forensicHashNotFound" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- Found -->
+        <div id="forensicFound" style="display:none;">
+            <div class="forensic-found-banner">
+                <div class="found-title">File Found in System</div>
+                <div class="forensic-hash-display" id="forensicHashFound"></div>
+                <div class="found-meta" id="forensicFileMeta"></div>
+            </div>
+
+            <div id="forensicWatermarkSection">
+                <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px;">
+                    Identified Downloader
+                </div>
+                <div id="forensicNoWatermarks" class="wm-empty" style="display:none;">
+                    No download watermarks found for this file.<br>
+                    <span style="font-size:12px;">The file may have been accessed before watermarking was enabled.</span>
+                </div>
+                <div class="wm-table-wrap" id="forensicWmTableWrap" style="display:none;">
+                    <table class="wm-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp (UTC)</th>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>IP Address</th>
+                                <th>Access Methods</th>
+                                <th>Classification</th>
+                                <th>User Agent</th>
+                                <th>Watermark ID</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forensicWmTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /forensic-result -->
+        </div>
     </div>
 
     <!-- Info Box -->
@@ -979,69 +1493,8 @@
         </div>
     </form>
 
-    <!-- File Metadata Search -->
-    <div class="admin-card">
-        <div class="admin-section">
-            <div class="section-title">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                </svg>
-                File Metadata Search
-            </div>
-            <p class="section-description">Search for files by ID, filename, or hash. View metadata and access logs.</p>
-
-            <div class="search-box">
-                <input type="text" id="searchQuery" class="search-input" placeholder="Search files...">
-                <select id="searchType" class="search-select">
-                    <option value="all">All Fields</option>
-                    <option value="filename">Filename</option>
-                    <option value="file_id">File ID</option>
-                    <option value="hash">Hash</option>
-                </select>
-                <button type="button" class="search-btn" onclick="searchFiles()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="display: inline; vertical-align: middle;">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                    Search
-                </button>
-            </div>
-
-            <div id="searchResults">
-                <div class="no-results">
-                    <p>Enter a search term or click Search to view recent files</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Current Policy Summary -->
-    <div class="admin-card">
-        <div class="admin-section">
-            <div class="section-title">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                Current Policy Summary
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                {% for key, value in summary.items() %}
-                <div style="padding: 12px; background: #f7fafc; border-radius: 8px;">
-                    <div style="font-size: 12px; color: #8e8e93; text-transform: uppercase;">{{ key.replace('_', '
-                        ').replace('.', ' > ') }}</div>
-                    <div style="font-weight: 600; color: #2d3748; margin-top: 4px;">{{ value }}</div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- Forensic Watermark Analysis (inside admin-container for consistent width) -->
+<!-- Modals, Scripts, Forensic Analysis below                               -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <div id="totpModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
@@ -1167,6 +1620,7 @@
                             <th>Size</th>
                             <th>Classification</th>
                             <th>Status</th>
+                            <th>Trust</th>
                             <th>Upload Time</th>
                             <th>Actions</th>
                         </tr>
@@ -1202,6 +1656,11 @@
                         classBadge = '<span class="badge-clean badge-classified">Classified</span>';
                     }
 
+                    const trustLevel = file.risk_level || 'unknown';
+                    const trustBadge = file.trust_score != null
+                        ? `<span class="badge-trust badge-trust-${trustLevel}">${file.trust_score}</span>`
+                        : '<span class="badge-trust badge-trust-unknown">—</span>';
+
                     html += `
                     <tr>
                         <td><span class="file-id" title="${file.file_id}">${file.file_id}</span></td>
@@ -1209,6 +1668,7 @@
                         <td>${sizeFormatted}</td>
                         <td>${classBadge}</td>
                         <td>${statusBadge}</td>
+                        <td>${trustBadge}</td>
                         <td>${uploadTime}</td>
                         <td>
                             <button class="view-logs-btn" onclick="viewFileDetails('${file.file_id}')">
@@ -1241,6 +1701,7 @@
                 const file = data.files[0];
                 showFileModal(file);
                 loadFileLogs(fileId);
+                loadMlAnalysis(fileId);
             } else {
                 alert('File not found');
             }
@@ -1317,6 +1778,9 @@
                 <p style="color: #8e8e93;">Loading access logs...</p>
             </div>
         </div>
+        <div id="mlAnalysisContainer" class="ml-analysis-section">
+            <p style="color: #8e8e93; font-size: 13px;">Loading ML analysis...</p>
+        </div>
     `;
 
         modal.style.display = 'flex';
@@ -1373,6 +1837,110 @@
             }
         } catch (error) {
             container.innerHTML = `<p style="color: #ff3b30;">Error loading logs: ${error.message}</p>`;
+        }
+    }
+
+    async function loadMlAnalysis(fileId) {
+        const container = document.getElementById('mlAnalysisContainer');
+        if (!container) return;
+
+        try {
+            const response = await fetch(`/admin/filetransfer/ml-analysis/${encodeURIComponent(fileId)}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = `<div class="ml-analysis-section"><p style="color:#ff3b30; font-size:13px;">ML analysis error: ${escapeHtml(data.message)}</p></div>`;
+                return;
+            }
+
+            const a = data.analysis;
+            if (!a) {
+                container.innerHTML = `<div class="ml-analysis-section"><h4 style="margin-bottom:10px; font-size:14px; color:#2d3748;">ML Trust Analysis</h4><p style="color:#8e8e93; font-size:13px;">No ML analysis available for this file.</p></div>`;
+                return;
+            }
+
+            const riskLevel = a.risk_level || 'unknown';
+            const score = a.trust_score != null ? a.trust_score : '—';
+            const analyzedAt = a.analyzed_at ? new Date(a.analyzed_at).toLocaleString() : 'N/A';
+
+            const riskLabels = {
+                trustworthy: 'Trustworthy',
+                caution: 'Caution',
+                suspicious: 'Suspicious',
+                high_risk: 'High Risk',
+                unknown: 'Unknown',
+            };
+            const riskLabel = riskLabels[riskLevel] || riskLevel;
+
+            // Build risk signals HTML
+            let signalsHtml = '';
+            if (a.risk_signals && a.risk_signals.length > 0) {
+                for (const sig of a.risk_signals) {
+                    const sev = sig.severity || 'low';
+                    signalsHtml += `
+                        <div class="ml-risk-signal ml-risk-signal-${sev}">
+                            <span class="ml-deduction">-${sig.deduction}</span>
+                            <div>
+                                <div style="font-weight:600; color:#2d3748;">${escapeHtml(sig.name.replace(/_/g,' '))}</div>
+                                <div style="color:#4a5568; margin-top:2px;">${escapeHtml(sig.description)}</div>
+                            </div>
+                        </div>`;
+                }
+            } else {
+                signalsHtml = '<p style="color:#8e8e93; font-size:13px;">No risk signals detected.</p>';
+            }
+
+            // Build features grid HTML
+            let featuresHtml = '';
+            const featureLabels = {
+                entropy: 'Entropy',
+                mime_mismatch: 'MIME Mismatch',
+                dangerous_extension: 'Dangerous Ext.',
+                pe_in_non_exe: 'PE in Non-Exe',
+                null_byte_ratio: 'Null Byte Ratio',
+                printable_ratio: 'Printable Ratio',
+                suspicious_pattern_count: 'Suspicious Patterns',
+                anomaly_score: 'Anomaly Score',
+            };
+            if (a.features) {
+                for (const [key, label] of Object.entries(featureLabels)) {
+                    const val = a.features[key];
+                    if (val !== undefined) {
+                        const displayVal = typeof val === 'number' ? val.toFixed(4) : String(val);
+                        featuresHtml += `
+                            <div class="ml-feature-item">
+                                <div class="ml-feature-label">${label}</div>
+                                <div class="ml-feature-value">${escapeHtml(displayVal)}</div>
+                            </div>`;
+                    }
+                }
+            }
+
+            container.innerHTML = `
+                <div class="ml-analysis-section">
+                    <h4 style="margin-bottom:14px; font-size:14px; color:#2d3748;">ML Trust Analysis</h4>
+                    <div class="ml-score-gauge">
+                        <div class="ml-score-circle ml-score-${riskLevel}">${score}</div>
+                        <div>
+                            <div style="font-size:16px; font-weight:700; color:#2d3748;">${riskLabel}</div>
+                            <div style="font-size:12px; color:#8e8e93; margin-top:2px;">Analyzed: ${analyzedAt}</div>
+                            <div style="font-size:12px; color:#8e8e93;">Model v${escapeHtml(a.model_version || '1.0')}</div>
+                        </div>
+                    </div>
+                    ${a.risk_signals && a.risk_signals.length > 0 ? `
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:13px; font-weight:600; color:#4a5568; margin-bottom:8px;">Risk Signals</div>
+                        ${signalsHtml}
+                    </div>` : signalsHtml}
+                    <div>
+                        <div style="font-size:13px; font-weight:600; color:#4a5568; margin-bottom:8px;">Feature Breakdown</div>
+                        <div class="ml-features-grid">${featuresHtml}</div>
+                    </div>
+                </div>`;
+        } catch (error) {
+            if (container) {
+                container.innerHTML = `<div class="ml-analysis-section"><p style="color:#ff3b30; font-size:13px;">Error loading ML analysis: ${escapeHtml(error.message)}</p></div>`;
+            }
         }
     }
 
@@ -1585,99 +2153,6 @@
     .cls-classified { background: #fee2e2; color: #991b1b; }
 </style>
 
-<div class="forensic-card">
-    <div class="forensic-header">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1967d2" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            <path d="M9 12l2 2 4-4"></path>
-        </svg>
-        <h2>Forensic Watermark Analysis</h2>
-        <span class="forensic-badge">Admin Only</span>
-    </div>
-    <p class="forensic-desc">
-        Upload a potentially leaked file. The system will compute its SHA-256 hash, check whether it
-        originated from this platform, and display all encrypted download watermarks — showing who
-        retrieved the file, when, and from which IP address.
-    </p>
-
-    <div class="forensic-drop-zone" id="forensicDropZone">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <p><strong>Drop a file here</strong> or click to browse</p>
-        <p class="drop-hint">Any file type &bull; Max 500 MB &bull; File is not stored</p>
-        <input type="file" id="forensicFileInput" accept="*/*">
-    </div>
-
-    <div id="forensicFileInfo" class="forensic-file-selected" style="display:none;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-        </svg>
-        <span id="forensicFileName">—</span>
-        <span id="forensicFileSize" style="color:#6b7280;flex-shrink:0;"></span>
-    </div>
-
-    <button class="forensic-run-btn" id="forensicRunBtn" onclick="runForensicCheck()" disabled>
-        <div class="forensic-spinner" id="forensicSpinner"></div>
-        <svg id="forensicBtnIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        Run Forensic Check
-    </button>
-
-    <!-- Result area -->
-    <div class="forensic-result" id="forensicResult">
-
-        <!-- Not Found -->
-        <div id="forensicNotFound" class="forensic-not-found" style="display:none;">
-            <strong>File Not Found in System</strong>
-            This file hash does not match any file in our database.
-            This file did not originate from this platform, or it was permanently deleted before watermark records were created.
-            <div class="forensic-hash-display" id="forensicHashNotFound" style="margin-top:10px;"></div>
-        </div>
-
-        <!-- Found -->
-        <div id="forensicFound" style="display:none;">
-            <div class="forensic-found-banner">
-                <div class="found-title">File Found in System</div>
-                <div class="forensic-hash-display" id="forensicHashFound"></div>
-                <div class="found-meta" id="forensicFileMeta"></div>
-            </div>
-
-            <div id="forensicWatermarkSection">
-                <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px;">
-                    Identified Downloader
-                </div>
-                <div id="forensicNoWatermarks" class="wm-empty" style="display:none;">
-                    No download watermarks found for this file.<br>
-                    <span style="font-size:12px;">The file may have been accessed before watermarking was enabled.</span>
-                </div>
-                <div class="wm-table-wrap" id="forensicWmTableWrap" style="display:none;">
-                    <table class="wm-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp (UTC)</th>
-                                <th>User ID</th>
-                                <th>Username</th>
-                                <th>Email</th>
-                                <th>IP Address</th>
-                                <th>Access Methods</th>
-                                <th>Classification</th>
-                                <th>User Agent</th>
-                                <th>Watermark ID</th>
-                            </tr>
-                        </thead>
-                        <tbody id="forensicWmTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-    </div><!-- /forensic-result -->
-</div><!-- /forensic-card -->
 
 <script>
 (function () {
@@ -1827,6 +2302,184 @@
         d.textContent = String(text);
         return d.innerHTML;
     }
+}());
+</script>
+
+<script>
+/* ── ML Trust Scores Dashboard ──────────────────────────────────────────── */
+(function () {
+    let _mlCurrentFilter = 'all';
+
+    window.mlSetFilter = function (filter, btn) {
+        _mlCurrentFilter = filter;
+        document.querySelectorAll('#mlFilterBar .ml-filter-btn').forEach(b => {
+            b.className = 'ml-filter-btn';
+        });
+        btn.className = 'ml-filter-btn active' + (filter !== 'all' ? ' active-' + filter : '');
+        loadMlScores();
+    };
+
+    window.loadMlScores = async function () {
+        const container = document.getElementById('mlScoresTableContainer');
+        const refreshBtn = document.getElementById('mlRefreshBtn');
+        const sort  = document.getElementById('mlSortSelect').value;
+        const order = document.getElementById('mlOrderSelect').value;
+
+        if (refreshBtn) refreshBtn.classList.add('spinning');
+        container.innerHTML = '<div class="ml-empty-state"><p style="color:#6b7280;">Loading...</p></div>';
+
+        try {
+            const params = new URLSearchParams({ sort, order, limit: 200 });
+            if (_mlCurrentFilter !== 'all') params.set('risk_level', _mlCurrentFilter);
+
+            const resp = await fetch('/admin/filetransfer/ml-scores?' + params.toString());
+            const data = await resp.json();
+
+            if (!data.success) {
+                container.innerHTML = `<div class="ml-empty-state"><p style="color:#dc2626;">Error: ${escHtml(data.message)}</p></div>`;
+                return;
+            }
+
+            // Update stat cards
+            updateStats(data.stats, data.total_analyzed);
+
+            if (!data.files || data.files.length === 0) {
+                container.innerHTML = `
+                    <div class="ml-empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2z"/>
+                            <path d="M15 13v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2z"/>
+                        </svg>
+                        <p style="font-weight:600;">No files analyzed yet</p>
+                        <p style="font-size:13px;">Upload a file to see its trust score here.</p>
+                    </div>`;
+                return;
+            }
+
+            renderTable(data.files);
+        } catch (err) {
+            container.innerHTML = `<div class="ml-empty-state"><p style="color:#dc2626;">Error: ${escHtml(err.message)}</p></div>`;
+        } finally {
+            if (refreshBtn) refreshBtn.classList.remove('spinning');
+        }
+    };
+
+    function updateStats(stats, total) {
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        set('mlTotalCount', total ?? '—');
+
+        const levels = [
+            ['trustworthy', 'mlCountTrustworthy', 'mlAvgTrustworthy'],
+            ['caution',     'mlCountCaution',     'mlAvgCaution'],
+            ['suspicious',  'mlCountSuspicious',  'mlAvgSuspicious'],
+            ['high_risk',   'mlCountHighRisk',     'mlAvgHighRisk'],
+        ];
+        for (const [level, countId, avgId] of levels) {
+            const s = stats && stats[level];
+            set(countId, s ? s.count : 0);
+            const avgEl = document.getElementById(avgId);
+            if (avgEl) avgEl.textContent = s ? `avg ${s.avg_score}` : '';
+        }
+    }
+
+    function renderTable(files) {
+        const container = document.getElementById('mlScoresTableContainer');
+        let html = `
+        <div style="overflow-x:auto;">
+        <table class="ml-scores-table">
+            <thead>
+                <tr>
+                    <th onclick="mlSortBy('trust_score')" id="mlTh-trust_score">
+                        Score <span class="sort-arrow">↕</span>
+                    </th>
+                    <th onclick="mlSortBy('original_filename')" id="mlTh-original_filename">
+                        Filename <span class="sort-arrow">↕</span>
+                    </th>
+                    <th>Risk Signals</th>
+                    <th>Classification</th>
+                    <th>Scan</th>
+                    <th onclick="mlSortBy('analyzed_at')" id="mlTh-analyzed_at">
+                        Analyzed <span class="sort-arrow">↕</span>
+                    </th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        for (const f of files) {
+            const rl   = f.risk_level || 'unknown';
+            const score = f.trust_score != null ? f.trust_score : '—';
+            const pct   = f.trust_score != null ? f.trust_score : 0;
+            const date  = f.analyzed_at ? new Date(f.analyzed_at).toLocaleString() : '—';
+            const cls   = f.classification || '—';
+            const scan  = f.scan_status   || '—';
+
+            // Up to 3 signal chips
+            let signalHtml = '<span class="ml-no-signals">None</span>';
+            if (f.risk_signals && f.risk_signals.length > 0) {
+                const chips = f.risk_signals.slice(0, 3).map(s =>
+                    `<span class="ml-signal-chip" title="${escHtml(s.description || '')}">-${s.deduction} ${escHtml((s.name || '').replace(/_/g,' '))}</span>`
+                ).join('');
+                const extra = f.risk_signals.length > 3
+                    ? `<span class="ml-signal-chip" style="background:#f1f5f9;color:#6b7280;">+${f.risk_signals.length - 3} more</span>`
+                    : '';
+                signalHtml = chips + extra;
+            }
+
+            html += `<tr>
+                <td>
+                    <div class="ml-score-cell">
+                        <span class="ml-score-pill ml-score-pill-${rl}">${score}</span>
+                        <div class="ml-mini-bar">
+                            <div class="ml-mini-bar-fill ml-fill-${rl}" style="width:${pct}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="ml-filename-cell" title="${escHtml(f.original_filename)}">${escHtml(f.original_filename)}</div>
+                    <div style="font-size:10px;color:#9ca3af;font-family:monospace;margin-top:2px;">${escHtml(f.file_id)}</div>
+                </td>
+                <td>${signalHtml}</td>
+                <td><span style="font-size:12px;">${escHtml(cls)}</span></td>
+                <td><span style="font-size:12px;">${escHtml(scan)}</span></td>
+                <td style="font-size:12px;white-space:nowrap;">${escHtml(date)}</td>
+                <td>
+                    <button class="view-logs-btn" onclick="viewFileDetails('${escHtml(f.file_id)}')">Details</button>
+                </td>
+            </tr>`;
+        }
+
+        html += '</tbody></table></div>';
+        html += `<div style="margin-top:10px;font-size:12px;color:#9ca3af;text-align:right;">Showing ${files.length} result(s)</div>`;
+        container.innerHTML = html;
+
+        // Highlight active sort column
+        const currentSort = document.getElementById('mlSortSelect').value;
+        const th = document.getElementById('mlTh-' + currentSort);
+        if (th) th.classList.add('sorted');
+    }
+
+    window.mlSortBy = function (col) {
+        const sel = document.getElementById('mlSortSelect');
+        const ord = document.getElementById('mlOrderSelect');
+        if (sel.value === col) {
+            ord.value = ord.value === 'desc' ? 'asc' : 'desc';
+        } else {
+            sel.value = col;
+            ord.value = 'desc';
+        }
+        loadMlScores();
+    };
+
+    function escHtml(t) {
+        if (t == null) return '';
+        const d = document.createElement('div');
+        d.textContent = String(t);
+        return d.innerHTML;
+    }
+
+    // Auto-load on page ready
+    document.addEventListener('DOMContentLoaded', loadMlScores);
 }());
 </script>
 

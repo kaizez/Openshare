@@ -3319,54 +3319,64 @@ def admin_search_files():
         # Build search query based on type
         if search_type == 'file_id' and query:
             cursor.execute("""
-                SELECT file_id, original_filename, stored_filename, file_size, file_hash,
-                       upload_time, download_count, classification, detected_mime,
-                       scan_status, is_archived, uploaded_by, upload_ip
-                FROM file_metadata
-                WHERE file_id = %s
+                SELECT fm.file_id, fm.original_filename, fm.stored_filename, fm.file_size,
+                       fm.file_hash, fm.upload_time, fm.download_count, fm.classification,
+                       fm.detected_mime, fm.scan_status, fm.is_archived, fm.uploaded_by,
+                       fm.upload_ip, fml.trust_score, fml.risk_level
+                FROM file_metadata fm
+                LEFT JOIN file_ml_analysis fml ON fm.file_id = fml.file_id
+                WHERE fm.file_id = %s
             """, (query,))
         elif search_type == 'filename' and query:
             cursor.execute("""
-                SELECT file_id, original_filename, stored_filename, file_size, file_hash,
-                       upload_time, download_count, classification, detected_mime,
-                       scan_status, is_archived, uploaded_by, upload_ip
-                FROM file_metadata
-                WHERE original_filename LIKE %s
-                ORDER BY upload_time DESC
+                SELECT fm.file_id, fm.original_filename, fm.stored_filename, fm.file_size,
+                       fm.file_hash, fm.upload_time, fm.download_count, fm.classification,
+                       fm.detected_mime, fm.scan_status, fm.is_archived, fm.uploaded_by,
+                       fm.upload_ip, fml.trust_score, fml.risk_level
+                FROM file_metadata fm
+                LEFT JOIN file_ml_analysis fml ON fm.file_id = fml.file_id
+                WHERE fm.original_filename LIKE %s
+                ORDER BY fm.upload_time DESC
                 LIMIT 50
             """, (f'%{query}%',))
         elif search_type == 'hash' and query:
             cursor.execute("""
-                SELECT file_id, original_filename, stored_filename, file_size, file_hash,
-                       upload_time, download_count, classification, detected_mime,
-                       scan_status, is_archived, uploaded_by, upload_ip
-                FROM file_metadata
-                WHERE file_hash LIKE %s
-                ORDER BY upload_time DESC
+                SELECT fm.file_id, fm.original_filename, fm.stored_filename, fm.file_size,
+                       fm.file_hash, fm.upload_time, fm.download_count, fm.classification,
+                       fm.detected_mime, fm.scan_status, fm.is_archived, fm.uploaded_by,
+                       fm.upload_ip, fml.trust_score, fml.risk_level
+                FROM file_metadata fm
+                LEFT JOIN file_ml_analysis fml ON fm.file_id = fml.file_id
+                WHERE fm.file_hash LIKE %s
+                ORDER BY fm.upload_time DESC
                 LIMIT 50
             """, (f'%{query}%',))
         else:
             # Search all fields or get recent files
             if query:
                 cursor.execute("""
-                    SELECT file_id, original_filename, stored_filename, file_size, file_hash,
-                           upload_time, download_count, classification, detected_mime,
-                           scan_status, is_archived, uploaded_by, upload_ip
-                    FROM file_metadata
-                    WHERE file_id LIKE %s
-                       OR original_filename LIKE %s
-                       OR file_hash LIKE %s
-                    ORDER BY upload_time DESC
+                    SELECT fm.file_id, fm.original_filename, fm.stored_filename, fm.file_size,
+                           fm.file_hash, fm.upload_time, fm.download_count, fm.classification,
+                           fm.detected_mime, fm.scan_status, fm.is_archived, fm.uploaded_by,
+                           fm.upload_ip, fml.trust_score, fml.risk_level
+                    FROM file_metadata fm
+                    LEFT JOIN file_ml_analysis fml ON fm.file_id = fml.file_id
+                    WHERE fm.file_id LIKE %s
+                       OR fm.original_filename LIKE %s
+                       OR fm.file_hash LIKE %s
+                    ORDER BY fm.upload_time DESC
                     LIMIT 50
                 """, (f'%{query}%', f'%{query}%', f'%{query}%'))
             else:
                 # Return recent files if no query
                 cursor.execute("""
-                    SELECT file_id, original_filename, stored_filename, file_size, file_hash,
-                           upload_time, download_count, classification, detected_mime,
-                           scan_status, is_archived, uploaded_by, upload_ip
-                    FROM file_metadata
-                    ORDER BY upload_time DESC
+                    SELECT fm.file_id, fm.original_filename, fm.stored_filename, fm.file_size,
+                           fm.file_hash, fm.upload_time, fm.download_count, fm.classification,
+                           fm.detected_mime, fm.scan_status, fm.is_archived, fm.uploaded_by,
+                           fm.upload_ip, fml.trust_score, fml.risk_level
+                    FROM file_metadata fm
+                    LEFT JOIN file_ml_analysis fml ON fm.file_id = fml.file_id
+                    ORDER BY fm.upload_time DESC
                     LIMIT 20
                 """)
 
@@ -3389,13 +3399,284 @@ def admin_search_files():
                 'scan_status': f['scan_status'],
                 'is_archived': bool(f['is_archived']),
                 'uploaded_by': f['uploaded_by'],
-                'upload_ip': f['upload_ip']
+                'upload_ip': f['upload_ip'],
+                'trust_score': f.get('trust_score'),
+                'risk_level': f.get('risk_level'),
             })
 
         return jsonify({'success': True, 'files': results, 'count': len(results)})
 
     except Exception as e:
         print(f"[Admin] Error searching files: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/admin/filetransfer/ml-analysis/<file_id>', methods=['GET'])
+def admin_get_ml_analysis(file_id):
+    """Return ML trust-score analysis for a specific file."""
+    from flask import jsonify
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    try:
+        db = Database()
+        analysis = db.get_ml_analysis(file_id)
+        if analysis is None:
+            return jsonify({'success': True, 'analysis': None,
+                            'message': 'No ML analysis available for this file'})
+        return jsonify({'success': True, 'analysis': analysis})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/admin/filetransfer/ml-scores', methods=['GET'])
+def admin_ml_scores():
+    """
+    Return all ML trust-score analyses joined with file metadata.
+    Optional query params:
+      ?risk_level=high_risk|suspicious|caution|trustworthy
+      ?sort=trust_score|analyzed_at|original_filename  (default: analyzed_at)
+      ?order=asc|desc  (default: desc)
+      ?limit=N  (default: 100)
+    """
+    from flask import jsonify
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    risk_filter = request.args.get('risk_level', '').strip()
+    sort_col    = request.args.get('sort', 'analyzed_at')
+    order       = request.args.get('order', 'desc').upper()
+    try:
+        limit = min(int(request.args.get('limit', 200)), 500)
+    except ValueError:
+        limit = 200
+
+    allowed_sorts = {'trust_score', 'analyzed_at', 'original_filename', 'risk_level'}
+    if sort_col not in allowed_sorts:
+        sort_col = 'analyzed_at'
+    if order not in ('ASC', 'DESC'):
+        order = 'DESC'
+
+    try:
+        db = Database()
+        db.ensure_connection()
+        cursor = db.connection.cursor(dictionary=True, buffered=True)
+
+        where = "WHERE fml.file_id IS NOT NULL"
+        params = []
+        if risk_filter in ('high_risk', 'suspicious', 'caution', 'trustworthy'):
+            where += " AND fml.risk_level = %s"
+            params.append(risk_filter)
+
+        sort_expr = {
+            'trust_score':        'fml.trust_score',
+            'analyzed_at':        'fml.analyzed_at',
+            'original_filename':  'fm.original_filename',
+            'risk_level':         'fml.risk_level',
+        }[sort_col]
+
+        cursor.execute(f"""
+            SELECT fml.file_id, fml.trust_score, fml.risk_level,
+                   fml.risk_signals, fml.anomaly_score, fml.analyzed_at,
+                   fml.model_version,
+                   fm.original_filename, fm.file_size, fm.upload_time,
+                   fm.classification, fm.scan_status, fm.uploaded_by
+            FROM file_ml_analysis fml
+            JOIN file_metadata fm ON fml.file_id = fm.file_id
+            {where}
+            ORDER BY {sort_expr} {order}
+            LIMIT %s
+        """, params + [limit])
+
+        rows = cursor.fetchall()
+        cursor.close()
+
+        import json as _json
+        results = []
+        for r in rows:
+            try:
+                signals = _json.loads(r['risk_signals']) if r['risk_signals'] else []
+            except Exception:
+                signals = []
+            results.append({
+                'file_id':           r['file_id'],
+                'trust_score':       r['trust_score'],
+                'risk_level':        r['risk_level'],
+                'risk_signals':      signals,
+                'signal_count':      len(signals),
+                'anomaly_score':     r['anomaly_score'],
+                'analyzed_at':       r['analyzed_at'].isoformat() if r['analyzed_at'] else None,
+                'model_version':     r['model_version'],
+                'original_filename': r['original_filename'],
+                'file_size':         r['file_size'],
+                'upload_time':       r['upload_time'].isoformat() if r['upload_time'] else None,
+                'classification':    r['classification'],
+                'scan_status':       r['scan_status'],
+                'uploaded_by':       r['uploaded_by'],
+            })
+
+        # Compute summary stats
+        db.ensure_connection()
+        cursor2 = db.connection.cursor(dictionary=True, buffered=True)
+        cursor2.execute("""
+            SELECT risk_level, COUNT(*) as cnt,
+                   AVG(trust_score) as avg_score,
+                   MIN(trust_score) as min_score,
+                   MAX(trust_score) as max_score
+            FROM file_ml_analysis
+            GROUP BY risk_level
+        """)
+        stats_rows = cursor2.fetchall()
+        cursor2.close()
+
+        stats = {}
+        total = 0
+        for s in stats_rows:
+            stats[s['risk_level']] = {
+                'count':     s['cnt'],
+                'avg_score': round(float(s['avg_score']), 1) if s['avg_score'] else 0,
+                'min_score': s['min_score'],
+                'max_score': s['max_score'],
+            }
+            total += s['cnt']
+
+        return jsonify({
+            'success': True,
+            'files': results,
+            'count': len(results),
+            'total_analyzed': total,
+            'stats': stats,
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/admin/filetransfer/forensic-check', methods=['POST'])
+def admin_forensic_check():
+    """
+    Forensic watermark check: accept a file upload, hash it, look up the
+    watermark that matches, decrypt it, and return the downloader identity.
+    """
+    from flask import jsonify
+    import hashlib as _hashlib
+
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    uploaded = request.files.get('file')
+    if not uploaded:
+        return jsonify({'success': False, 'message': 'No file provided'}), 400
+
+    try:
+        file_bytes = uploaded.read()
+        file_hash = _hashlib.sha256(file_bytes).hexdigest()
+
+        db = Database()
+
+        # Primary lookup: watermarked hash (each download produces a unique hash)
+        wm_row = db.get_watermark_by_watermarked_hash(file_hash)
+        match_type = 'hash_lookup'
+
+        # Fallback: scan for embedded watermark marker in the file bytes
+        if wm_row is None:
+            sys.path.insert(0, os.path.join(BASE_DIR, 'FileTransfer'))
+            from watermark import extract_watermark_from_file, decrypt_watermark as _dec_wm
+            embedded_blob = extract_watermark_from_file(file_bytes)
+            if embedded_blob:
+                decrypted = _dec_wm(embedded_blob)
+                if decrypted:
+                    match_type = 'embedded_marker'
+                    # Reconstruct a wm_row-like dict from the decrypted payload
+                    wm_row = {
+                        'watermark_id': decrypted.get('watermark_id', ''),
+                        'file_id': decrypted.get('file_id', ''),
+                        'original_file_hash': decrypted.get('file_hash_sha256', ''),
+                        'watermarked_hash': file_hash,
+                        'download_timestamp': decrypted.get('created_at'),
+                        'encrypted_payload': None,
+                        '_decrypted': decrypted,
+                    }
+
+        if wm_row is None:
+            # No watermark found — check if the hash matches an original unmodified file
+            file_info = db.lookup_file_by_hash(file_hash)
+            return jsonify({
+                'found': False,
+                'file_hash': file_hash,
+                'file_info': file_info,
+            })
+
+        # Decrypt the payload (if not already done via embedded fallback)
+        if '_decrypted' in wm_row:
+            decrypted = wm_row['_decrypted']
+        else:
+            sys.path.insert(0, os.path.join(BASE_DIR, 'FileTransfer'))
+            from watermark import decrypt_watermark as _dec_wm
+            decrypted = _dec_wm(wm_row['encrypted_payload'])
+
+        # Fetch the original file metadata
+        file_info = db.lookup_file_by_hash(wm_row.get('original_file_hash', ''))
+        if file_info is None and wm_row.get('file_id'):
+            # Fallback: search by file_id if hash lookup fails
+            db.ensure_connection()
+            cursor = db.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute(
+                "SELECT file_id, original_filename, file_size, file_hash, "
+                "upload_time, classification, scan_status, is_archived, "
+                "uploaded_by, download_count FROM file_metadata WHERE file_id = %s",
+                (wm_row['file_id'],)
+            )
+            row = cursor.fetchone()
+            cursor.close()
+            if row:
+                file_info = {
+                    'file_id': row['file_id'],
+                    'original_filename': row['original_filename'],
+                    'file_size': row['file_size'],
+                    'file_hash': row['file_hash'],
+                    'upload_time': row['upload_time'].isoformat() if row['upload_time'] else None,
+                    'classification': row['classification'],
+                    'scan_status': row['scan_status'],
+                    'is_archived': bool(row.get('is_archived', False)),
+                    'uploaded_by': row['uploaded_by'],
+                    'download_count': row['download_count'],
+                }
+
+        return jsonify({
+            'found': True,
+            'file_hash': file_hash,
+            'match_type': match_type,
+            'file_info': file_info,
+            'watermark': {
+                'watermark_id': wm_row.get('watermark_id'),
+                'file_id': wm_row.get('file_id'),
+                'download_timestamp': wm_row.get('download_timestamp'),
+                'decrypted': decrypted,
+            },
+        })
+
+    except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500

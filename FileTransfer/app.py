@@ -526,6 +526,15 @@ def upload_file():
 
             db.save_file_metadata(file_id, metadata, file_content)
 
+            # ML trust-score analysis — non-blocking
+            try:
+                from ml_analyzer import analyze_file as ml_analyze_file
+                ml_result = ml_analyze_file(file_content, original_filename, detected_mime, db)
+                db.store_ml_analysis(file_id=file_id, **ml_result)
+                print(f'[ML] Trust score for {file_id}: {ml_result["trust_score"]} ({ml_result["risk_level"]})', flush=True)
+            except Exception as _ml_e:
+                print(f'[ML] Analysis skipped for {file_id}: {_ml_e}', flush=True)
+
             # Log successful virus scan (only for clean files from hash lookup)
             if scan_status == 'clean':
                 db.log_virus_scan(

@@ -199,6 +199,24 @@ class Database:
             except Exception:
                 pass
 
+            # ML trust-score analysis results
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS file_ml_analysis (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    file_id VARCHAR(255) UNIQUE NOT NULL,
+                    trust_score INT NOT NULL DEFAULT 50,
+                    risk_level VARCHAR(20) NOT NULL DEFAULT 'unknown',
+                    risk_signals JSON,
+                    features JSON,
+                    anomaly_score FLOAT,
+                    analyzed_at DATETIME NOT NULL,
+                    model_version VARCHAR(20) DEFAULT '1.0',
+                    FOREIGN KEY (file_id) REFERENCES file_metadata(file_id) ON DELETE CASCADE,
+                    INDEX idx_ml_trust_score (trust_score),
+                    INDEX idx_ml_risk_level (risk_level)
+                )
+            """)
+
             self.connection.commit()
             print("Database tables created successfully")
         except Error as e:
@@ -1232,6 +1250,104 @@ class Database:
             return None
         finally:
             cursor.close()
+
+    def store_ml_analysis(self, file_id, trust_score, risk_level, risk_signals,
+                          features, anomaly_score):
+        """Store ML trust-score analysis results for a file."""
+        import json as _json
+        cursor = None
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO file_ml_analysis
+                    (file_id, trust_score, risk_level, risk_signals, features,
+                     anomaly_score, analyzed_at, model_version)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    trust_score   = VALUES(trust_score),
+                    risk_level    = VALUES(risk_level),
+                    risk_signals  = VALUES(risk_signals),
+                    features      = VALUES(features),
+                    anomaly_score = VALUES(anomaly_score),
+                    analyzed_at   = VALUES(analyzed_at)
+            """, (
+                file_id,
+                int(trust_score),
+                risk_level,
+                _json.dumps(risk_signals),
+                _json.dumps(features),
+                float(anomaly_score) if anomaly_score is not None else None,
+                datetime.now(),
+                '1.0',
+            ))
+            self.connection.commit()
+        except Error as e:
+            print(f"Error storing ML analysis: {e}")
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+
+    def get_ml_analysis(self, file_id) -> dict | None:
+        """Return the ML analysis record for a file, or None if not found."""
+        import json as _json
+        cursor = None
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute(
+                "SELECT * FROM file_ml_analysis WHERE file_id = %s", (file_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                'file_id': row['file_id'],
+                'trust_score': row['trust_score'],
+                'risk_level': row['risk_level'],
+                'risk_signals': _json.loads(row['risk_signals']) if row['risk_signals'] else [],
+                'features': _json.loads(row['features']) if row['features'] else {},
+                'anomaly_score': row['anomaly_score'],
+                'analyzed_at': row['analyzed_at'].isoformat() if row['analyzed_at'] else None,
+                'model_version': row['model_version'],
+            }
+        except Error as e:
+            print(f"Error fetching ML analysis: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+
+    def get_all_ml_features(self) -> list:
+        """Return all {file_id, features, trust_score} rows for IsolationForest training."""
+        import json as _json
+        cursor = None
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute(
+                "SELECT file_id, features, trust_score FROM file_ml_analysis"
+            )
+            rows = cursor.fetchall()
+            result = []
+            for row in rows:
+                try:
+                    features = _json.loads(row['features']) if row['features'] else {}
+                except Exception:
+                    features = {}
+                result.append({
+                    'file_id': row['file_id'],
+                    'features': features,
+                    'trust_score': row['trust_score'],
+                })
+            return result
+        except Error as e:
+            print(f"Error fetching ML features: {e}")
+            return []
+        finally:
+            if cursor:
+                cursor.close()
 
     def close(self):
         """Close database connection"""
