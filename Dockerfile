@@ -28,12 +28,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Generate self-signed SSL certificates for HTTPS
+# SAN covers localhost + the LAN IP so browsers accept the cert
+ARG HOST_IP=192.168.8.6
 RUN mkdir -p /app/certs && \
     openssl req -x509 -newkey rsa:4096 -nodes \
     -keyout /app/certs/key.pem \
     -out /app/certs/cert.pem \
-    -days 365 \
-    -subj "/C=SG/ST=Singapore/L=Singapore/O=MoveIT/CN=localhost"
+    -days 825 \
+    -subj "/C=SG/ST=Singapore/L=Singapore/O=MoveIT/CN=${HOST_IP}" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:${HOST_IP}"
 
 # Expose port
 EXPOSE 5000

@@ -160,6 +160,45 @@ class Database:
                 )
             """)
 
+            # Forensic download watermarks – admin-only decrypt
+            # watermarked_hash : SHA-256 of the file WITH the watermark embedded
+            #                    (unique per download — identifies exactly one user)
+            # original_file_hash: SHA-256 of the original file (links to file_metadata)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS download_watermarks (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    watermark_id VARCHAR(64) UNIQUE NOT NULL,
+                    file_id VARCHAR(255) NOT NULL,
+                    original_file_hash VARCHAR(64) NOT NULL,
+                    watermarked_hash VARCHAR(64) NOT NULL,
+                    download_timestamp DATETIME NOT NULL,
+                    encrypted_payload LONGTEXT NOT NULL,
+                    FOREIGN KEY (file_id) REFERENCES file_metadata(file_id) ON DELETE CASCADE,
+                    INDEX idx_wm_file_id (file_id),
+                    INDEX idx_wm_original_hash (original_file_hash),
+                    INDEX idx_wm_watermarked_hash (watermarked_hash),
+                    INDEX idx_wm_timestamp (download_timestamp),
+                    INDEX idx_wm_watermark_id (watermark_id)
+                )
+            """)
+            # Migrate: add columns if table already existed without them
+            try:
+                cursor.execute("ALTER TABLE download_watermarks ADD COLUMN watermarked_hash VARCHAR(64) NOT NULL DEFAULT '' AFTER file_id")
+            except Exception:
+                pass
+            try:
+                cursor.execute("ALTER TABLE download_watermarks ADD COLUMN original_file_hash VARCHAR(64) NOT NULL DEFAULT '' AFTER file_id")
+            except Exception:
+                pass
+            try:
+                cursor.execute("ALTER TABLE download_watermarks ADD INDEX idx_wm_watermarked_hash (watermarked_hash)")
+            except Exception:
+                pass
+            try:
+                cursor.execute("ALTER TABLE download_watermarks ADD INDEX idx_wm_original_hash (original_file_hash)")
+            except Exception:
+                pass
+
             self.connection.commit()
             print("Database tables created successfully")
         except Error as e:
@@ -1054,6 +1093,143 @@ class Database:
         except Error as e:
             print(f"Error counting pending approvals: {e}")
             return 0
+        finally:
+            cursor.close()
+
+    # ============================================
+    # Forensic Watermark Methods
+    # ============================================
+
+    def store_watermark(self, watermark_id: str, file_id: str,
+                        original_file_hash: str, watermarked_hash: str,
+                        download_timestamp, encrypted_payload: bytes) -> bool:
+        """
+        Persist an encrypted forensic watermark for a download event.
+
+        watermarked_hash  — SHA-256 of the file WITH the watermark embedded.
+                            Unique per download; used for exact forensic lookup.
+        original_file_hash — SHA-256 of the raw original file (links to file_metadata).
+        """
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor()
+            if isinstance(encrypted_payload, bytes):
+                encrypted_payload = encrypted_payload.decode('utf-8')
+            if isinstance(download_timestamp, str):
+                download_timestamp = datetime.fromisoformat(download_timestamp)
+            cursor.execute("""
+                INSERT INTO download_watermarks
+                    (watermark_id, file_id, original_file_hash, watermarked_hash,
+                     download_timestamp, encrypted_payload)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (watermark_id, file_id, original_file_hash, watermarked_hash,
+                  download_timestamp, encrypted_payload))
+            self.connection.commit()
+            return True
+        except Error as e:
+            print(f"[DB] Error storing watermark: {e}")
+            self.connection.rollback()
+            return False
+        finally:
+            cursor.close()
+
+    def get_watermark_by_watermarked_hash(self, watermarked_hash: str) -> dict | None:
+        """
+        Look up the single watermark whose watermarked_hash matches exactly.
+        Each watermarked_hash is unique to one download event / one user.
+        Returns None if not found.
+        """
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute("""
+                SELECT watermark_id, file_id, original_file_hash, watermarked_hash,
+                       download_timestamp, encrypted_payload
+                FROM download_watermarks
+                WHERE watermarked_hash = %s
+                LIMIT 1
+            """, (watermarked_hash,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                'watermark_id':       row['watermark_id'],
+                'file_id':            row['file_id'],
+                'original_file_hash': row['original_file_hash'],
+                'watermarked_hash':   row['watermarked_hash'],
+                'download_timestamp': row['download_timestamp'].isoformat() if row['download_timestamp'] else None,
+                'encrypted_payload':  row['encrypted_payload'],
+            }
+        except Error as e:
+            print(f"[DB] Error fetching watermark by watermarked hash: {e}")
+            return None
+        finally:
+            cursor.close()
+
+    def get_watermarks_for_file(self, file_id: str) -> list:
+        """Return all watermark rows for a given file_id (admin view)."""
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute("""
+                SELECT watermark_id, file_id, original_file_hash, watermarked_hash,
+                       download_timestamp, encrypted_payload
+                FROM download_watermarks
+                WHERE file_id = %s
+                ORDER BY download_timestamp DESC
+            """, (file_id,))
+            rows = cursor.fetchall()
+            return [
+                {
+                    'watermark_id':       r['watermark_id'],
+                    'file_id':            r['file_id'],
+                    'original_file_hash': r['original_file_hash'],
+                    'watermarked_hash':   r['watermarked_hash'],
+                    'download_timestamp': r['download_timestamp'].isoformat() if r['download_timestamp'] else None,
+                    'encrypted_payload':  r['encrypted_payload'],
+                }
+                for r in rows
+            ]
+        except Error as e:
+            print(f"[DB] Error fetching watermarks for file: {e}")
+            return []
+        finally:
+            cursor.close()
+
+    def lookup_file_by_hash(self, file_hash: str) -> dict | None:
+        """
+        Check if a file with the given SHA-256 hash exists in file_metadata.
+        Returns basic file info dict or None.
+        """
+        try:
+            self.ensure_connection()
+            cursor = self.connection.cursor(dictionary=True, buffered=True)
+            cursor.execute("""
+                SELECT file_id, original_filename, file_size, file_hash,
+                       upload_time, classification, scan_status, is_archived,
+                       uploaded_by, download_count
+                FROM file_metadata
+                WHERE file_hash = %s
+                LIMIT 1
+            """, (file_hash,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                'file_id': row['file_id'],
+                'original_filename': row['original_filename'],
+                'file_size': row['file_size'],
+                'file_hash': row['file_hash'],
+                'upload_time': row['upload_time'].isoformat() if row['upload_time'] else None,
+                'classification': row['classification'],
+                'scan_status': row['scan_status'],
+                'is_archived': bool(row.get('is_archived', False)),
+                'uploaded_by': row['uploaded_by'],
+                'download_count': row['download_count'],
+            }
+        except Error as e:
+            print(f"[DB] Error looking up file by hash: {e}")
+            return None
         finally:
             cursor.close()
 

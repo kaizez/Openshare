@@ -34,7 +34,6 @@ from security import (
     ip_blocker,
     sec_log
 )
-ollama_host = os.environ.get('OLLAMA_HOST', 'http://ai-engine:11434')
 
 # ============================================
 # User Model Import (for MFA verification)
@@ -1135,16 +1134,67 @@ def get_file(file_id):
         ip=request.remote_addr
     )
 
+    # ── Forensic watermark ──────────────────────────────────────────────────
+    # Embed an encrypted watermark into the file bytes before delivery.
+    # Every user receives a UNIQUE copy (different hash) so the forensic
+    # checker can pinpoint exactly who leaked a specific file.
+    watermarked_content = file_content  # fallback: send original if watermarking fails
+    try:
+        from watermark import create_watermark, embed_watermark_in_file
+        User = get_user_model()
+        dl_user = User.query.get(session.get('user_id'))
+        dl_username = dl_user.username if dl_user else session.get('user', 'unknown')
+        dl_email    = dl_user.email    if dl_user else ''
+
+        verified_data = session.get(f'verified_{file_id}', {})
+        totp_used     = bool(verified_data.get('totp_verified'))     if isinstance(verified_data, dict) else False
+        approval_used = bool(verified_data.get('approval_granted'))  if isinstance(verified_data, dict) else False
+
+        watermark_id, encrypted_payload = create_watermark(
+            file_id=file_id,
+            file_hash=file_info['file_hash'],
+            original_filename=file_info['original_filename'],
+            file_classification=file_info['classification'],
+            user_id=session.get('user_id'),
+            username=dl_username,
+            email=dl_email,
+            download_ip=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', 'Unknown'),
+            session_id=session.get('session_id'),
+            otp_verified=True,
+            totp_verified=totp_used,
+            approval_granted=approval_used,
+        )
+
+        # Embed watermark bytes into the file — produces a unique copy per user
+        watermarked_content = embed_watermark_in_file(file_content, encrypted_payload)
+        watermarked_hash    = hashlib.sha256(watermarked_content).hexdigest()
+
+        db.store_watermark(
+            watermark_id=watermark_id,
+            file_id=file_id,
+            original_file_hash=file_info['file_hash'],
+            watermarked_hash=watermarked_hash,
+            download_timestamp=datetime.now(),
+            encrypted_payload=encrypted_payload,
+        )
+        print(f'[Watermark] Embedded watermark {watermark_id} into {file_id} '
+              f'(watermarked_hash={watermarked_hash[:16]}...)')
+    except Exception as wm_err:
+        # Watermarking must never block a legitimate download
+        print(f'[Watermark] Non-fatal error during watermarking: {wm_err}')
+    # ── End forensic watermark ───────────────────────────────────────────────
+
     # Increment download counter
     db.update_download_count(file_id)
 
     # Clear the session for this file
     session.pop(f'verified_{file_id}', None)
 
-    # Send file from memory
+    # Send the watermarked copy (or original if watermarking failed)
     from io import BytesIO
     return send_file(
-        BytesIO(file_content),
+        BytesIO(watermarked_content),
         as_attachment=True,
         download_name=file_info['original_filename'],
         mimetype=file_info.get('detected_mime', 'application/octet-stream')

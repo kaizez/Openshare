@@ -3450,6 +3450,176 @@ def admin_get_file_logs(file_id):
         print(f"[Admin] Error getting file logs: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@bp.route('/admin/filetransfer/watermarks/<file_id>', methods=['GET'])
+def admin_get_watermarks(file_id):
+    """Return decrypted forensic watermarks for a specific file (admin only)."""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    # Sanitise file_id
+    if not re.match(r'^[a-zA-Z0-9_-]+$', file_id) or len(file_id) > 100:
+        return jsonify({'success': False, 'message': 'Invalid file ID'}), 400
+
+    try:
+        sys.path.insert(0, os.path.join(BASE_DIR, 'FileTransfer'))
+        from watermark import decrypt_watermark
+
+        db_conn = Database()
+        rows = db_conn.get_watermarks_for_file(file_id)
+
+        watermarks = []
+        for row in rows:
+            payload = decrypt_watermark(row['encrypted_payload'])
+            if payload:
+                watermarks.append({
+                    'watermark_id': row['watermark_id'],
+                    'download_timestamp': row['download_timestamp'],
+                    'decrypted': payload,
+                })
+
+        return jsonify({'success': True, 'file_id': file_id, 'watermarks': watermarks, 'count': len(watermarks)})
+
+    except Exception as e:
+        print(f'[Admin] Error fetching watermarks: {e}')
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@bp.route('/admin/filetransfer/forensic-check', methods=['POST'])
+def admin_forensic_check():
+    """
+    Admin forensic file-origin check.
+
+    Accepts an uploaded file, computes its SHA-256 hash, checks whether that
+    hash matches any file in our database, and returns the decrypted forensic
+    watermarks showing who downloaded it and when.
+
+    Intended for post-breach attribution: if a file has leaked, the admin
+    uploads it here to identify the download source.
+    """
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please login first'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        return jsonify({'success': False, 'message': 'Access denied'}), 403
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file provided'}), 400
+
+    uploaded = request.files['file']
+    if not uploaded.filename:
+        return jsonify({'success': False, 'message': 'Empty filename'}), 400
+
+    # Read file into memory – limit to 500 MB to prevent DoS
+    MAX_BYTES = 500 * 1024 * 1024
+    file_bytes = uploaded.read(MAX_BYTES + 1)
+    if len(file_bytes) > MAX_BYTES:
+        return jsonify({'success': False, 'message': 'File exceeds 500 MB limit'}), 413
+
+    # Compute SHA-256 of the uploaded file as-is (watermarked hash)
+    uploaded_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    try:
+        sys.path.insert(0, os.path.join(BASE_DIR, 'FileTransfer'))
+        from watermark import decrypt_watermark, extract_watermark_from_file
+
+        db_conn = Database()
+
+        # ── Step 1: exact watermarked-hash lookup ───────────────────────────
+        # Each download produces a unique file (different hash) so this
+        # identifies exactly ONE downloader.
+        row = db_conn.get_watermark_by_watermarked_hash(uploaded_hash)
+
+        if row:
+            payload   = decrypt_watermark(row['encrypted_payload'])
+            file_info = db_conn.lookup_file_by_hash(row['original_file_hash'])
+
+            siem.custom_event(
+                event_type='forensic_watermark_check',
+                description=f'Admin {user.username} forensic check matched watermark {row["watermark_id"]}',
+                severity='Medium',
+                user_id=str(user.id),
+                ip=request.remote_addr,
+                watermarked_hash=uploaded_hash,
+                check_result='matched',
+            )
+
+            return jsonify({
+                'success':    True,
+                'found':      True,
+                'match_type': 'watermarked_hash',
+                'file_hash':  uploaded_hash,
+                'file_info':  file_info,
+                'watermark':  {
+                    'watermark_id':       row['watermark_id'],
+                    'download_timestamp': row['download_timestamp'],
+                    'decrypted':          payload,
+                },
+            })
+
+        # ── Step 2: embedded-marker fallback ───────────────────────────────
+        # In case the hash didn't match (e.g. file was re-compressed), scan
+        # the file bytes directly for the embedded watermark marker.
+        embedded_blob = extract_watermark_from_file(file_bytes)
+        if embedded_blob:
+            payload = decrypt_watermark(embedded_blob)
+            if payload:
+                original_hash = payload.get('file_hash_sha256', '')
+                file_info     = db_conn.lookup_file_by_hash(original_hash) if original_hash else None
+
+                siem.custom_event(
+                    event_type='forensic_watermark_check',
+                    description=f'Admin {user.username} forensic check via embedded marker',
+                    severity='Medium',
+                    user_id=str(user.id),
+                    ip=request.remote_addr,
+                    watermarked_hash=uploaded_hash,
+                    check_result='embedded_match',
+                )
+
+                return jsonify({
+                    'success':    True,
+                    'found':      True,
+                    'match_type': 'embedded_marker',
+                    'file_hash':  uploaded_hash,
+                    'file_info':  file_info,
+                    'watermark':  {
+                        'watermark_id':       payload.get('watermark_id'),
+                        'download_timestamp': payload.get('created_at'),
+                        'decrypted':          payload,
+                    },
+                })
+
+        # ── Step 3: not found ───────────────────────────────────────────────
+        siem.custom_event(
+            event_type='forensic_watermark_check',
+            description=f'Admin {user.username} forensic check — file not in system',
+            severity='Low',
+            user_id=str(user.id),
+            ip=request.remote_addr,
+            watermarked_hash=uploaded_hash,
+            check_result='not_found',
+        )
+
+        return jsonify({
+            'success': False,
+            'found':   False,
+            'file_hash': uploaded_hash,
+            'message': 'No watermark found. This file did not originate from this system, '
+                       'or it was downloaded before watermarking was enabled.',
+        }), 404
+
+    except Exception as e:
+        print(f'[Admin] Error during forensic check: {e}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @bp.route('/chatbot')
 def chatbot_page():
     """Render the MoveLorh Assistant interface"""
@@ -3471,8 +3641,9 @@ def chat():
     if not sanitized_message:
         return jsonify({'reply': 'Please enter a message.'})
 
-    ollama_host = "https://ai.nypdsf.me"
-    
+    ollama_host = os.environ.get('OLLAMA_HOST', 'https://ai.nypdsf.me').rstrip('/')
+    ollama_api_key = os.environ.get('OLLAMA_API_KEY', '')
+
     system_context = (
     "You are MoveBot, the specialized security support assistant for the MoveIt platform. "
     
@@ -3519,7 +3690,10 @@ def chat():
     try:
         # Standard Ollama generate endpoint
         api_url = f"{ollama_host}/api/generate"
-        response = requests.post(api_url, json=payload, timeout=30)
+        headers = {}
+        if ollama_api_key:
+            headers['Authorization'] = f'Bearer {ollama_api_key}'
+        response = requests.post(api_url, json=payload, headers=headers, timeout=30)
         
         # Check specifically for model-not-found errors
         if response.status_code == 404:

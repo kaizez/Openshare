@@ -120,7 +120,8 @@ services:
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
       
       # AI Engine Connection
-      OLLAMA_HOST: http://ai-engine:11434
+      OLLAMA_HOST: ${OLLAMA_HOST:-https://ai.nypdsf.me}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
       # VirusTotal
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
       VIRUSTOTAL_ENABLED: ${VIRUSTOTAL_ENABLED:-true}
@@ -148,8 +149,6 @@ services:
         condition: service_healthy
       working-db:
         condition: service_healthy
-      ai-engine:
-        condition: service_started
     volumes:
       - ./app:/app/app
       - ./FileTransfer:/app/FileTransfer
@@ -159,21 +158,6 @@ services:
     networks:
       - moveit-network
       - app_network
-
-  # ============================================
-  # AI Engine (Ollama)
-  # ============================================
-  ai-engine:
-    image: ollama/ollama:latest
-    container_name: ollama-service
-    volumes:
-      - ollama_storage:/root/.ollama
-    networks:
-      - app_network
-    deploy:
-      resources:
-        limits:
-          memory: 3G
 
   # ============================================
   # Sync Service - Bridges Working DB to Storage DB
@@ -298,5 +282,4 @@ volumes:
   storage_db_data:
   encryption_keys:
   retention_config:
-  ollama_storage:
   movelorh_db_data:

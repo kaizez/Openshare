@@ -1033,9 +1033,10 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- TOTP Verification Modal -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- Forensic Watermark Analysis (inside admin-container for consistent width) -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
 <div id="totpModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -1399,6 +1400,428 @@
     document.addEventListener('DOMContentLoaded', function () {
         searchFiles();
     });
+</script>
+
+<style>
+    .forensic-card {
+        max-width: 1000px;
+        margin: 28px auto 0 auto;
+        padding: 28px 20px;
+        background: rgba(255,255,255,0.97);
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        border: 1px solid #e8ecf0;
+    }
+    .forensic-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+    }
+    .forensic-header h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin: 0;
+    }
+    .forensic-badge {
+        background: #e8f0fe;
+        color: #1967d2;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 20px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    .forensic-desc {
+        color: #6b7280;
+        font-size: 13px;
+        margin: 0 0 20px 0;
+        line-height: 1.5;
+    }
+    .forensic-drop-zone {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 36px 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        background: #fafbfc;
+        position: relative;
+    }
+    .forensic-drop-zone.drag-over {
+        border-color: #007aff;
+        background: #f0f6ff;
+    }
+    .forensic-drop-zone svg { color: #9ca3af; margin-bottom: 10px; }
+    .forensic-drop-zone p { margin: 4px 0; color: #6b7280; font-size: 14px; }
+    .forensic-drop-zone .drop-hint { font-size: 12px; color: #9ca3af; }
+    .forensic-drop-zone input[type="file"] {
+        position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .forensic-file-selected {
+        display: flex; align-items: center; gap: 10px; margin-top: 12px;
+        background: #f0f6ff; border-radius: 8px; padding: 10px 14px;
+        font-size: 13px; color: #1967d2;
+    }
+    .forensic-file-selected span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .forensic-run-btn {
+        margin-top: 16px;
+        width: 100%;
+        padding: 12px;
+        background: #1967d2;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: background 0.2s;
+    }
+    .forensic-run-btn:hover { background: #155ab8; }
+    .forensic-run-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    .forensic-spinner {
+        width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.4);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: forensic-spin 0.7s linear infinite;
+        display: none;
+    }
+    @keyframes forensic-spin { to { transform: rotate(360deg); } }
+
+    .forensic-result { margin-top: 24px; display: none; }
+    .forensic-not-found {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        padding: 16px 20px;
+        color: #92400e;
+        font-size: 14px;
+    }
+    .forensic-not-found strong { display: block; margin-bottom: 4px; font-size: 15px; }
+
+    .forensic-found-banner {
+        background: #ecfdf5;
+        border: 1px solid #6ee7b7;
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 16px;
+    }
+    .forensic-found-banner .found-title {
+        font-weight: 700; color: #065f46; font-size: 15px; margin-bottom: 4px;
+    }
+    .forensic-found-banner .found-meta {
+        display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px;
+    }
+    .found-meta-item { font-size: 12px; color: #374151; }
+    .found-meta-item strong { color: #111827; }
+
+    .forensic-hash-display {
+        font-family: monospace;
+        font-size: 11px;
+        background: #f3f4f6;
+        padding: 6px 10px;
+        border-radius: 6px;
+        color: #374151;
+        word-break: break-all;
+        margin-bottom: 16px;
+    }
+
+    .wm-table-wrap { overflow-x: auto; }
+    .wm-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+    }
+    .wm-table th {
+        background: #f8fafc;
+        padding: 10px 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 2px solid #e5e7eb;
+        white-space: nowrap;
+    }
+    .wm-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1f2937;
+        vertical-align: top;
+    }
+    .wm-table tr:hover td { background: #f8fafc; }
+    .wm-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .wm-badge-otp { background: #dcfce7; color: #166534; }
+    .wm-badge-totp { background: #dbeafe; color: #1e40af; }
+    .wm-badge-approval { background: #fef9c3; color: #854d0e; }
+    .wm-badge-no { background: #f1f5f9; color: #64748b; }
+    .wm-ua { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help; }
+    .wm-empty {
+        text-align: center; padding: 32px; color: #9ca3af; font-size: 14px;
+    }
+    .cls-tag {
+        display: inline-block; padding: 2px 8px; border-radius: 4px;
+        font-size: 11px; font-weight: 600;
+    }
+    .cls-public { background: #dcfce7; color: #166534; }
+    .cls-internal { background: #fef9c3; color: #854d0e; }
+    .cls-classified { background: #fee2e2; color: #991b1b; }
+</style>
+
+<div class="forensic-card">
+    <div class="forensic-header">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1967d2" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <path d="M9 12l2 2 4-4"></path>
+        </svg>
+        <h2>Forensic Watermark Analysis</h2>
+        <span class="forensic-badge">Admin Only</span>
+    </div>
+    <p class="forensic-desc">
+        Upload a potentially leaked file. The system will compute its SHA-256 hash, check whether it
+        originated from this platform, and display all encrypted download watermarks — showing who
+        retrieved the file, when, and from which IP address.
+    </p>
+
+    <div class="forensic-drop-zone" id="forensicDropZone">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p><strong>Drop a file here</strong> or click to browse</p>
+        <p class="drop-hint">Any file type &bull; Max 500 MB &bull; File is not stored</p>
+        <input type="file" id="forensicFileInput" accept="*/*">
+    </div>
+
+    <div id="forensicFileInfo" class="forensic-file-selected" style="display:none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span id="forensicFileName">—</span>
+        <span id="forensicFileSize" style="color:#6b7280;flex-shrink:0;"></span>
+    </div>
+
+    <button class="forensic-run-btn" id="forensicRunBtn" onclick="runForensicCheck()" disabled>
+        <div class="forensic-spinner" id="forensicSpinner"></div>
+        <svg id="forensicBtnIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Run Forensic Check
+    </button>
+
+    <!-- Result area -->
+    <div class="forensic-result" id="forensicResult">
+
+        <!-- Not Found -->
+        <div id="forensicNotFound" class="forensic-not-found" style="display:none;">
+            <strong>File Not Found in System</strong>
+            This file hash does not match any file in our database.
+            This file did not originate from this platform, or it was permanently deleted before watermark records were created.
+            <div class="forensic-hash-display" id="forensicHashNotFound" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- Found -->
+        <div id="forensicFound" style="display:none;">
+            <div class="forensic-found-banner">
+                <div class="found-title">File Found in System</div>
+                <div class="forensic-hash-display" id="forensicHashFound"></div>
+                <div class="found-meta" id="forensicFileMeta"></div>
+            </div>
+
+            <div id="forensicWatermarkSection">
+                <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px;">
+                    Identified Downloader
+                </div>
+                <div id="forensicNoWatermarks" class="wm-empty" style="display:none;">
+                    No download watermarks found for this file.<br>
+                    <span style="font-size:12px;">The file may have been accessed before watermarking was enabled.</span>
+                </div>
+                <div class="wm-table-wrap" id="forensicWmTableWrap" style="display:none;">
+                    <table class="wm-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp (UTC)</th>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>IP Address</th>
+                                <th>Access Methods</th>
+                                <th>Classification</th>
+                                <th>User Agent</th>
+                                <th>Watermark ID</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forensicWmTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /forensic-result -->
+</div><!-- /forensic-card -->
+
+<script>
+(function () {
+    const csrfToken  = "{{ csrf_token() }}";
+    const dropZone   = document.getElementById('forensicDropZone');
+    const fileInput  = document.getElementById('forensicFileInput');
+    const fileInfo   = document.getElementById('forensicFileInfo');
+    const fileName   = document.getElementById('forensicFileName');
+    const fileSize   = document.getElementById('forensicFileSize');
+    const runBtn     = document.getElementById('forensicRunBtn');
+    const spinner    = document.getElementById('forensicSpinner');
+    const btnIcon    = document.getElementById('forensicBtnIcon');
+
+    let selectedFile = null;
+
+    fileInput.addEventListener('change', function () {
+        if (this.files && this.files[0]) selectFile(this.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
+    });
+
+    function selectFile(f) {
+        selectedFile = f;
+        fileName.textContent = f.name;
+        fileSize.textContent = formatBytes(f.size);
+        fileInfo.style.display = 'flex';
+        runBtn.disabled = false;
+        // Clear previous results
+        document.getElementById('forensicResult').style.display = 'none';
+        document.getElementById('forensicNotFound').style.display = 'none';
+        document.getElementById('forensicFound').style.display = 'none';
+    }
+
+    window.runForensicCheck = async function () {
+        if (!selectedFile) return;
+        setLoading(true);
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('csrf_token', csrfToken);
+
+        try {
+            const resp = await fetch('{{ url_for("main.admin_forensic_check") }}', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await resp.json();
+            renderResult(data);
+        } catch (err) {
+            alert('Error running forensic check: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    function renderResult(data) {
+        const resultDiv  = document.getElementById('forensicResult');
+        const notFound   = document.getElementById('forensicNotFound');
+        const foundDiv   = document.getElementById('forensicFound');
+
+        resultDiv.style.display = 'block';
+
+        if (!data.found) {
+            notFound.style.display = 'block';
+            foundDiv.style.display = 'none';
+            document.getElementById('forensicHashNotFound').textContent = 'SHA-256: ' + (data.file_hash || '—');
+            return;
+        }
+
+        notFound.style.display = 'none';
+        foundDiv.style.display = 'block';
+
+        const clsMap = { 'Public': 'cls-public', 'Internal Use': 'cls-internal', 'Classified': 'cls-classified' };
+
+        // Hash + match method
+        const matchBadge = data.match_type === 'embedded_marker'
+            ? ' <span style="font-size:11px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:600;">embedded marker</span>'
+            : '';
+        document.getElementById('forensicHashFound').textContent = 'SHA-256: ' + data.file_hash;
+
+        // File metadata banner
+        const fi = data.file_info || {};
+        const clsCls = clsMap[fi.classification] || 'cls-public';
+        document.getElementById('forensicFileMeta').innerHTML = `
+            <div class="found-meta-item"><strong>File ID:</strong> ${escapeHtml(fi.file_id || '—')}</div>
+            <div class="found-meta-item"><strong>Filename:</strong> ${escapeHtml(fi.original_filename || '—')}</div>
+            <div class="found-meta-item"><strong>Size:</strong> ${formatBytes(fi.file_size || 0)}</div>
+            <div class="found-meta-item"><strong>Uploaded:</strong> ${escapeHtml((fi.upload_time || '—').replace('T', ' ').split('.')[0])}</div>
+            <div class="found-meta-item"><strong>Total Downloads:</strong> ${fi.download_count ?? '—'}</div>
+            <div class="found-meta-item"><strong>Classification:</strong> <span class="cls-tag ${clsCls}">${escapeHtml(fi.classification || '—')}</span></div>
+            <div class="found-meta-item"><strong>Scan Status:</strong> ${escapeHtml(fi.scan_status || '—')}</div>
+            <div class="found-meta-item"><strong>Match Method:</strong> ${data.match_type === 'embedded_marker' ? 'Embedded Marker' : 'Hash Lookup'}${matchBadge}</div>
+        `;
+
+        // Single downloader watermark card
+        const wm = data.watermark || {};
+        const d  = wm.decrypted || {};
+        const dl = d.downloader || {};
+        const ac = d.access_context || {};
+        const ts = (wm.download_timestamp || d.created_at || '—').replace('T', ' ').split('.')[0];
+        const clsTagCls = clsMap[d.file_classification] || 'cls-public';
+
+        const accessBadges = [
+            ac.otp_verified      ? '<span class="wm-badge wm-badge-otp">OTP</span>'           : '',
+            ac.totp_verified     ? '<span class="wm-badge wm-badge-totp">TOTP</span>'          : '',
+            ac.approval_granted  ? '<span class="wm-badge wm-badge-approval">Approval</span>'  : '',
+        ].filter(Boolean).join(' ') || '<span class="wm-badge wm-badge-no">—</span>';
+
+        document.getElementById('forensicNoWatermarks').style.display = 'none';
+        document.getElementById('forensicWmTableWrap').style.display = 'block';
+        document.getElementById('forensicWmTableBody').innerHTML = `<tr>
+            <td style="white-space:nowrap;">${escapeHtml(ts)}</td>
+            <td>${escapeHtml(String(dl.user_id ?? '—'))}</td>
+            <td><strong>${escapeHtml(dl.username || '—')}</strong></td>
+            <td>${escapeHtml(dl.email || '—')}</td>
+            <td style="font-family:monospace;font-size:11px;">${escapeHtml(dl.ip_address || '—')}</td>
+            <td>${accessBadges}</td>
+            <td><span class="cls-tag ${clsTagCls}">${escapeHtml(d.file_classification || '—')}</span></td>
+            <td><span class="wm-ua" title="${escapeHtml(dl.user_agent || '')}">${escapeHtml(dl.user_agent || '—')}</span></td>
+            <td style="font-family:monospace;font-size:10px;" title="${escapeHtml(wm.watermark_id || '')}">${escapeHtml((wm.watermark_id || '—').substring(0, 8))}…</td>
+        </tr>`;
+    }
+
+    function setLoading(on) {
+        runBtn.disabled = on;
+        spinner.style.display = on ? 'block' : 'none';
+        btnIcon.style.display = on ? 'none' : 'block';
+    }
+
+    function formatBytes(bytes) {
+        if (!bytes) return '0 B';
+        const k = 1024, sizes = ['B','KB','MB','GB','TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const d = document.createElement('div');
+        d.textContent = String(text);
+        return d.innerHTML;
+    }
+}());
 </script>
 
 <!-- File Details Modal -->
