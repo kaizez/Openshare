@@ -7,7 +7,7 @@ services:
     container_name: moveit-auth-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${AUTH_DB_ROOT_PASSWORD:-your_secure_password}
+      MYSQL_ROOT_PASSWORD: ${AUTH_DB_ROOT_PASSWORD}
       MYSQL_DATABASE: auth_db
     ports:
       - "3307:3306"
@@ -30,10 +30,10 @@ services:
     container_name: moveit-working-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${WORKING_DB_ROOT_PASSWORD:-WorkingRoot2024!}
+      MYSQL_ROOT_PASSWORD: ${WORKING_DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${WORKING_DB_NAME:-workingdb}
       MYSQL_USER: ${WORKING_DB_USER:-working_user}
-      MYSQL_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      MYSQL_PASSWORD: ${WORKING_DB_PASSWORD}
     ports:
       - "3309:3306"
     volumes:
@@ -56,10 +56,10 @@ services:
     container_name: moveit-storage-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${STORAGE_DB_ROOT_PASSWORD:-StorageRoot2024!}
+      MYSQL_ROOT_PASSWORD: ${STORAGE_DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${STORAGE_DB_NAME:-storagedb}
       MYSQL_USER: ${STORAGE_DB_USER:-storage_user}
-      MYSQL_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
+      MYSQL_PASSWORD: ${STORAGE_DB_PASSWORD}
     volumes:
       - storage_db_data:/var/lib/mysql
     networks:
@@ -76,10 +76,10 @@ services:
     container_name: moveit-movelorh-db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MOVELORH_DB_ROOT_PASSWORD:-MoveRoot2024!}
+      MYSQL_ROOT_PASSWORD: ${MOVELORH_DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MOVELORH_DB_NAME:-movedb}
       MYSQL_USER: ${MOVELORH_DB_USER:-move_user}
-      MYSQL_PASSWORD: ${MOVELORH_DB_PASSWORD:-move_pass_2024}
+      MYSQL_PASSWORD: ${MOVELORH_DB_PASSWORD}
     ports:
       - "3310:3306" # External access via 3310
     volumes:
@@ -105,18 +105,18 @@ services:
     environment:
       DOCKER_ENV: "true"
       URL_SCHEME: "https"
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      SECRET_KEY: ${SECRET_KEY}
       # Auth Database
       MYSQL_HOST: auth-db
       MYSQL_PORT: 3306
       MYSQL_USER: root
-      MYSQL_PASSWORD: ${AUTH_DB_ROOT_PASSWORD:-your_secure_password}
+      MYSQL_PASSWORD: ${AUTH_DB_ROOT_PASSWORD}
       MYSQL_DATABASE: auth_db
       # FileTransfer Working Database
       WORKING_DB_HOST: working-db
       WORKING_DB_PORT: 3306
       WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
-      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD}
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
       
       # AI Engine Connection
@@ -171,12 +171,12 @@ services:
     environment:
       WORKING_DB_HOST: working-db
       WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
-      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD}
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
       WORKING_DB_PORT: 3306
       STORAGE_DB_HOST: storage-db
       STORAGE_DB_USER: ${STORAGE_DB_USER:-storage_user}
-      STORAGE_DB_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
+      STORAGE_DB_PASSWORD: ${STORAGE_DB_PASSWORD}
       STORAGE_DB_NAME: ${STORAGE_DB_NAME:-storagedb}
       STORAGE_DB_PORT: 3306
       SYNC_INTERVAL_SECONDS: ${SYNC_INTERVAL_SECONDS:-3600}
@@ -206,7 +206,7 @@ services:
     environment:
       WORKING_DB_HOST: working-db
       WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
-      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD}
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
       WORKING_DB_PORT: 3306
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
@@ -228,7 +228,7 @@ services:
       - "5002:5001"
     environment:
       SIEM_URL: ${SIEM_URL}
-      SIEM_DASHBOARD_SECRET: ${SIEM_DASHBOARD_SECRET:-change-this}
+      SIEM_DASHBOARD_SECRET: ${SIEM_DASHBOARD_SECRET}
     networks:
       - moveit-network
 
@@ -244,12 +244,12 @@ services:
     environment:
       WORKING_DB_HOST: working-db
       WORKING_DB_USER: ${WORKING_DB_USER:-working_user}
-      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD:-working_pass_2024}
+      WORKING_DB_PASSWORD: ${WORKING_DB_PASSWORD}
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
       WORKING_DB_PORT: 3306
       STORAGE_DB_HOST: storage-db
       STORAGE_DB_USER: ${STORAGE_DB_USER:-storage_user}
-      STORAGE_DB_PASSWORD: ${STORAGE_DB_PASSWORD:-storage_pass_2024}
+      STORAGE_DB_PASSWORD: ${STORAGE_DB_PASSWORD}
       STORAGE_DB_NAME: ${STORAGE_DB_NAME:-storagedb}
       STORAGE_DB_PORT: 3306
       RETENTION_CONFIG_PATH: /app/config/retention_policy.json
