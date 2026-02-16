@@ -120,8 +120,8 @@ services:
       WORKING_DB_NAME: ${WORKING_DB_NAME:-workingdb}
       
       # AI Engine Connection
-      OLLAMA_HOST: ${OLLAMA_HOST:-https://ai.nypdsf.me}
-      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      OLLAMA_HOST: ${OLLAMA_HOST}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY}
       # VirusTotal
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
       VIRUSTOTAL_ENABLED: ${VIRUSTOTAL_ENABLED:-true}

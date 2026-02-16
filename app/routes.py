@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
 from flask_mail import Message
 from app import oauth, mail, limiter
-from app.models import db, User, LoginHistory
+from app.models import db, User, LoginHistory, ChatHistory
 from app.siem_logger import SIEMLogger
 from app.ml_security import LoginBehaviorAnalyzer, build_login_data
 from app.keystroke_dynamics import keystroke_analyzer
@@ -3450,176 +3450,6 @@ def admin_get_file_logs(file_id):
         print(f"[Admin] Error getting file logs: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@bp.route('/admin/filetransfer/watermarks/<file_id>', methods=['GET'])
-def admin_get_watermarks(file_id):
-    """Return decrypted forensic watermarks for a specific file (admin only)."""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Please login first'}), 401
-
-    user = User.query.get(session['user_id'])
-    if not user or not user.is_admin:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-
-    # Sanitise file_id
-    if not re.match(r'^[a-zA-Z0-9_-]+$', file_id) or len(file_id) > 100:
-        return jsonify({'success': False, 'message': 'Invalid file ID'}), 400
-
-    try:
-        sys.path.insert(0, os.path.join(BASE_DIR, 'FileTransfer'))
-        from watermark import decrypt_watermark
-
-        db_conn = Database()
-        rows = db_conn.get_watermarks_for_file(file_id)
-
-        watermarks = []
-        for row in rows:
-            payload = decrypt_watermark(row['encrypted_payload'])
-            if payload:
-                watermarks.append({
-                    'watermark_id': row['watermark_id'],
-                    'download_timestamp': row['download_timestamp'],
-                    'decrypted': payload,
-                })
-
-        return jsonify({'success': True, 'file_id': file_id, 'watermarks': watermarks, 'count': len(watermarks)})
-
-    except Exception as e:
-        print(f'[Admin] Error fetching watermarks: {e}')
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@bp.route('/admin/filetransfer/forensic-check', methods=['POST'])
-def admin_forensic_check():
-    """
-    Admin forensic file-origin check.
-
-    Accepts an uploaded file, computes its SHA-256 hash, checks whether that
-    hash matches any file in our database, and returns the decrypted forensic
-    watermarks showing who downloaded it and when.
-
-    Intended for post-breach attribution: if a file has leaked, the admin
-    uploads it here to identify the download source.
-    """
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Please login first'}), 401
-
-    user = User.query.get(session['user_id'])
-    if not user or not user.is_admin:
-        return jsonify({'success': False, 'message': 'Access denied'}), 403
-
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'message': 'No file provided'}), 400
-
-    uploaded = request.files['file']
-    if not uploaded.filename:
-        return jsonify({'success': False, 'message': 'Empty filename'}), 400
-
-    # Read file into memory – limit to 500 MB to prevent DoS
-    MAX_BYTES = 500 * 1024 * 1024
-    file_bytes = uploaded.read(MAX_BYTES + 1)
-    if len(file_bytes) > MAX_BYTES:
-        return jsonify({'success': False, 'message': 'File exceeds 500 MB limit'}), 413
-
-    # Compute SHA-256 of the uploaded file as-is (watermarked hash)
-    uploaded_hash = hashlib.sha256(file_bytes).hexdigest()
-
-    try:
-        sys.path.insert(0, os.path.join(BASE_DIR, 'FileTransfer'))
-        from watermark import decrypt_watermark, extract_watermark_from_file
-
-        db_conn = Database()
-
-        # ── Step 1: exact watermarked-hash lookup ───────────────────────────
-        # Each download produces a unique file (different hash) so this
-        # identifies exactly ONE downloader.
-        row = db_conn.get_watermark_by_watermarked_hash(uploaded_hash)
-
-        if row:
-            payload   = decrypt_watermark(row['encrypted_payload'])
-            file_info = db_conn.lookup_file_by_hash(row['original_file_hash'])
-
-            siem.custom_event(
-                event_type='forensic_watermark_check',
-                description=f'Admin {user.username} forensic check matched watermark {row["watermark_id"]}',
-                severity='Medium',
-                user_id=str(user.id),
-                ip=request.remote_addr,
-                watermarked_hash=uploaded_hash,
-                check_result='matched',
-            )
-
-            return jsonify({
-                'success':    True,
-                'found':      True,
-                'match_type': 'watermarked_hash',
-                'file_hash':  uploaded_hash,
-                'file_info':  file_info,
-                'watermark':  {
-                    'watermark_id':       row['watermark_id'],
-                    'download_timestamp': row['download_timestamp'],
-                    'decrypted':          payload,
-                },
-            })
-
-        # ── Step 2: embedded-marker fallback ───────────────────────────────
-        # In case the hash didn't match (e.g. file was re-compressed), scan
-        # the file bytes directly for the embedded watermark marker.
-        embedded_blob = extract_watermark_from_file(file_bytes)
-        if embedded_blob:
-            payload = decrypt_watermark(embedded_blob)
-            if payload:
-                original_hash = payload.get('file_hash_sha256', '')
-                file_info     = db_conn.lookup_file_by_hash(original_hash) if original_hash else None
-
-                siem.custom_event(
-                    event_type='forensic_watermark_check',
-                    description=f'Admin {user.username} forensic check via embedded marker',
-                    severity='Medium',
-                    user_id=str(user.id),
-                    ip=request.remote_addr,
-                    watermarked_hash=uploaded_hash,
-                    check_result='embedded_match',
-                )
-
-                return jsonify({
-                    'success':    True,
-                    'found':      True,
-                    'match_type': 'embedded_marker',
-                    'file_hash':  uploaded_hash,
-                    'file_info':  file_info,
-                    'watermark':  {
-                        'watermark_id':       payload.get('watermark_id'),
-                        'download_timestamp': payload.get('created_at'),
-                        'decrypted':          payload,
-                    },
-                })
-
-        # ── Step 3: not found ───────────────────────────────────────────────
-        siem.custom_event(
-            event_type='forensic_watermark_check',
-            description=f'Admin {user.username} forensic check — file not in system',
-            severity='Low',
-            user_id=str(user.id),
-            ip=request.remote_addr,
-            watermarked_hash=uploaded_hash,
-            check_result='not_found',
-        )
-
-        return jsonify({
-            'success': False,
-            'found':   False,
-            'file_hash': uploaded_hash,
-            'message': 'No watermark found. This file did not originate from this system, '
-                       'or it was downloaded before watermarking was enabled.',
-        }), 404
-
-    except Exception as e:
-        print(f'[Admin] Error during forensic check: {e}')
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
 @bp.route('/chatbot')
 def chatbot_page():
     """Render the MoveLorh Assistant interface"""
@@ -3641,12 +3471,40 @@ def chat():
     if not sanitized_message:
         return jsonify({'reply': 'Please enter a message.'})
 
-    ollama_host = os.environ.get('OLLAMA_HOST', 'https://ai.nypdsf.me').rstrip('/')
-    ollama_api_key = os.environ.get('OLLAMA_API_KEY', '')
+    # Length limit - max 500 characters
+    if len(sanitized_message) > 500:
+        return jsonify({'reply': 'Message too long. Please keep your message under 500 characters.'})
+
+    client_ip = get_client_ip()
+    user_id = session.get('user_id')
+    username = session.get('user', 'unknown')
+
+    # --- Sensitive content filtering ---
+    flagged = False
+    flag_reasons = []
+    prompt_message = sanitized_message  # message sent to AI (may be redacted)
+
+    # Credit card pattern: 4 groups of 4 digits separated by spaces or dashes
+    cc_pattern = r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b'
+    if re.search(cc_pattern, sanitized_message):
+        flagged = True
+        flag_reasons.append('credit_card')
+        prompt_message = re.sub(cc_pattern, '[REDACTED-CC]', prompt_message)
+
+    # Singapore NRIC pattern
+    nric_pattern = r'\b[STFGMstfgm]\d{7}[A-Za-z]\b'
+    if re.search(nric_pattern, sanitized_message):
+        flagged = True
+        flag_reasons.append('nric')
+        prompt_message = re.sub(nric_pattern, '[REDACTED-NRIC]', prompt_message)
+
+    flag_reason_str = ', '.join(flag_reasons) if flag_reasons else None
+
+    ollama_host = "https://ai.nypdsf.me"
 
     system_context = (
     "You are MoveBot, the specialized security support assistant for the MoveIt platform. "
-    
+
     "TECHNICAL ARCHITECTURE KNOWLEDGE: "
     "1. Physical file storage is located in the '/app/uploads' directory on the server filesystem. "
     "2. User credentials, sessions, and security settings are stored in the 'auth_db' MySQL database. "
@@ -3656,13 +3514,13 @@ def chat():
     "6. All files are encrypted using AES-256 before being moved to long-term storage. "
     "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect MoveLorh accounts from unauthorized access."
 
-    
+
     "SECURITY POLICIES & GUARDRAILS: "
     "1. Multi-Factor Authentication (MFA) is mandatory for all accounts to protect against credential theft. "
     "2. Users can only access their own files; AES-256 and session isolation prevent unauthorized access. "
     "3. Never provide raw SQL queries, internal API keys, or instructions on bypassing security features. "
     "4. If a user asks for hacking help or sensitive database 'dumps,' provide a professional refusal. "
-    
+
     "RESPONSE STYLE: "
     "1. Keep answers extremely short and concise (max 3 sentences). "
     "2. Use bullet points or numbered lists for multi-step information. "
@@ -3675,11 +3533,10 @@ def chat():
     "4. If asked who you are, say: 'I am MoveBot, your MoveIt security assistant.' "
 )
 
-    formatted_prompt = f"System: {system_context}\nUser: {sanitized_message}\nAssistant:"
+    formatted_prompt = f"System: {system_context}\nUser: {prompt_message}\nAssistant:"
 
-    # Verified model name from your friend's server
     payload = {
-        "model": "qwen2.5:1.5b", # Must match EXACTLY
+        "model": "qwen2.5:1.5b",
         "prompt": formatted_prompt,
         "stream": False,
         "options": {
@@ -3688,42 +3545,98 @@ def chat():
     }
 
     try:
-        # Standard Ollama generate endpoint
         api_url = f"{ollama_host}/api/generate"
-        headers = {}
-        if ollama_api_key:
-            headers['Authorization'] = f'Bearer {ollama_api_key}'
-        response = requests.post(api_url, json=payload, headers=headers, timeout=30)
-        
-        # Check specifically for model-not-found errors
+        response = requests.post(api_url, json=payload, timeout=30)
+
         if response.status_code == 404:
             return jsonify({'reply': "AI Service Error: Model not found on the remote server."})
 
         response_data = response.json()
         ai_reply = response_data.get('response', 'I am having trouble connecting right now.')
 
-        # SIEM Integration - FIXED: Use send_event to prevent AttributeError crash
+        # --- SIEM Logging ---
+        if flagged:
+            siem.chatbot_sensitive_query(
+                user_id=username,
+                query=sanitized_message,
+                ip=client_ip,
+                sensitivity_type=flag_reason_str
+            )
+        else:
+            siem.chatbot_query(
+                user_id=username,
+                query=sanitized_message,
+                ip=client_ip
+            )
+
+        # Suspicious security term detection (additional SIEM alert)
         suspicious_patterns = ['bypass', 'crack', 'sql injection', 'dump', 'root access']
-        # Change this in app/routes.py
         if any(term in sanitized_message.lower() for term in suspicious_patterns):
-            # Use 'custom_event' as it is verified in other parts of your code
             siem.custom_event(
                 event_type='chatbot_security_query',
-                description=f"User {session.get('user')} queried sensitive terms: {sanitized_message}",
+                description=f"User {username} queried sensitive terms: {sanitized_message}",
                 severity='Warning',
-                user_id=session.get('user'),
-                ip=request.remote_addr
+                user_id=username,
+                ip=client_ip
             )
+
+        # --- Persist to ChatHistory ---
+        try:
+            chat_record = ChatHistory(
+                user_id=user_id if user_id else 0,
+                username=username,
+                message=sanitized_message,
+                response=ai_reply[:2000],
+                ip_address=client_ip,
+                flagged=flagged,
+                flag_reason=flag_reason_str
+            )
+            db.session.add(chat_record)
+            db.session.commit()
+        except Exception as db_err:
+            print(f"[Chat] Error saving chat history: {db_err}")
+            db.session.rollback()
+
         return jsonify({'reply': ai_reply})
 
     except requests.exceptions.RequestException as e:
-        # Network errors are logged to the Docker console for debugging
         print(f"Network error connecting to AI Engine: {str(e)}")
         return jsonify({'reply': "I am having trouble connecting right now."})
     except Exception as e:
         return jsonify({'reply': f"System Error: {str(e)}"}), 500
 
     
+@bp.route('/admin/chat-history')
+def admin_chat_history():
+    """Admin page showing all chatbot conversation history"""
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+
+    user = User.query.get(session['user_id'])
+
+    if not user or not user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('filetransfer.index'))
+
+    chat_logs = ChatHistory.query.order_by(ChatHistory.timestamp.desc()).limit(200).all()
+    total_messages = ChatHistory.query.count()
+    flagged_messages = ChatHistory.query.filter_by(flagged=True).count()
+
+    # Convert timestamps to SGT (UTC+8) for display
+    sgt_offset = timedelta(hours=8)
+    for log in chat_logs:
+        if log.timestamp:
+            log.sgt_timestamp = (log.timestamp + sgt_offset).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            log.sgt_timestamp = 'N/A'
+
+    return render_template('admin_chat_history.html',
+                           chat_logs=chat_logs,
+                           total_messages=total_messages,
+                           flagged_messages=flagged_messages,
+                           current_user=user)
+
+
 @bp.route('/help')
 def help_page():
     """Renders the FAQ and chatbot entry point"""

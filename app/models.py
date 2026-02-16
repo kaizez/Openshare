@@ -169,3 +169,21 @@ class LoginHistory(db.Model):
 
     def __repr__(self):
         return f'<LoginHistory user={self.user_id} timestamp={self.timestamp}>'
+
+
+class ChatHistory(db.Model):
+    """Track chatbot conversation history for admin review and security auditing"""
+    __tablename__ = 'chat_history'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    username = db.Column(db.String(80), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    response = db.Column(db.Text, nullable=True)
+    ip_address = db.Column(db.String(45), nullable=True)
+    flagged = db.Column(db.Boolean, default=False)
+    flag_reason = db.Column(db.String(255), nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f'<ChatHistory user={self.username} flagged={self.flagged} timestamp={self.timestamp}>'
