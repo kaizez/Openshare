@@ -155,7 +155,7 @@ def get_location_from_ip(ip_address):
         db_path = os.path.join(os.path.dirname(__file__), '..', 'GeoLite2-City.mmdb')
 
         if not os.path.exists(db_path):
-            return 'Location unavailable'
+            return 'Singapore'
 
         with geoip2.database.Reader(db_path) as reader:
             response = reader.city(ip_address)
@@ -163,7 +163,7 @@ def get_location_from_ip(ip_address):
             country = response.country.name or 'Unknown Country'
             return f'{city}, {country}'
     except (geoip2.errors.AddressNotFoundError, Exception):
-        return 'Location unavailable'
+        return 'Singapore'
 
 def get_device_fingerprint():
     """Create unique device fingerprint"""
@@ -2830,6 +2830,63 @@ def admin_risk_scoring():
     users_with_risk.sort(key=lambda x: x['risk_score'], reverse=True)
 
     return render_template('admin_risk_scoring.html', users=users_with_risk, current_user=user)
+
+
+@bp.route('/admin/keystroke-scoring')
+def admin_keystroke_scoring():
+    """Admin page showing keystroke dynamics learning status per user"""
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('filetransfer.index'))
+
+    users_keystroke = []
+    all_users = User.query.all()
+
+    for u in all_users:
+        profile = None
+        if u.keystroke_profile:
+            try:
+                profile = json.loads(u.keystroke_profile)
+            except (json.JSONDecodeError, TypeError):
+                profile = None
+
+        samples = profile.get('samples', 0) if profile else 0
+        history_count = len(profile.get('history', [])) if profile else 0
+
+        if samples == 0:
+            status = 'No Data'
+            status_class = 'none'
+        elif samples < 3:
+            status = f'Collecting ({samples}/3)'
+            status_class = 'collecting'
+        elif samples < 5:
+            status = f'Statistical ({samples}/5)'
+            status_class = 'statistical'
+        else:
+            status = f'Autoencoder Active'
+            status_class = 'autoencoder'
+
+        user_data = {
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'samples': samples,
+            'history_count': history_count,
+            'status': status,
+            'status_class': status_class,
+            'hold_mean': round(profile.get('hold_mean', 0), 1) if profile else 0,
+            'flight_mean': round(profile.get('flight_mean', 0), 1) if profile else 0,
+            'digraph_mean': round(profile.get('digraph_mean', 0), 1) if profile else 0,
+        }
+        users_keystroke.append(user_data)
+
+    users_keystroke.sort(key=lambda x: x['samples'], reverse=True)
+
+    return render_template('admin_keystroke_scoring.html', users=users_keystroke, current_user=user)
 
 
 @bp.route('/admin/toggle-admin/<int:user_id>', methods=['POST'])

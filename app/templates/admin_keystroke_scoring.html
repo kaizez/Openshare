@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block title %}Keystroke Scoring - Admin - MoveIt{% endblock %}
+
+{% block content %}
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+
+    .admin-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .admin-header h1 {
+        color: #000;
+        font-size: 32px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+    }
+
+    .admin-header p {
+        color: #8e8e93;
+        font-size: 16px;
+        margin: 0;
+    }
+
+    .admin-nav {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .nav-btn-secondary {
+        background: #f7fafc;
+        color: #2d3748;
+        border: 1px solid #e2e8f0;
+    }
+
+    .nav-btn-secondary:hover {
+        background: #edf2f7;
+    }
+
+    .nav-btn-active {
+        background: #007aff;
+        color: white;
+    }
+
+    .nav-btn-active:hover {
+        background: #0066d6;
+    }
+
+    .admin-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 16px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 8px;
+    }
+
+    .stat-card {
+        background: #f7fafc;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+    }
+
+    .stat-card.autoencoder {
+        border-left: 4px solid #38a169;
+    }
+
+    .stat-card.statistical {
+        border-left: 4px solid #d69e2e;
+    }
+
+    .stat-card.collecting {
+        border-left: 4px solid #3182ce;
+    }
+
+    .stat-card.none {
+        border-left: 4px solid #a0aec0;
+    }
+
+    .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a202c;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #718096;
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .search-box {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        margin-bottom: 16px;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .search-box:focus {
+        border-color: #007aff;
+    }
+
+    .keystroke-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .keystroke-table th {
+        text-align: left;
+        padding: 12px 16px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .keystroke-table td {
+        padding: 14px 16px;
+        font-size: 14px;
+        color: #2d3748;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .keystroke-table tr:hover {
+        background: #f7fafc;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-badge.autoencoder {
+        background: #c6f6d5;
+        color: #22543d;
+    }
+
+    .status-badge.statistical {
+        background: #fefcbf;
+        color: #744210;
+    }
+
+    .status-badge.collecting {
+        background: #bee3f8;
+        color: #2a4365;
+    }
+
+    .status-badge.none {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-bar.autoencoder { background: #38a169; }
+    .progress-bar.statistical { background: #d69e2e; }
+    .progress-bar.collecting { background: #3182ce; }
+
+    .timing-value {
+        font-family: monospace;
+        font-size: 13px;
+        color: #4a5568;
+    }
+
+    .timing-label {
+        font-size: 10px;
+        color: #a0aec0;
+        text-transform: uppercase;
+    }
+
+    @media (max-width: 768px) {
+        .keystroke-table th:nth-child(4),
+        .keystroke-table td:nth-child(4),
+        .keystroke-table th:nth-child(5),
+        .keystroke-table td:nth-child(5) {
+            display: none;
+        }
+    }
+</style>
+
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>Keystroke Scoring</h1>
+        <p>Monitor ML keystroke dynamics learning status per user</p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('main.index') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Home
+        </a>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Users
+        </a>
+        <a href="{{ url_for('main.admin_filetransfer') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            File Transfer
+        </a>
+        <a href="{{ url_for('main.admin_devices') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            Devices
+        </a>
+        <a href="{{ url_for('main.admin_risk_scoring') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            Risk Scoring
+        </a>
+        <a href="{{ url_for('main.admin_chat_history') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            Chat History
+        </a>
+        <a href="{{ url_for('main.admin_keystroke_scoring') }}" class="nav-btn nav-btn-active">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+            </svg>
+            Keystroke Scoring
+        </a>
+        <a href="https://{{ request.host.split(':')[0] }}:5002" target="_blank" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            SIEM
+        </a>
+        <a href="{{ url_for('main.logout') }}" class="nav-btn nav-btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Log Out
+        </a>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="admin-card">
+        <div class="section-title">Learning Overview</div>
+        <div class="stats-grid">
+            <div class="stat-card autoencoder">
+                <div class="stat-number">{{ users|selectattr('status_class', 'equalto', 'autoencoder')|list|length }}</div>
+                <div class="stat-label">Autoencoder Active</div>
+            </div>
+            <div class="stat-card statistical">
+                <div class="stat-number">{{ users|selectattr('status_class', 'equalto', 'statistical')|list|length }}</div>
+                <div class="stat-label">Statistical Only</div>
+            </div>
+            <div class="stat-card collecting">
+                <div class="stat-number">{{ users|selectattr('status_class', 'equalto', 'collecting')|list|length }}</div>
+                <div class="stat-label">Collecting Data</div>
+            </div>
+            <div class="stat-card none">
+                <div class="stat-number">{{ users|selectattr('status_class', 'equalto', 'none')|list|length }}</div>
+                <div class="stat-label">No Data</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="admin-card">
+        <div class="section-title">How Keystroke Learning Works</div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <div style="font-weight: 600; color: #3182ce; margin-bottom: 4px;">1. Collecting (0-2 samples)</div>
+                <div style="font-size: 13px; color: #718096;">Gathering initial keystroke data from logins. Not yet verifying.</div>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <div style="font-weight: 600; color: #d69e2e; margin-bottom: 4px;">2. Statistical (3-4 samples)</div>
+                <div style="font-size: 13px; color: #718096;">Using statistical comparison of typing patterns. Basic verification active.</div>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <div style="font-weight: 600; color: #38a169; margin-bottom: 4px;">3. Autoencoder (5+ samples)</div>
+                <div style="font-size: 13px; color: #718096;">Neural network trained on user's typing. Full anomaly detection active.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Table -->
+    <div class="admin-card">
+        <div class="section-title">Per-User Keystroke Status</div>
+        <input type="text" id="searchInput" class="search-box" placeholder="Search by username or email...">
+
+        <table class="keystroke-table" id="keystrokeTable">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Samples</th>
+                    <th>Progress</th>
+                    <th>Avg Timings (ms)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div style="font-weight: 600;">{{ user.username }}</div>
+                        <div style="font-size: 12px; color: #8e8e93;">{{ user.email }}</div>
+                    </td>
+                    <td>
+                        <span class="status-badge {{ user.status_class }}">
+                            {% if user.status_class == 'autoencoder' %}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            {% elif user.status_class == 'statistical' %}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                            {% elif user.status_class == 'collecting' %}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            {% else %}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            {% endif %}
+                            {{ user.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <span style="font-weight: 600; font-size: 16px;">{{ user.samples }}</span>
+                        <span style="font-size: 11px; color: #a0aec0;"> / 30 max</span>
+                    </td>
+                    <td style="min-width: 140px;">
+                        <div class="progress-bar-container">
+                            {% set progress = [user.samples / 5 * 100, 100] | min %}
+                            <div class="progress-bar {{ user.status_class }}" style="width: {{ progress }}%"></div>
+                        </div>
+                        <div style="font-size: 11px; color: #a0aec0; margin-top: 4px;">
+                            {% if user.samples >= 5 %}
+                                Fully trained
+                            {% else %}
+                                {{ 5 - user.samples }} more login{{ 's' if (5 - user.samples) != 1 }} needed
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if user.samples > 0 %}
+                        <div style="display: flex; gap: 16px;">
+                            <div>
+                                <div class="timing-label">Hold</div>
+                                <div class="timing-value">{{ user.hold_mean }}ms</div>
+                            </div>
+                            <div>
+                                <div class="timing-label">Flight</div>
+                                <div class="timing-value">{{ user.flight_mean }}ms</div>
+                            </div>
+                            <div>
+                                <div class="timing-label">Digraph</div>
+                                <div class="timing-value">{{ user.digraph_mean }}ms</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <span style="color: #a0aec0; font-size: 13px;">No data yet</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.getElementById('searchInput').addEventListener('input', function() {
+    const filter = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#keystrokeTable tbody tr');
+    rows.forEach(function(row) {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}
