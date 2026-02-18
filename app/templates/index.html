@@ -84,107 +84,561 @@
         </div>
     </nav>
 
+    <!-- Hero Section -->
     <section class="hero">
         <div class="hero-content">
-            <h1 class="hero-title">Secure File Transfer Made Simple</h1>
-            <p class="hero-subtitle">Transfer files with confidence. Fast, secure, and reliable file sharing for everyone.</p>
+            <div class="hero-badge">
+                <span class="badge-dot"></span>
+                Trusted by Teams Everywhere
+            </div>
+            <h1 class="hero-title">Send Files with<br><span class="hero-highlight">Complete Confidence</span></h1>
+            <p class="hero-subtitle">Fast, encrypted file sharing protected by 5 layers of AI-powered security. Built for people who care about privacy.</p>
             {% if 'user' not in session %}
                 <div class="hero-buttons">
-                    <a href="{{ url_for('main.register') }}" class="btn btn-primary btn-large">Get Started Free</a>
-                    <a href="{{ url_for('main.login') }}" class="btn btn-outline btn-large">Sign In</a>
+                    <a href="{{ url_for('main.register') }}" class="btn btn-primary btn-large">
+                        Start for Free
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle; margin-left: 8px;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </a>
+                    <a href="{{ url_for('main.login') }}" class="btn btn-ghost btn-large">Sign In</a>
                 </div>
             {% else %}
                 <div class="hero-buttons">
-                    <a href="{{ url_for('filetransfer.index') }}" class="btn btn-primary btn-large">Upload Files</a>
-                    <a href="{{ url_for('filetransfer.download_page') }}" class="btn btn-outline btn-large">Download Files</a>
+                    <a href="{{ url_for('filetransfer.index') }}" class="btn btn-primary btn-large">
+                        Upload Files
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle; margin-left: 8px;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                    </a>
+                    <a href="{{ url_for('filetransfer.download_page') }}" class="btn btn-ghost btn-large">Download Files</a>
                 </div>
             {% endif %}
         </div>
         <div class="hero-image">
-            <div class="floating-card card-1">
-                <div class="card-icon">📁</div>
-                <div class="card-text">Upload</div>
-            </div>
-            <div class="floating-card card-2">
-                <div class="card-icon">🔒</div>
-                <div class="card-text">Secure</div>
-            </div>
-            <div class="floating-card card-3">
-                <div class="card-icon">⚡</div>
-                <div class="card-text">Fast</div>
-            </div>
-            <div class="floating-card card-4">
-                <div class="card-icon">🌐</div>
-                <div class="card-text">Share</div>
+            <div class="hero-visual">
+                <div class="hero-shield">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="rgba(56,161,105,0.3)" stroke-width="1"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+                <div class="floating-card card-1">
+                    <div class="card-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38a169" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+                    <div class="card-label">Upload</div>
+                </div>
+                <div class="floating-card card-2">
+                    <div class="card-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38a169" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+                    <div class="card-label">Encrypt</div>
+                </div>
+                <div class="floating-card card-3">
+                    <div class="card-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38a169" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
+                    <div class="card-label">Transfer</div>
+                </div>
+                <div class="floating-card card-4">
+                    <div class="card-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38a169" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                    <div class="card-label">Done</div>
+                </div>
             </div>
         </div>
     </section>
 
+    <!-- Stats Bar -->
+    <section class="stats-section">
+        <div class="stats-container">
+            <div class="stat-item">
+                <div class="stat-num">256-bit</div>
+                <div class="stat-lbl">Encryption</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-num">5 Layers</div>
+                <div class="stat-lbl">Security</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-num">24/7</div>
+                <div class="stat-lbl">Monitoring</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-num">99.9%</div>
+                <div class="stat-lbl">Uptime</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
     <section class="features">
-        <h2 class="section-title">Why Choose MoveIt?</h2>
+        <div class="features-header">
+            <h2 class="section-title">Why Choose MoveIt?</h2>
+            <p class="section-subtitle">Enterprise-grade security meets simplicity.</p>
+        </div>
         <div class="features-grid">
             <div class="feature-card">
-                <div class="feature-icon">🔐</div>
+                <div class="feature-emoji">🔐</div>
                 <h3>End-to-End Encryption</h3>
-                <p>Your files are encrypted with Argon2id authentication, ensuring maximum security.</p>
+                <p>Files encrypted with Argon2id hashing and AES-256 at rest and in transit.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">⚡</div>
+                <div class="feature-emoji">⚡</div>
                 <h3>Lightning Fast</h3>
-                <p>Optimized transfer speeds to get your files where they need to be, instantly.</p>
+                <p>Chunked uploads and optimized transfers for files of any size.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🌍</div>
+                <div class="feature-emoji">🌍</div>
                 <h3>Share Anywhere</h3>
-                <p>Access your files from any device, anywhere in the world.</p>
+                <p>Secure download links accessible from any device worldwide.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">💾</div>
-                <h3>Large File Support</h3>
-                <p>Transfer files of any size without compression or quality loss.</p>
+                <div class="feature-emoji">🤖</div>
+                <h3>AI Risk Scoring</h3>
+                <p>ML models detect suspicious login patterns in real-time.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">👥</div>
-                <h3>Collaboration</h3>
-                <p>Share files with teams and collaborate seamlessly.</p>
+                <div class="feature-emoji">⌨️</div>
+                <h3>Keystroke Biometrics</h3>
+                <p>Neural networks learn your typing pattern as identity verification.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <h3>Track Activity</h3>
-                <p>Monitor downloads, views, and manage permissions easily.</p>
+                <div class="feature-emoji">📊</div>
+                <h3>SIEM Dashboard</h3>
+                <p>Comprehensive audit logs and intrusion detection alerts.</p>
             </div>
         </div>
     </section>
 
+    <!-- Security Section (Light) -->
+    <section class="security-section">
+        <div class="security-header">
+            <h2 class="section-title">5 Layers of Protection</h2>
+            <p class="section-subtitle">Every login passes through multiple AI-powered security checks.</p>
+        </div>
+        <div class="security-grid">
+            <div class="security-card">
+                <div class="sc-num">01</div>
+                <div class="sc-emoji">🔑</div>
+                <h4>TOTP Multi-Factor</h4>
+                <p>Time-based one-time passwords via authenticator app</p>
+            </div>
+            <div class="security-card">
+                <div class="sc-num">02</div>
+                <div class="sc-emoji">⌨️</div>
+                <h4>Keystroke Dynamics</h4>
+                <p>AI-powered typing biometric verification</p>
+            </div>
+            <div class="security-card">
+                <div class="sc-num">03</div>
+                <div class="sc-emoji">🧠</div>
+                <h4>ML Risk Scoring</h4>
+                <p>Isolation Forest anomaly detection on every login</p>
+            </div>
+            <div class="security-card">
+                <div class="sc-num">04</div>
+                <div class="sc-emoji">🛡️</div>
+                <h4>Web App Firewall</h4>
+                <p>Real-time request filtering and threat blocking</p>
+            </div>
+            <div class="security-card">
+                <div class="sc-num">05</div>
+                <div class="sc-emoji">🚨</div>
+                <h4>Intrusion Detection</h4>
+                <p>Continuous monitoring with automated lockout</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    {% if 'user' not in session %}
+    <section class="cta-section">
+        <div class="cta-container">
+            <h2 class="cta-title">Ready to get started?</h2>
+            <p class="cta-desc">Create a free account and start transferring files securely in seconds.</p>
+            <a href="{{ url_for('main.register') }}" class="btn btn-primary btn-large">Create Free Account</a>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Footer -->
     <footer class="footer">
         <div class="footer-content">
-            <div class="footer-logo">
-                <div class="mascot-logo-small">
-                    <div class="character-head">
-                        <div class="eyes">
-                            <div class="eye">
-                                <div class="pupil"></div>
+            <div class="footer-top">
+                <div class="footer-logo">
+                    <div class="mascot-logo-small">
+                        <div class="character-head">
+                            <div class="eyes">
+                                <div class="eye">
+                                    <div class="pupil"></div>
+                                </div>
+                                <div class="eye">
+                                    <div class="pupil"></div>
+                                </div>
                             </div>
-                            <div class="eye">
-                                <div class="pupil"></div>
-                            </div>
+                            <div class="mouth"></div>
                         </div>
-                        <div class="mouth"></div>
                     </div>
+                    <span class="brand-name">MoveIt</span>
                 </div>
-                <span class="brand-name">MoveIt</span>
+                <div class="footer-links">
+                    <a href="{{ url_for('main.login') }}">Login</a>
+                    <a href="{{ url_for('main.register') }}">Sign Up</a>
+                </div>
             </div>
-            <p class="footer-text">&copy; 2025 MoveIt. Secure file transfer platform.</p>
+            <div class="footer-bottom">
+                <p class="footer-text">&copy; 2026 MoveIt. All rights reserved.</p>
+            </div>
         </div>
     </footer>
 </div>
 
 <style>
-/* Remove underline from hero buttons */
+/* ===== MoveIt Landing — Clean 2026 ===== */
+
+/* Hero badge */
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 24px;
+}
+
+.badge-dot {
+    width: 7px;
+    height: 7px;
+    background: #38a169;
+    border-radius: 50%;
+    display: inline-block;
+    animation: dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* Hero highlight */
+.hero-highlight {
+    color: #38a169;
+}
+
+/* Ghost button (secondary) */
+.btn-ghost {
+    background: #fff;
+    color: #2d3748;
+    border: 1.5px solid #e2e8f0;
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: all 0.2s;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.btn-ghost:hover {
+    background: #f7fafc;
+    border-color: #cbd5e0;
+    color: #1a202c;
+}
+
+/* Hero visual */
+.hero-visual {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.hero-shield {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.5;
+    animation: shield-breathe 5s ease-in-out infinite;
+}
+
+@keyframes shield-breathe {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
+    50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.6; }
+}
+
+/* Floating cards */
+.floating-card {
+    background: #fff !important;
+    border: 1px solid #edf2f7 !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05) !important;
+    border-radius: 14px !important;
+    padding: 14px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    gap: 12px !important;
+}
+
+.floating-card:hover {
+    border-color: #c6f6d5 !important;
+}
+
+.card-icon-wrap {
+    width: 40px;
+    height: 40px;
+    background: #f0fff4;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.card-icon { display: none; }
+.card-text { display: none; }
+
+.card-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+/* Stats bar */
+.stats-section {
+    max-width: 800px;
+    margin: -16px auto 0;
+    padding: 0 30px;
+    position: relative;
+    z-index: 2;
+}
+
+.stats-container {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #edf2f7;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    padding: 24px 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 8px 0;
+    border-right: 1px solid #edf2f7;
+}
+
+.stat-item:last-child {
+    border-right: none;
+}
+
+.stat-num {
+    font-size: 22px;
+    font-weight: 800;
+    color: #2d3748;
+    line-height: 1;
+}
+
+.stat-lbl {
+    font-size: 12px;
+    color: #a0aec0;
+    margin-top: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Features */
+.features-header {
+    text-align: center;
+    margin-bottom: 44px;
+}
+
+.section-subtitle {
+    font-size: 16px;
+    color: #a0aec0;
+    max-width: 480px;
+    margin: 8px auto 0;
+    line-height: 1.5;
+}
+
+.feature-emoji {
+    font-size: 36px;
+    margin-bottom: 14px;
+    line-height: 1;
+}
+
+.feature-icon-modern {
+    width: 48px;
+    height: 48px;
+    background: #f0fff4;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.feature-card {
+    text-align: left !important;
+    border: 1px solid #edf2f7 !important;
+    border-radius: 14px !important;
+    padding: 24px !important;
+    background: #fff !important;
+    transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+    border-color: #c6f6d5 !important;
+    box-shadow: 0 4px 16px rgba(56, 161, 105, 0.08) !important;
+    transform: translateY(-2px);
+}
+
+.feature-card h3 {
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    margin-bottom: 8px !important;
+    color: #1a202c !important;
+}
+
+.feature-card p {
+    font-size: 14px !important;
+    color: #a0aec0 !important;
+    line-height: 1.6 !important;
+}
+
+/* Security Section — LIGHT DESIGN */
+.security-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 30px 80px;
+}
+
+.security-header {
+    text-align: center;
+    margin-bottom: 44px;
+}
+
+.security-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+}
+
+.security-card {
+    background: #fff;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    padding: 28px 20px;
+    text-align: center;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.security-card:hover {
+    border-color: #c6f6d5;
+    box-shadow: 0 4px 16px rgba(56, 161, 105, 0.08);
+    transform: translateY(-2px);
+}
+
+.sc-num {
+    font-size: 11px;
+    font-weight: 800;
+    color: #38a169;
+    background: #f0fff4;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+    letter-spacing: 0.5px;
+}
+
+.sc-emoji {
+    font-size: 32px;
+    margin-bottom: 14px;
+    line-height: 1;
+}
+
+.security-card h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a202c;
+    margin: 0 0 6px 0;
+}
+
+.security-card p {
+    font-size: 12px;
+    color: #a0aec0;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* CTA */
+.cta-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 30px 80px;
+}
+
+.cta-container {
+    text-align: center;
+    background: #f0fff4;
+    border-radius: 20px;
+    border: 1px solid #c6f6d5;
+    padding: 52px 48px;
+}
+
+.cta-container .btn {
+    text-decoration: none;
+}
+
+.cta-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1a202c;
+    margin-bottom: 10px;
+}
+
+.cta-desc {
+    font-size: 16px;
+    color: #718096;
+    margin-bottom: 24px;
+}
+
+/* Footer */
+.footer-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #edf2f7;
+    margin-bottom: 20px;
+}
+
+.footer-links {
+    display: flex;
+    gap: 24px;
+}
+
+.footer-links a {
+    color: #a0aec0;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.footer-links a:hover {
+    color: #38a169;
+}
+
+.footer-bottom {
+    text-align: center;
+}
+
+/* Buttons */
 .hero-buttons .btn {
     text-decoration: none;
 }
 
+/* Dropdown */
 .user-dropdown {
     position: relative;
     display: inline-block;
@@ -203,11 +657,12 @@
     top: 100%;
     margin-top: 8px;
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    min-width: 200px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    min-width: 210px;
     z-index: 1000;
     overflow: hidden;
+    border: 1px solid #edf2f7;
 }
 
 .dropdown-menu.show {
@@ -221,6 +676,7 @@
     color: #2d3748;
     text-decoration: none;
     transition: background-color 0.2s;
+    font-size: 14px;
 }
 
 .dropdown-item svg {
@@ -231,27 +687,42 @@
     background-color: #f7fafc;
 }
 
-.logout-item {
-    color: #e53e3e;
-}
-
-.logout-item:hover {
-    background-color: #fff5f5;
-}
-
-.admin-item {
-    color: #805ad5;
-    font-weight: 600;
-}
-
-.admin-item:hover {
-    background-color: #faf5ff;
-}
+.logout-item { color: #e53e3e; }
+.logout-item:hover { background-color: #fff5f5; }
+.admin-item { color: #805ad5; font-weight: 600; }
+.admin-item:hover { background-color: #faf5ff; }
 
 .dropdown-divider {
     margin: 0;
     border: none;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #edf2f7;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .stat-item:nth-child(2) { border-right: none; }
+    .stat-item:nth-child(1), .stat-item:nth-child(2) { border-bottom: 1px solid #edf2f7; }
+    .security-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .security-card:last-child {
+        grid-column: span 2;
+    }
+    .cta-container { padding: 36px 24px; }
+    .cta-title { font-size: 24px; }
+    .footer-top { flex-direction: column; gap: 16px; }
+}
+
+@media (max-width: 480px) {
+    .security-grid {
+        grid-template-columns: 1fr;
+    }
+    .security-card:last-child {
+        grid-column: span 1;
+    }
 }
 </style>
 
@@ -271,4 +742,168 @@ window.addEventListener('click', function(e) {
     }
 });
 </script>
+
+<!-- Mini Chatbot Widget -->
+<div id="chatWidget" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999;">
+    <!-- Chat Window -->
+    <div id="chatWindow" style="display: none; width: 340px; height: 440px; background: #fff; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.18); overflow: hidden; flex-direction: column; margin-bottom: 12px;">
+        <!-- Header -->
+        <div style="background: #38a169; color: #fff; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <div>
+                    <div style="font-weight: 700; font-size: 15px;">MoveIt Support</div>
+                    <div style="font-size: 11px; opacity: 0.85;">Ask us anything</div>
+                </div>
+            </div>
+            <button onclick="toggleChat()" style="background: none; border: none; color: #fff; cursor: pointer; padding: 4px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <!-- Messages -->
+        <div id="chatMessages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #f7f8fa;">
+            <div style="background: #e8ecf1; color: #2d3748; padding: 10px 14px; border-radius: 14px 14px 14px 4px; font-size: 13px; max-width: 85%; align-self: flex-start;">
+                Hi there! How can we help you today?
+            </div>
+        </div>
+        <!-- Input -->
+        <div style="padding: 12px; border-top: 1px solid #e2e8f0; background: #fff; display: flex; gap: 8px;">
+            <input type="text" id="chatInput" maxlength="200" placeholder="Type a message..." style="flex: 1; border: 1px solid #e2e8f0; border-radius: 20px; padding: 10px 16px; font-size: 13px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#38a169'" onblur="this.style.borderColor='#e2e8f0'">
+            <button onclick="sendChatMessage()" style="background: #38a169; border: none; color: #fff; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='#2f855a'" onmouseout="this.style.background='#38a169'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Floating Button -->
+    <button id="chatToggleBtn" onclick="toggleChat()" style="width: 68px; height: 68px; border-radius: 50%; background: #38a169; border: none; color: #fff; cursor: pointer; box-shadow: 0 4px 16px rgba(56,161,105,0.45); display: flex; align-items: center; justify-content: center; transition: all 0.3s; margin-left: auto;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+        <svg id="chatIconOpen" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <svg id="chatIconClose" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    var chatCooldown = false;
+    var LOGIN_URL = "{{ url_for('main.login') }}";
+
+    // Sanitize user input to prevent XSS
+    function sanitizeText(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    window.toggleChat = function() {
+        var win = document.getElementById('chatWindow');
+        var iconOpen = document.getElementById('chatIconOpen');
+        var iconClose = document.getElementById('chatIconClose');
+        var isOpen = win.style.display === 'flex';
+        win.style.display = isOpen ? 'none' : 'flex';
+        iconOpen.style.display = isOpen ? 'block' : 'none';
+        iconClose.style.display = isOpen ? 'none' : 'block';
+    };
+
+    window.sendChatMessage = function() {
+        // Rate limit: prevent spam
+        if (chatCooldown) return;
+
+        var input = document.getElementById('chatInput');
+        var raw = input.value.trim();
+        if (!raw) return;
+
+        // Enforce max length
+        if (raw.length > 200) {
+            raw = raw.substring(0, 200);
+        }
+
+        var container = document.getElementById('chatMessages');
+
+        // Add user message using textContent (XSS-safe)
+        var userBubble = document.createElement('div');
+        userBubble.style.cssText = 'background: #38a169; color: #fff; padding: 10px 14px; border-radius: 14px 14px 4px 14px; font-size: 13px; max-width: 85%; align-self: flex-end; word-wrap: break-word; overflow-wrap: break-word;';
+        userBubble.textContent = raw;
+        container.appendChild(userBubble);
+
+        input.value = '';
+
+        // Set cooldown to prevent rapid-fire messages
+        chatCooldown = true;
+
+        // Typing indicator (safe static content only)
+        var typing = document.createElement('div');
+        typing.style.cssText = 'background: #e8ecf1; color: #8e8e93; padding: 10px 14px; border-radius: 14px 14px 14px 4px; font-size: 13px; max-width: 85%; align-self: flex-start;';
+        var dots = document.createElement('span');
+        dots.style.animation = 'blink 1s infinite';
+        dots.textContent = '...';
+        typing.appendChild(dots);
+        container.appendChild(typing);
+        container.scrollTop = container.scrollHeight;
+
+        // Reply after short delay
+        setTimeout(function() {
+            if (typing.parentNode) typing.parentNode.removeChild(typing);
+
+            // Build reply with safe DOM methods (no innerHTML with user data)
+            var reply = document.createElement('div');
+            reply.style.cssText = 'background: #e8ecf1; color: #2d3748; padding: 12px 14px; border-radius: 14px 14px 14px 4px; font-size: 13px; max-width: 85%; align-self: flex-start; line-height: 1.5;';
+
+            var line1 = document.createTextNode('To continue chatting with our AI assistant, please ');
+            var loginLink = document.createElement('a');
+            loginLink.href = LOGIN_URL;
+            loginLink.style.cssText = 'color: #38a169; font-weight: 600; text-decoration: underline;';
+            loginLink.textContent = 'log in';
+            var line2 = document.createTextNode(' to your account.');
+            var br1 = document.createElement('br');
+            var br2 = document.createElement('br');
+            var line3 = document.createTextNode('If you need immediate help, contact our admin support at ');
+            var email = document.createElement('strong');
+            email.textContent = 'support@moveit.com';
+            var line4 = document.createTextNode('.');
+
+            reply.appendChild(line1);
+            reply.appendChild(loginLink);
+            reply.appendChild(line2);
+            reply.appendChild(br1);
+            reply.appendChild(br2);
+            reply.appendChild(line3);
+            reply.appendChild(email);
+            reply.appendChild(line4);
+
+            container.appendChild(reply);
+            container.scrollTop = container.scrollHeight;
+
+            // Release cooldown
+            chatCooldown = false;
+        }, 800);
+    };
+
+    // Send on Enter key
+    document.getElementById('chatInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
+
+    // Block paste of excessively long content
+    document.getElementById('chatInput').addEventListener('paste', function(e) {
+        var input = this;
+        setTimeout(function() {
+            if (input.value.length > 200) {
+                input.value = input.value.substring(0, 200);
+            }
+        }, 0);
+    });
+})();
+</script>
+
+<style>
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+</style>
 {% endblock %}

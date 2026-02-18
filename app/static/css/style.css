@@ -115,13 +115,14 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    background: #38a169;
     color: white;
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(72, 187, 120, 0.4);
+    background: #2f855a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(56, 161, 105, 0.25);
 }
 
 .auth-footer {
@@ -228,12 +229,12 @@ body {
 .landing-page {
     width: 100%;
     min-height: 100vh;
-    background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 50%, #9ae6b4 100%);
+    background: transparent;
 }
 
 .navbar {
-    background: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    border-bottom: 1px solid #edf2f7;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -418,18 +419,20 @@ body {
 }
 
 .hero-title {
-    font-size: 48px;
+    font-size: 46px;
     font-weight: 800;
-    color: #2d3748;
-    line-height: 1.2;
+    color: #1a202c;
+    line-height: 1.15;
     margin-bottom: 20px;
+    letter-spacing: -0.5px;
 }
 
 .hero-subtitle {
-    font-size: 20px;
-    color: #555;
-    line-height: 1.6;
+    font-size: 17px;
+    color: #a0aec0;
+    line-height: 1.65;
     margin-bottom: 30px;
+    max-width: 440px;
 }
 
 .hero-buttons {
@@ -451,16 +454,16 @@ body {
 
 .floating-card {
     position: absolute;
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    border: 3px solid #48bb78;
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 20px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid #edf2f7;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     animation: float 3s ease-in-out infinite;
+    transition: all 0.2s;
 }
 
 .card-icon {
@@ -533,11 +536,12 @@ body {
 }
 
 .section-title {
-    font-size: 40px;
-    font-weight: 700;
-    color: #2d3748;
+    font-size: 32px;
+    font-weight: 800;
+    color: #1a202c;
     text-align: center;
-    margin-bottom: 60px;
+    margin-bottom: 12px;
+    letter-spacing: -0.3px;
 }
 
 .features-grid {
@@ -547,19 +551,19 @@ body {
 }
 
 .feature-card {
-    background: white;
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-    border: 2px solid #e0e0e0;
-    transition: all 0.3s;
+    background: #fff;
+    border-radius: 14px;
+    padding: 24px;
+    text-align: left;
+    box-shadow: none;
+    border: 1px solid #edf2f7;
+    transition: all 0.2s;
 }
 
 .feature-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(72, 187, 120, 0.2);
-    border-color: #48bb78;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(56, 161, 105, 0.08);
+    border-color: #c6f6d5;
 }
 
 .feature-icon {
@@ -568,23 +572,23 @@ body {
 }
 
 .feature-card h3 {
-    font-size: 22px;
+    font-size: 17px;
     font-weight: 700;
-    color: #2d3748;
-    margin-bottom: 15px;
+    color: #1a202c;
+    margin-bottom: 8px;
 }
 
 .feature-card p {
-    font-size: 16px;
-    color: #666;
+    font-size: 14px;
+    color: #a0aec0;
     line-height: 1.6;
 }
 
 .footer {
-    background: white;
-    border-top: 2px solid #e0e0e0;
+    background: #fff;
+    border-top: 1px solid #edf2f7;
     padding: 40px 30px;
-    margin-top: 60px;
+    margin-top: 0;
 }
 
 .footer-content {
