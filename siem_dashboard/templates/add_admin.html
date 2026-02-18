@@ -7,16 +7,39 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
-    <div class="header">
-        <h1>SIEM Dashboard</h1>
-        <div class="header-info">
-            <span class="user-info">Logged in as: <strong>{{ username }}</strong></span>
-            <a href="{{ url_for('dashboard') }}" class="nav-btn">Dashboard</a>
-            <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-logo">
+                <div class="mascot-logo">
+                    <div class="character-head">
+                        <div class="eyes">
+                            <div class="eye">
+                                <div class="pupil"></div>
+                            </div>
+                            <div class="eye">
+                                <div class="pupil"></div>
+                            </div>
+                        </div>
+                        <div class="mouth"></div>
+                    </div>
+                    <div class="hand-left-small"></div>
+                    <div class="hand-right-small"></div>
+                </div>
+                <span class="brand-name">MoveIt</span>
+                <span class="siem-tag">SIEM Dashboard</span>
+            </div>
+            <div class="nav-links">
+                {% if username %}
+                <span class="welcome-text">Logged in as {{ username }}</span>
+                {% endif %}
+                <a href="{{ url_for('dashboard') }}" class="nav-btn btn-outline">Dashboard</a>
+                <a href="{{ url_for('add_admin') }}" class="nav-btn btn-outline">Add Admin</a>
+                <a href="{{ url_for('logout') }}" class="nav-btn btn-primary">Logout</a>
+            </div>
         </div>
-    </div>
-    
-    <div class="container">
+    </nav>
+
+    <div class="container siem-container">
         <div class="card">
             <h2>Add Admin Account</h2>
             

@@ -7,41 +7,64 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
-    <div class="header">
-        <h1>🛡️ SIEM Dashboard</h1>
-        <div class="header-info">
-            <span class="user-info">Logged in as: <strong>{{ username }}</strong></span>
-            <a href="{{ url_for('add_admin') }}" class="nav-btn">Add Admin</a>
-            <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-logo">
+                <div class="mascot-logo">
+                    <div class="character-head">
+                        <div class="eyes">
+                            <div class="eye">
+                                <div class="pupil"></div>
+                            </div>
+                            <div class="eye">
+                                <div class="pupil"></div>
+                            </div>
+                        </div>
+                        <div class="mouth"></div>
+                    </div>
+                    <div class="hand-left-small"></div>
+                    <div class="hand-right-small"></div>
+                </div>
+                <span class="brand-name">MoveIt</span>
+                <span class="siem-tag">SIEM Dashboard</span>
+            </div>
+            <div class="nav-links">
+                {% if username %}
+                <span class="welcome-text">Logged in as {{ username }}</span>
+                {% endif %}
+                <a href="{{ url_for('dashboard') }}" class="nav-btn btn-outline">Dashboard</a>
+                <a href="{{ url_for('add_admin') }}" class="nav-btn btn-outline">Add Admin</a>
+                <a href="{{ url_for('logout') }}" class="nav-btn btn-primary">Logout</a>
+            </div>
         </div>
-    </div>
-    
-    <div class="container">
+    </nav>
+
+    <div class="container siem-container">
         <!-- Statistics Cards -->
         <div class="stats-grid">
             <div class="stat-card stat-critical">
-                <div class="stat-icon">🚨</div>
+                <div class="stat-icon"></div>
                 <div class="stat-info">
                     <div class="stat-value">{{ stats.critical }}</div>
                     <div class="stat-label">Critical Events</div>
                 </div>
             </div>
             <div class="stat-card stat-high">
-                <div class="stat-icon">⚠️</div>
+                <div class="stat-icon"></div>
                 <div class="stat-info">
                     <div class="stat-value">{{ stats.high }}</div>
                     <div class="stat-label">High Severity</div>
                 </div>
             </div>
             <div class="stat-card stat-quarantine">
-                <div class="stat-icon">🔒</div>
+                <div class="stat-icon"></div>
                 <div class="stat-info">
                     <div class="stat-value">{{ stats.quarantined_ips }}</div>
                     <div class="stat-label">Quarantined IPs</div>
                 </div>
             </div>
             <div class="stat-card stat-alerts">
-                <div class="stat-icon">📊</div>
+                <div class="stat-icon"></div>
                 <div class="stat-info">
                     <div class="stat-value">{{ stats.new_alerts }}</div>
                     <div class="stat-label">New Alerts</div>
@@ -85,7 +108,7 @@
                 </div>
                 {% else %}
                 <div class="empty-state">
-                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-icon">No Data</div>
                     <p>No security logs found. Logs will appear here once events are ingested.</p>
                 </div>
                 {% endif %}
@@ -110,17 +133,17 @@
                         <div class="playbook-actions">
                             {% if alert['ip_address'] and alert['ip_address'] != 'unknown' %}
                             <button class="playbook-btn btn-block-ip" onclick="showBlockIPModal('{{ alert['ip_address'] }}', '{{ alert['description'] }}')">
-                                🚫 Block IP
+                                Block IP
                             </button>
                             {% endif %}
                             {% if alert['user_id'] %}
                             <button class="playbook-btn btn-terminate-session" onclick="showTerminateSessionModal('{{ alert['user_id'] }}', '{{ alert['description'] }}')">
-                                🔌 Terminate Session
+                                Terminate Session
                             </button>
                             {% endif %}
                             {% if alert['file_name'] %}
                             <button class="playbook-btn btn-quarantine-file" onclick="showQuarantineFileModal('{{ alert['file_name'] }}', '{{ alert['user_id'] }}', '{{ alert['ip_address'] }}', '{{ alert['description'] }}')">
-                                📁 Quarantine File
+                                Quarantine File
                             </button>
                             {% endif %}
                         </div>
@@ -153,7 +176,7 @@
                             {% if ip['action_taken_by'] %}<span>By: {{ ip['action_taken_by'] }}</span>{% endif %}
                         </div>
                         <button class="playbook-btn btn-release-ip" onclick="releaseIP('{{ ip['ip_address'] }}')">
-                            🔓 Release IP
+                            Release IP
                         </button>
                     </div>
                     {% endfor %}
@@ -197,7 +220,7 @@
     <div id="blockIPModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('blockIPModal')">&times;</span>
-            <h2>🚫 Block Attacker IP</h2>
+            <h2>Block Attacker IP</h2>
             <form id="blockIPForm">
                 <input type="hidden" id="blockIPAddress" name="ip_address">
                 <div class="form-group">
@@ -216,7 +239,7 @@
     <div id="terminateSessionModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('terminateSessionModal')">&times;</span>
-            <h2>🔌 Terminate User Session</h2>
+            <h2>Terminate User Session</h2>
             <form id="terminateSessionForm">
                 <input type="hidden" id="terminateUserID" name="user_id">
                 <div class="form-group">
@@ -235,7 +258,7 @@
     <div id="quarantineFileModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('quarantineFileModal')">&times;</span>
-            <h2>📁 Quarantine File</h2>
+            <h2>Quarantine File</h2>
             <form id="quarantineFileForm">
                 <input type="hidden" id="quarantineFileName" name="file_name">
                 <input type="hidden" id="quarantineFileUserID" name="user_id">

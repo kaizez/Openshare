@@ -6,54 +6,205 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f8faf8;
+    background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 50%, #9ae6b4 100%);
     color: #333;
+    min-height: 100vh;
 }
 
-.header {
-    background: #5B7553;
-    color: white;
-    padding: 20px 30px;
-    box-shadow: 0 2px 8px rgba(91, 117, 83, 0.15);
+/* MoveIt-style navbar */
+.navbar {
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 15px 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.header h1 {
-    font-size: 24px;
+.nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.header-info {
+.mascot-logo {
+    position: relative;
+    width: 50px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mascot-logo .character-head {
+    width: 50px;
+    height: 40px;
+    background: white;
+    border-radius: 6px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(72, 187, 120, 0.2);
+    border: 2px solid #48bb78;
+}
+
+.mascot-logo .character-head::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 0;
+    width: 20px;
+    height: 10px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    border-radius: 3px 3px 0 0;
+    border: 2px solid #48bb78;
+    border-bottom: none;
+}
+
+.mascot-logo .character-head::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    height: 1px;
+    background: #48bb78;
+    border-radius: 1px;
+}
+
+.mascot-logo .eyes {
+    display: flex;
+    gap: 8px;
+    position: absolute;
+    top: 13px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.mascot-logo .eye {
+    width: 8px;
+    height: 8px;
+    background: transparent;
+    border-radius: 50%;
+    position: relative;
+}
+
+.mascot-logo .pupil {
+    width: 4px;
+    height: 4px;
+    background: #2d3748;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.mascot-logo .mouth {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 6px;
+    border: 1px solid #48bb78;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+}
+
+.mascot-logo .hand-left-small,
+.mascot-logo .hand-right-small {
+    position: absolute;
+    width: 12px;
+    height: 20px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    border-radius: 6px;
+    border: 1px solid #2d5f3f;
+    top: 8px;
+}
+
+.mascot-logo .hand-left-small {
+    left: -8px;
+    transform: rotate(-10deg);
+}
+
+.mascot-logo .hand-right-small {
+    right: -8px;
+    transform: rotate(10deg);
+}
+
+.brand-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: #38a169;
+}
+
+.siem-tag {
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid #e2e8f0;
+    font-size: 14px;
+    color: #4a5568;
+}
+
+.nav-links {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.user-info {
-    font-size: 14px;
+.welcome-text {
+    color: #555;
+    font-weight: 500;
+    margin-right: 10px;
 }
 
-.nav-btn, .logout-btn {
-    background: #8EB897;
-    color: white;
-    border: 1px solid #9DDBAD;
-    padding: 8px 16px;
-    border-radius: 5px;
+.nav-btn {
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
     text-decoration: none;
-    transition: background 0.3s;
-    font-size: 14px;
-    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-block;
 }
 
-.nav-btn:hover, .logout-btn:hover {
-    background: #9DDBAD;
+.btn-outline {
+    background: transparent;
+    color: #38a169;
+    border: 2px solid #38a169;
+}
+
+.btn-outline:hover {
+    background: #38a169;
+    color: white;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(72, 187, 120, 0.4);
 }
 
 .container {
     max-width: 1600px;
     margin: 30px auto;
     padding: 0 30px;
+}
+
+.siem-container {
+    padding-top: 10px;
 }
 
 /* Statistics Cards */
