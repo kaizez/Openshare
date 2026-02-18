@@ -319,10 +319,36 @@ def init_database():
                 token VARCHAR(64) NOT NULL,
                 username VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NULL,
                 PRIMARY KEY (token),
                 INDEX idx_username (username)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
+
+        # ---- Lightweight migrations for existing DBs ----
+        # Add missing columns safely (ignore "duplicate column" errors)
+        try:
+            cursor.execute("ALTER TABLE session_tokens ADD COLUMN last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        except Error:
+            pass
+        try:
+            cursor.execute("ALTER TABLE session_tokens ADD COLUMN expires_at TIMESTAMP NULL")
+        except Error:
+            pass
+
+        try:
+            cursor.execute("ALTER TABLE alerts ADD COLUMN mitre_technique VARCHAR(32) NULL")
+        except Error:
+            pass
+        try:
+            cursor.execute("ALTER TABLE alerts ADD COLUMN correlation_id BIGINT NULL")
+        except Error:
+            pass
+        try:
+            cursor.execute("ALTER TABLE alerts ADD INDEX idx_correlation_id (correlation_id)")
+        except Error:
+            pass
 
         connection.commit()
         print("Database initialized successfully")

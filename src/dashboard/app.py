@@ -4,12 +4,15 @@ Provides API endpoints for log ingestion, playbook actions, and dashboard data.
 """
 
 from flask import Flask, request, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import secrets
 import sys
+import hashlib
 
 # Add parent directory to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -26,6 +29,34 @@ import time
 
 LOG_RETENTION_HOURS = 10
 CLEANUP_INTERVAL_SECONDS = 1800  # 30 minutes
+SESSION_IDLE_TIMEOUT_MINUTES = 10
+SESSION_ABSOLUTE_TTL_HOURS = 8
+
+ALLOWED_SEVERITIES = {"Critical", "High", "Medium", "Low", "Info"}
+
+
+def _validate_log_payload(payload: dict):
+    """
+    Validate incoming ingestion payload. Returns None if valid,
+    otherwise returns a string error message.
+    """
+    if not isinstance(payload, dict):
+        return "Expected JSON object"
+
+    required_fields = ["event_type", "log_source", "description"]
+    for field in required_fields:
+        val = payload.get(field)
+        if not isinstance(val, str) or not val.strip():
+            return f"Missing or invalid field: {field}"
+
+    severity = payload.get("severity", "Info")
+    if severity not in ALLOWED_SEVERITIES:
+        return f"Invalid severity: {severity}"
+
+    if len(payload.get("description", "")) > 5000:
+        return "Description too long"
+
+    return None
 
 
 def _cleanup_old_logs():
@@ -68,6 +99,13 @@ def create_app():
     if not app.secret_key:
         raise EnvironmentError("SECRET_KEY environment variable is required")
 
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        storage_uri="memory://",  # demo-friendly; for multi-instance use Redis
+        default_limits=[],
+    )
+
     # Initialize database on startup
     try:
         init_database()
@@ -81,14 +119,53 @@ def create_app():
     # ==================== AUTH HELPERS ====================
 
     def _verify_session_token(token: str) -> bool:
-        """Verify a session token exists in the database."""
+        """Verify session token with 10-minute idle timeout and absolute TTL."""
+        if not token:
+            return False
+
         connection = None
         cursor = None
         try:
             connection = get_db_connection()
-            cursor = connection.cursor()
-            cursor.execute('SELECT 1 FROM session_tokens WHERE token = %s', (token,))
-            return cursor.fetchone() is not None
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT token, username, created_at, last_seen, expires_at
+                FROM session_tokens
+                WHERE token = %s
+                """,
+                (token,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return False
+
+            now = datetime.utcnow()
+
+            created_at = row.get("created_at") or now
+            last_seen = row.get("last_seen") or created_at
+            expires_at = row.get("expires_at") or (created_at + timedelta(hours=SESSION_ABSOLUTE_TTL_HOURS))
+
+            # If expires_at was missing (older schema), persist it once.
+            if row.get("expires_at") is None:
+                cursor.execute(
+                    "UPDATE session_tokens SET expires_at = %s WHERE token = %s",
+                    (expires_at, token),
+                )
+
+            # Idle timeout check
+            if now - last_seen > timedelta(minutes=SESSION_IDLE_TIMEOUT_MINUTES) or now >= expires_at:
+                cursor.execute("DELETE FROM session_tokens WHERE token = %s", (token,))
+                connection.commit()
+                return False
+
+            # Refresh last_seen on successful auth
+            cursor.execute(
+                "UPDATE session_tokens SET last_seen = %s WHERE token = %s",
+                (now, token),
+            )
+            connection.commit()
+            return True
         except mysql.connector.Error:
             return False
         finally:
@@ -116,7 +193,11 @@ def create_app():
                 connection.close()
 
     def _verify_api_key(api_key: str) -> bool:
-        """Verify an API key against the database."""
+        """Verify an API key against the database (SHA-256 hashed at rest)."""
+        if not api_key:
+            return False
+
+        api_key_hash = hashlib.sha256(api_key.encode("utf-8")).hexdigest()
         connection = None
         cursor = None
         try:
@@ -125,12 +206,12 @@ def create_app():
             cursor.execute('''
                 SELECT id FROM api_keys
                 WHERE api_key = %s AND is_active = TRUE
-            ''', (api_key,))
+            ''', (api_key_hash,))
             result = cursor.fetchone()
             if result:
                 cursor.execute('''
                     UPDATE api_keys SET last_used = %s WHERE api_key = %s
-                ''', (datetime.utcnow(), api_key))
+                ''', (datetime.utcnow(), api_key_hash))
                 connection.commit()
                 return True
             return False
@@ -194,6 +275,7 @@ def create_app():
     # ==================== LOG INGESTION ====================
 
     @app.route('/api/ingest_log', methods=['POST'])
+    @limiter.limit("30 per minute")
     @require_auth
     def ingest_log():
         """
@@ -202,9 +284,9 @@ def create_app():
         """
         try:
             log_data = request.get_json()
-
-            if not log_data:
-                return jsonify({'error': 'No JSON data provided'}), 400
+            error = _validate_log_payload(log_data)
+            if error:
+                return jsonify({'error': error}), 400
 
             # Ensure timestamp is set
             if 'timestamp' not in log_data:
@@ -355,14 +437,15 @@ def create_app():
     @require_auth
     def create_api_key():
         """Create a new API key."""
-        data = request.get_json()
+        data = request.get_json() or {}
         key_name = data.get('key_name', '').strip()
 
         if not key_name:
             return jsonify({'error': 'Key name is required'}), 400
 
-        # Generate a secure API key
+        # Generate a secure API key (store only SHA-256 hash)
         api_key = secrets.token_hex(32)
+        api_key_hash = hashlib.sha256(api_key.encode("utf-8")).hexdigest()
 
         connection = None
         cursor = None
@@ -372,7 +455,7 @@ def create_app():
             cursor.execute('''
                 INSERT INTO api_keys (key_name, api_key, created_at, created_by, is_active)
                 VALUES (%s, %s, %s, %s, TRUE)
-            ''', (key_name, api_key, datetime.utcnow(), get_authenticated_username()))
+            ''', (key_name, api_key_hash, datetime.utcnow(), get_authenticated_username()))
             connection.commit()
 
             return jsonify({

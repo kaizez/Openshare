@@ -54,6 +54,21 @@ class SIEMEngine:
         'access_attempt'
     ]
 
+    # Map detection rules to MITRE ATT&CK techniques (demo-friendly tagging)
+    MITRE_MAP = {
+        'failed_login_attempts': 'T1110',          # Brute Force
+        'brute_force_success': 'T1110.004',        # Credential Stuffing
+        'impossible_travel': 'T1078',              # Valid Accounts
+        'mass_deletion': 'T1485',                  # Data Destruction
+        'data_staging': 'T1074',                   # Data Staged
+        'large_data_transfer': 'T1048',            # Exfiltration Over Alt Protocol
+        'privilege_escalation': 'T1078.003',       # Local Accounts
+        'honeytoken_access': 'T1083',              # File & Directory Discovery
+        'dlp_sensitive_data': 'T1530',             # Data from Cloud Storage
+        'user_creation_spike': 'T1136',            # Create Account
+        'user_baseline_anomaly': 'T1087',          # Account Discovery (proxy for UEBA demo)
+    }
+
     def __init__(self):
         """Initialize SIEM engine with in-memory tracking."""
         self._init_tracking()
@@ -103,6 +118,10 @@ class SIEMEngine:
         # Update user baseline for behavior analysis
         if user_id and event_type in ['file_download', 'file_upload']:
             self._update_user_baseline(user_id, event_type, file_size)
+            baseline_alert = self._check_user_baseline_anomaly(user_id, timestamp)
+            if baseline_alert:
+                self._store_alert(baseline_alert)
+                return baseline_alert
 
         # Check file hash for integrity monitoring
         if file_hash and file_name:
@@ -255,31 +274,41 @@ class SIEMEngine:
     # === DETECTION RULE IMPLEMENTATIONS ===
 
     def _check_suspicious_volume(self, user_id: str, timestamp: datetime) -> Optional[Dict]:
-        """Check for suspicious download volume pattern (10+ files in 60 seconds)."""
-        if user_id not in self.file_download_tracking:
-            self.file_download_tracking[user_id] = []
-
-        self.file_download_tracking[user_id].append((timestamp, 1))
-
-        cutoff_time = timestamp - timedelta(seconds=60)
-        self.file_download_tracking[user_id] = [
-            (ts, count) for ts, count in self.file_download_tracking[user_id]
-            if ts > cutoff_time
-        ]
-
-        total_files = sum(count for _, count in self.file_download_tracking[user_id])
-
-        if total_files >= 10:
-            self.file_download_tracking[user_id] = []
-            return {
-                'alert_type': 'Suspicious Volume',
-                'severity': 'High',
-                'description': f'User {user_id} downloaded {total_files} files within 60 seconds',
-                'user_id': user_id,
-                'timestamp': timestamp.isoformat(),
-                'rule': 'suspicious_volume'
-            }
-        return None
+        """Check for suspicious download volume (10+ downloads in 60 seconds) using DB logs."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM security_logs
+                WHERE user_id = %s
+                  AND event_type = 'file_download'
+                  AND result = 'success'
+                  AND timestamp >= %s
+                """,
+                (user_id, timestamp - timedelta(seconds=60)),
+            )
+            count = cursor.fetchone()[0] or 0
+            if count >= 10:
+                return {
+                    'alert_type': 'Suspicious Volume',
+                    'severity': 'High',
+                    'description': f'User {user_id} downloaded {count} files within 60 seconds',
+                    'user_id': user_id,
+                    'timestamp': timestamp.isoformat(),
+                    'rule': 'suspicious_volume'
+                }
+            return None
+        except mysql.connector.Error as e:
+            print(f"Error checking suspicious volume: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
 
     def _check_failed_access_attempts(self, ip_address: str, timestamp: datetime) -> Optional[Dict]:
         """Check for consecutive failed access attempts (5 in 5 minutes)."""
@@ -306,50 +335,82 @@ class SIEMEngine:
 
     def _check_failed_login_attempts(self, ip_address: str, user_id: Optional[str],
                                       timestamp: datetime) -> Optional[Dict]:
-        """Check for consecutive failed login attempts (5 in 5 minutes)."""
-        if ip_address not in self.failed_login_tracking:
-            self.failed_login_tracking[ip_address] = []
-
-        self.failed_login_tracking[ip_address].append((timestamp, user_id))
-        self.failed_login_tracking[ip_address] = self.failed_login_tracking[ip_address][-10:]
-
-        recent_failures = [(ts, uid) for ts, uid in self.failed_login_tracking[ip_address]
-                          if (timestamp - ts).total_seconds() <= 300]
-
-        if len(recent_failures) >= 5:
-            users_attempted = set(uid for _, uid in recent_failures if uid)
-            return {
-                'alert_type': 'Failed Login Attempts',
-                'severity': 'High',
-                'description': f'{len(recent_failures)} failed login attempts from IP {ip_address}. Users attempted: {", ".join(users_attempted) if users_attempted else "unknown"}',
-                'ip_address': ip_address,
-                'timestamp': timestamp.isoformat(),
-                'rule': 'failed_login_attempts'
-            }
-        return None
+        """Check for consecutive failed login attempts (5 in 5 minutes) using DB logs."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM security_logs
+                WHERE ip_address = %s
+                  AND event_type IN ('login_attempt', 'login_failed')
+                  AND result = 'failure'
+                  AND timestamp >= %s
+                """,
+                (ip_address, timestamp - timedelta(minutes=5)),
+            )
+            count = cursor.fetchone()[0] or 0
+            if count >= 5:
+                return {
+                    'alert_type': 'Failed Login Attempts',
+                    'severity': 'High',
+                    'description': f'{count} failed login attempts from IP {ip_address} in 5 minutes',
+                    'ip_address': ip_address,
+                    'timestamp': timestamp.isoformat(),
+                    'rule': 'failed_login_attempts'
+                }
+            return None
+        except mysql.connector.Error as e:
+            print(f"Error checking failed login attempts: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
 
     def _check_brute_force_success(self, ip_address: str, user_id: str,
                                     timestamp: datetime) -> Optional[Dict]:
-        """Check for successful login after multiple failures (credential abuse)."""
-        if ip_address not in self.failed_login_tracking:
+        """Check for successful login after multiple failures (credential abuse) using DB logs."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM security_logs
+                WHERE ip_address = %s
+                  AND event_type IN ('login_attempt', 'login_failed')
+                  AND result = 'failure'
+                  AND timestamp >= %s
+                """,
+                (ip_address, timestamp - timedelta(minutes=10)),
+            )
+            failures = cursor.fetchone()[0] or 0
+            if failures >= 3:
+                return {
+                    'alert_type': 'Brute Force Success',
+                    'severity': 'Critical',
+                    'description': f'User {user_id} successfully logged in from IP {ip_address} after {failures} failed attempts in 10 minutes. Possible credential compromise.',
+                    'user_id': user_id,
+                    'ip_address': ip_address,
+                    'timestamp': timestamp.isoformat(),
+                    'rule': 'brute_force_success'
+                }
             return None
-
-        recent_failures = [(ts, uid) for ts, uid in self.failed_login_tracking[ip_address]
-                          if (timestamp - ts).total_seconds() <= 600]  # 10 minute window
-
-        if len(recent_failures) >= 3:
-            # Clear tracking after alert
-            self.failed_login_tracking[ip_address] = []
-            return {
-                'alert_type': 'Brute Force Success',
-                'severity': 'Critical',
-                'description': f'User {user_id} successfully logged in from IP {ip_address} after {len(recent_failures)} failed attempts. Possible credential compromise.',
-                'user_id': user_id,
-                'ip_address': ip_address,
-                'timestamp': timestamp.isoformat(),
-                'rule': 'brute_force_success'
-            }
-        return None
+        except mysql.connector.Error as e:
+            print(f"Error checking brute force success: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
 
     def _check_failed_mfa_attempts(self, user_id: str, timestamp: datetime) -> Optional[Dict]:
         """Check for failed MFA attempts (5 failures triggers auto-disable)."""
@@ -403,45 +464,56 @@ class SIEMEngine:
 
     def _check_large_data_transfer(self, user_id: str, timestamp: datetime,
                                     file_size: int, destination_ip: Optional[str] = None) -> Optional[Dict]:
-        """Check for large data transfer (100MB+ in 5 minutes) - potential exfiltration."""
-        if user_id not in self.large_transfer_tracking:
-            self.large_transfer_tracking[user_id] = []
+        """Check for large data transfer (100MB+ in 5 minutes) using DB logs."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT COALESCE(SUM(file_size), 0)
+                FROM security_logs
+                WHERE user_id = %s
+                  AND event_type = 'file_download'
+                  AND result = 'success'
+                  AND timestamp >= %s
+                """,
+                (user_id, timestamp - timedelta(minutes=5)),
+            )
+            total_size = cursor.fetchone()[0] or 0
 
-        self.large_transfer_tracking[user_id].append((timestamp, file_size))
+            threshold = 104857600  # 100MB
+            if total_size >= threshold:
+                size_mb = total_size / (1024 * 1024)
 
-        cutoff_time = timestamp - timedelta(minutes=5)
-        self.large_transfer_tracking[user_id] = [
-            (ts, size) for ts, size in self.large_transfer_tracking[user_id]
-            if ts > cutoff_time
-        ]
+                severity = 'Medium'
+                alert_type = 'Large Data Transfer'
 
-        total_size = sum(size for _, size in self.large_transfer_tracking[user_id])
-        threshold = 104857600  # 100MB
+                if destination_ip and not self._is_internal_ip(destination_ip):
+                    severity = 'High'
+                    alert_type = 'Potential Data Exfiltration'
 
-        if total_size >= threshold:
-            self.large_transfer_tracking[user_id] = []
-            size_mb = total_size / (1024 * 1024)
-
-            severity = 'Medium'
-            alert_type = 'Large Data Transfer'
-
-            # Escalate if going to external destination
-            if destination_ip and not self._is_internal_ip(destination_ip):
-                severity = 'High'
-                alert_type = 'Potential Data Exfiltration'
-
-            return {
-                'alert_type': alert_type,
-                'severity': severity,
-                'description': f'User {user_id} transferred {size_mb:.2f} MB within 5 minutes' +
-                              (f' to {destination_ip}' if destination_ip else ''),
-                'user_id': user_id,
-                'timestamp': timestamp.isoformat(),
-                'rule': 'large_data_transfer',
-                'transfer_size': total_size,
-                'destination_ip': destination_ip
-            }
-        return None
+                return {
+                    'alert_type': alert_type,
+                    'severity': severity,
+                    'description': f'User {user_id} transferred {size_mb:.2f} MB within 5 minutes' +
+                                  (f' to {destination_ip}' if destination_ip else ''),
+                    'user_id': user_id,
+                    'timestamp': timestamp.isoformat(),
+                    'rule': 'large_data_transfer',
+                    'transfer_size': total_size,
+                    'destination_ip': destination_ip
+                }
+            return None
+        except mysql.connector.Error as e:
+            print(f"Error checking large data transfer: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
 
     def _check_mass_deletion(self, user_id: str, timestamp: datetime) -> Optional[Dict]:
         """Check for mass file deletion (10+ files in 2 minutes)."""
@@ -534,9 +606,109 @@ class SIEMEngine:
 
     def _check_user_creation_spike(self, ip_address: str, timestamp: datetime) -> Optional[Dict]:
         """Check for suspicious user creation spike (bot registration)."""
-        # This would require tracking user creations, simplified for now
-        # In a full implementation, track user creations per IP
-        return None
+        if not ip_address:
+            return None
+
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM security_logs
+                WHERE event_type = 'user_created'
+                  AND ip_address = %s
+                  AND timestamp >= %s
+                """,
+                (ip_address, timestamp - timedelta(minutes=10)),
+            )
+            count = cursor.fetchone()[0] or 0
+            if count >= 3:
+                return {
+                    'alert_type': 'User Creation Spike',
+                    'severity': 'Medium',
+                    'description': f'{count} user accounts were created from IP {ip_address} within 10 minutes',
+                    'ip_address': ip_address,
+                    'timestamp': timestamp.isoformat(),
+                    'rule': 'user_creation_spike'
+                }
+            return None
+        except mysql.connector.Error as e:
+            print(f"Error checking user creation spike: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+
+    def _check_user_baseline_anomaly(self, user_id: str, timestamp: datetime) -> Optional[Dict]:
+        """
+        UEBA-lite: compare today's download volume against the user's last-30-day average.
+        """
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute(
+                """
+                SELECT
+                    AVG(total_downloads) AS avg_downloads,
+                    AVG(total_bytes_transferred) AS avg_bytes
+                FROM user_baselines
+                WHERE user_id = %s
+                  AND date < %s
+                  AND date >= %s
+                """,
+                (user_id, timestamp.date(), timestamp.date() - timedelta(days=30)),
+            )
+            baseline = cursor.fetchone() or {}
+            avg_downloads = float(baseline.get("avg_downloads") or 0)
+            avg_bytes = float(baseline.get("avg_bytes") or 0)
+
+            cursor.execute(
+                """
+                SELECT total_downloads, total_bytes_transferred
+                FROM user_baselines
+                WHERE user_id = %s AND date = %s
+                """,
+                (user_id, timestamp.date()),
+            )
+            today = cursor.fetchone()
+            if not today:
+                return None
+
+            today_downloads = int(today.get("total_downloads") or 0)
+            today_bytes = int(today.get("total_bytes_transferred") or 0)
+
+            spike_downloads = avg_downloads > 0 and today_downloads >= 20 and today_downloads >= 3 * avg_downloads
+            spike_bytes = avg_bytes > 0 and today_bytes >= 500 * 1024 * 1024 and today_bytes >= 3 * avg_bytes
+
+            if spike_downloads or spike_bytes:
+                size_mb = today_bytes / (1024 * 1024) if today_bytes else 0
+                return {
+                    'alert_type': 'Behavior Anomaly',
+                    'severity': 'High',
+                    'description': (
+                        f'User {user_id} is downloading far more than usual '
+                        f'(today: {today_downloads} files, {size_mb:.2f} MB; baseline: {avg_downloads:.1f} files/day)'
+                    ),
+                    'user_id': user_id,
+                    'timestamp': timestamp.isoformat(),
+                    'rule': 'user_baseline_anomaly'
+                }
+            return None
+        except mysql.connector.Error as e:
+            print(f"Error checking user baseline anomaly: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
 
     def _check_honeytoken_access(self, file_name: str, user_id: Optional[str],
                                   ip_address: str, timestamp: datetime) -> Optional[Dict]:
@@ -703,7 +875,7 @@ class SIEMEngine:
                 (timestamp, log_source, event_type, description, severity, user_id, ip_address, file_name, user_role, file_size, result)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
-                log_data.get('timestamp', timestamp.isoformat()),
+                timestamp,
                 log_data.get('log_source', 'unknown'),
                 log_data.get('event_type', 'unknown'),
                 log_data.get('description', ''),
@@ -728,7 +900,7 @@ class SIEMEngine:
                 connection.close()
 
     def _store_alert(self, alert: Dict):
-        """Store alert in MySQL database."""
+        """Store alert in MySQL database (MITRE tagging + basic correlation)."""
         connection = None
         cursor = None
 
@@ -736,19 +908,52 @@ class SIEMEngine:
             connection = get_db_connection()
             cursor = connection.cursor()
 
+            rule = alert.get('rule', 'unknown')
+            mitre_code = self.MITRE_MAP.get(rule)
+
+            user_id = alert.get('user_id')
+            ip_address = alert.get('ip_address')
+            alert_ts = self._parse_timestamp(alert.get('timestamp'))
+
+            correlation_id = None
+            if user_id or ip_address:
+                cursor.execute(
+                    """
+                    SELECT id
+                    FROM alerts
+                    WHERE timestamp >= %s
+                      AND (
+                            (%s IS NOT NULL AND user_id = %s)
+                         OR (%s IS NOT NULL AND ip_address = %s)
+                      )
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                    """,
+                    (
+                        alert_ts - timedelta(minutes=15),
+                        user_id, user_id,
+                        ip_address, ip_address,
+                    ),
+                )
+                row = cursor.fetchone()
+                if row:
+                    correlation_id = row[0]
+
             cursor.execute('''
                 INSERT INTO alerts
-                (alert_type, severity, description, user_id, ip_address, file_name, timestamp, rule_triggered, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'new')
+                (alert_type, severity, description, user_id, ip_address, file_name, timestamp, rule_triggered, status, mitre_technique, correlation_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'new', %s, %s)
             ''', (
                 alert.get('alert_type', 'Unknown'),
                 alert.get('severity', 'Info'),
                 alert.get('description', ''),
-                alert.get('user_id'),
-                alert.get('ip_address'),
+                user_id,
+                ip_address,
                 alert.get('file_name'),
                 alert.get('timestamp', datetime.utcnow().isoformat()),
-                alert.get('rule', 'unknown')
+                rule,
+                mitre_code,
+                correlation_id
             ))
 
             connection.commit()
