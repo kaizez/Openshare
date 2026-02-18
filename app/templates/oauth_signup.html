@@ -42,6 +42,7 @@
             <div class="form-group">
                 <label for="username">Choose a Username</label>
                 <input type="text" id="username" name="username" class="form-control" required autofocus>
+                <small id="username-status" class="form-text"></small>
             </div>
 
             <div class="form-group">
@@ -109,5 +110,58 @@ function togglePassword(inputId, iconId) {
         icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
     }
 }
+
+// Live username availability check
+(function() {
+    const usernameInput = document.getElementById('username');
+    const statusEl = document.getElementById('username-status');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    let debounceTimer;
+
+    usernameInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const username = this.value.trim();
+
+        if (!username) {
+            statusEl.textContent = '';
+            statusEl.style.color = '';
+            usernameInput.style.borderColor = '';
+            submitBtn.disabled = false;
+            return;
+        }
+
+        statusEl.textContent = 'Checking...';
+        statusEl.style.color = '#888';
+
+        debounceTimer = setTimeout(function() {
+            const formData = new FormData();
+            formData.append('username', username);
+
+            fetch('{{ url_for("main.check_username") }}', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.available) {
+                    statusEl.textContent = data.message;
+                    statusEl.style.color = '#28a745';
+                    usernameInput.style.borderColor = '#28a745';
+                    submitBtn.disabled = false;
+                } else {
+                    statusEl.textContent = data.message;
+                    statusEl.style.color = '#dc3545';
+                    usernameInput.style.borderColor = '#dc3545';
+                    submitBtn.disabled = true;
+                }
+            })
+            .catch(() => {
+                statusEl.textContent = '';
+                submitBtn.disabled = false;
+            });
+        }, 400);
+    });
+})();
 </script>
 {% endblock %}
