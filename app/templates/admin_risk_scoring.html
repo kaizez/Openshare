@@ -5,9 +5,9 @@
 {% block content %}
 <style>
     .admin-container {
-        max-width: 1200px;
-        margin: 40px auto;
-        padding: 20px;
+        max-width: none;
+        margin: 0;
+        padding: 40px;
     }
 
     .admin-header {
@@ -147,6 +147,8 @@
         padding: 16px;
         border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         vertical-align: middle;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .risk-table tr:last-child td {
@@ -298,6 +300,7 @@
     .login-info {
         font-size: 12px;
         color: #8e8e93;
+        word-break: break-all;
     }
 
     .no-data {
@@ -306,12 +309,14 @@
         color: #8e8e93;
     }
 
-    @media (max-width: 768px) {
-        .risk-table {
-            display: block;
-            overflow-x: auto;
-        }
+    .risk-table-wrapper {
+        overflow-x: auto;
+    }
 
+    @media (max-width: 768px) {
+        .admin-container {
+            padding: 20px 12px;
+        }
     }
 </style>
 
@@ -367,6 +372,7 @@
         <div class="admin-section">
             <div class="section-title">User Risk Scores</div>
             {% if users %}
+            <div class="risk-table-wrapper">
             <table class="risk-table">
                 <thead>
                     <tr>
@@ -450,6 +456,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% else %}
             <div class="no-data">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2" style="margin-bottom: 16px;">
