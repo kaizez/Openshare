@@ -619,19 +619,31 @@ def create_app():
             connection = get_db_connection()
             cursor = connection.cursor(dictionary=True)
 
+            per_page = 20
+            try:
+                page = max(1, int(request.args.get('page', 1)))
+            except (ValueError, TypeError):
+                page = 1
+
+            cursor.execute('SELECT COUNT(*) as count FROM security_logs')
+            log_total = cursor.fetchone()['count']
+            log_pages = max(1, (log_total + per_page - 1) // per_page)
+            page = min(page, log_pages)
+            offset = (page - 1) * per_page
+
             cursor.execute('''
                 SELECT timestamp, log_source, event_type, description, severity, user_id, ip_address
                 FROM security_logs
                 ORDER BY timestamp DESC
-                LIMIT 20
-            ''')
+                LIMIT %s OFFSET %s
+            ''', (per_page, offset))
             logs = cursor.fetchall()
             for log in logs:
                 if log.get('timestamp'):
                     log['timestamp'] = log['timestamp'].isoformat() if hasattr(log['timestamp'], 'isoformat') else str(log['timestamp'])
 
             cursor.execute('''
-                SELECT alert_type, severity, description, user_id, ip_address, file_name, timestamp, status
+                SELECT alert_type, severity, description, user_id, ip_address, file_name, timestamp, status, mitre_technique, correlation_id
                 FROM alerts
                 ORDER BY timestamp DESC
                 LIMIT 10
@@ -670,6 +682,9 @@ def create_app():
 
         return jsonify({
             'logs': logs,
+            'log_page': page,
+            'log_pages': log_pages,
+            'log_total': log_total,
             'alerts': alerts,
             'stats': {
                 'critical': critical_count,
