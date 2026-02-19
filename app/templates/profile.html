@@ -772,7 +772,7 @@
                 </div>
                 <div class="card-body">
                     <div class="settings-list">
-                        <a href="{{ url_for('main.change_password') }}" class="settings-item">
+                        <button type="button" class="settings-item" onclick="openChangePasswordModal()">
                             <div class="settings-icon blue">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3182ce" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             </div>
@@ -783,7 +783,7 @@
                             <svg class="settings-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M9 18l6-6-6-6"/>
                             </svg>
-                        </a>
+                        </button>
 
                         <a href="{{ url_for('main.settings') }}?from=profile" class="settings-item">
                             <div class="settings-icon purple">
@@ -815,6 +815,38 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="changePasswordModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 420px;">
+        <div class="modal-header" style="background: #ebf4ff;">
+            <h3 style="color: #2b6cb0;">Change Password</h3>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <div id="cpError" style="display:none; background:#fff5f5; color:#c53030; border:1px solid #fc8181; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:13px;"></div>
+            <div id="cpSuccess" style="display:none; background:#f0fff4; color:#276749; border:1px solid #68d391; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:13px;"></div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block; font-size:13px; font-weight:600; color:#2d3748; margin-bottom:6px;">Current Password</label>
+                <input type="password" id="cpCurrent" class="otp-input" style="font-size:15px; letter-spacing:0; text-align:left; padding:12px 14px;" placeholder="Enter current password" autocomplete="current-password">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block; font-size:13px; font-weight:600; color:#2d3748; margin-bottom:6px;">New Password</label>
+                <input type="password" id="cpNew" class="otp-input" style="font-size:15px; letter-spacing:0; text-align:left; padding:12px 14px;" placeholder="Enter new password" autocomplete="new-password">
+            </div>
+            <div style="margin-bottom:6px;">
+                <label style="display:block; font-size:13px; font-weight:600; color:#2d3748; margin-bottom:6px;">Confirm New Password</label>
+                <input type="password" id="cpConfirm" class="otp-input" style="font-size:15px; letter-spacing:0; text-align:left; padding:12px 14px;" placeholder="Confirm new password" autocomplete="new-password">
+            </div>
+            <div style="background:#f5f5f7; border-radius:8px; padding:12px 14px; margin-top:12px; font-size:12px; color:#718096;">
+                Min 8 chars &bull; Uppercase &bull; Lowercase &bull; Number &bull; Special char
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-cancel" onclick="closeChangePasswordModal()">Cancel</button>
+            <button class="modal-btn" id="cpSubmitBtn" onclick="submitChangePassword()" style="background:#007aff; color:white;">Change Password</button>
         </div>
     </div>
 </div>
@@ -954,14 +986,93 @@ async function confirmDeleteAccount() {
     }
 }
 
+// Change Password Modal
+function openChangePasswordModal() {
+    document.getElementById('cpCurrent').value = '';
+    document.getElementById('cpNew').value = '';
+    document.getElementById('cpConfirm').value = '';
+    document.getElementById('cpError').style.display = 'none';
+    document.getElementById('cpSuccess').style.display = 'none';
+    document.getElementById('cpSubmitBtn').disabled = false;
+    document.getElementById('cpSubmitBtn').textContent = 'Change Password';
+    document.getElementById('changePasswordModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('cpCurrent').focus(), 100);
+}
+
+function closeChangePasswordModal() {
+    document.getElementById('changePasswordModal').style.display = 'none';
+}
+
+async function submitChangePassword() {
+    const current = document.getElementById('cpCurrent').value;
+    const newPw = document.getElementById('cpNew').value;
+    const confirm = document.getElementById('cpConfirm').value;
+    const errorEl = document.getElementById('cpError');
+    const successEl = document.getElementById('cpSuccess');
+    const btn = document.getElementById('cpSubmitBtn');
+
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+
+    if (!current || !newPw || !confirm) {
+        errorEl.textContent = 'All fields are required.';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Changing...';
+
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('current_password', current);
+    formData.append('new_password', newPw);
+    formData.append('confirm_password', confirm);
+
+    try {
+        const response = await fetch('{{ url_for("main.change_password") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            successEl.textContent = data.message;
+            successEl.style.display = 'block';
+            document.getElementById('cpCurrent').value = '';
+            document.getElementById('cpNew').value = '';
+            document.getElementById('cpConfirm').value = '';
+            btn.textContent = 'Done';
+            setTimeout(closeChangePasswordModal, 1800);
+        } else {
+            errorEl.textContent = data.message;
+            errorEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Change Password';
+        }
+    } catch (error) {
+        errorEl.textContent = 'An error occurred. Please try again.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Change Password';
+    }
+}
+
 // Close modal on escape
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeDeleteModal();
+    if (e.key === 'Escape') {
+        closeDeleteModal();
+        closeChangePasswordModal();
+    }
 });
 
 // Close modal on overlay click
 document.getElementById('deleteModal').addEventListener('click', function(e) {
     if (e.target === this) closeDeleteModal();
+});
+document.getElementById('changePasswordModal').addEventListener('click', function(e) {
+    if (e.target === this) closeChangePasswordModal();
 });
 </script>
 {% endblock %}

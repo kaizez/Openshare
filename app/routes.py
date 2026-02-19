@@ -1846,6 +1846,8 @@ def change_password():
         flash('OAuth users cannot change password here.', 'error')
         return redirect(url_for('main.settings'))
 
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if request.method == 'POST':
         current_password = request.form.get('current_password')
         new_password = request.form.get('new_password')
@@ -1853,22 +1855,30 @@ def change_password():
 
         # Verify current password
         if not user.verify_password(current_password):
+            if is_ajax:
+                return jsonify({'success': False, 'message': 'Current password is incorrect.'})
             flash('Current password is incorrect.', 'error')
             return render_template('change_password.html', user=user)
 
         # Check new password matches confirmation
         if new_password != confirm_password:
+            if is_ajax:
+                return jsonify({'success': False, 'message': 'New passwords do not match.'})
             flash('New passwords do not match.', 'error')
             return render_template('change_password.html', user=user)
 
         # Validate new password strength
         is_valid, error_msg = validate_password_strength(new_password)
         if not is_valid:
+            if is_ajax:
+                return jsonify({'success': False, 'message': error_msg})
             flash(error_msg, 'error')
             return render_template('change_password.html', user=user)
 
         # Check new password is different from current
         if user.verify_password(new_password):
+            if is_ajax:
+                return jsonify({'success': False, 'message': 'New password must be different from current password.'})
             flash('New password must be different from current password.', 'error')
             return render_template('change_password.html', user=user)
 
@@ -1900,6 +1910,8 @@ def change_password():
         except Exception as e:
             print(f"Failed to send password change email: {e}")
 
+        if is_ajax:
+            return jsonify({'success': True, 'message': 'Password changed successfully!'})
         flash('Password changed successfully!', 'success')
         return redirect(url_for('main.profile'))
 
