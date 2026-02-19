@@ -75,7 +75,7 @@ document.getElementById('terminateSessionForm').addEventListener('submit', async
     e.preventDefault();
 
     const formData = {
-        user_id: parseInt(document.getElementById('terminateUserID').value),
+        user_id: document.getElementById('terminateUserID').value,
         reason: document.getElementById('terminateSessionReason').value
     };
 
