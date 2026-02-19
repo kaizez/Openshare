@@ -812,7 +812,6 @@ def login():
 
                         # Complete login
                         init_user_session(user)
-                        flash('Login successful!', 'success')
 
                         # Log successful login to SIEM
                         siem.login_success(
@@ -2116,8 +2115,6 @@ def mfa_verify():
                     mfa_used=True
                 )
 
-                flash('Login successful!', 'success')
-
                 # Redirect admin to dashboard
                 if user.is_admin:
                     return redirect(url_for('main.admin_dashboard'))
@@ -3042,7 +3039,6 @@ def admin_mac_verify():
                     init_user_session(user)
                     session['email'] = user.email
                     session.pop('mac_verify_user_id', None)
-                    flash('Login successful! MAC address verified.', 'success')
                     return redirect(url_for('main.admin_dashboard'))
                 else:
                     flash(f'MAC address mismatch. Detected: {detected_mac}, Expected: {user.registered_mac_address}', 'error')
@@ -3057,7 +3053,6 @@ def admin_mac_verify():
                 init_user_session(user)
                 session['email'] = user.email
                 session.pop('mac_verify_user_id', None)
-                flash('Login successful! MAC address verified.', 'success')
                 return redirect(url_for('main.admin_dashboard'))
             else:
                 flash('MAC address does not match. Access denied.', 'error')
