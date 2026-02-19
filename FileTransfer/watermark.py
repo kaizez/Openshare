@@ -32,8 +32,8 @@ WATERMARK_VERSION  = '1.0'
 
 # Sentinel bytes that bracket the appended watermark block.
 # Chosen to be highly unlikely to appear in ordinary file content.
-_WM_HEADER = b'\x00\x00MOVEIT_WMv1\x00'   # 14 bytes
-_WM_FOOTER = b'\x00MOVEIT_WMEv1\x00\x00'  # 15 bytes
+_WM_HEADER = b'\x00\x00MoveIT_WMv1\x00'   # 14 bytes
+_WM_FOOTER = b'\x00MoveIT_WMEv1\x00\x00'  # 15 bytes
 
 
 # ── Key management ────────────────────────────────────────────────────────────

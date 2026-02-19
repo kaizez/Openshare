@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Recovery Codes - MoveIt{% endblock %}
+{% block title %}Recovery Codes - OpenShare{% endblock %}
 
 {% block content %}
 <style>
@@ -269,7 +269,7 @@ function copyShares() {
 
 function downloadShares() {
     const text = [
-        'MoveIt - MFA Recovery Codes (Shamir Secret Sharing)',
+        'OpenShare - MFA Recovery Codes (Shamir Secret Sharing)',
         '====================================================',
         '',
         'You need ANY 3 of these 5 shares to recover your account.',
@@ -286,7 +286,7 @@ function downloadShares() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'moveit-recovery-codes.txt';
+    a.download = 'OpenShare-recovery-codes.txt';
     a.click();
     URL.revokeObjectURL(url);
 }

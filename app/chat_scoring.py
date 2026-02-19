@@ -1,5 +1,5 @@
 """
-Chat Scoring Module - ML-based toxicity, vulgarity and sensitive data detection for MoveIt chatbot.
+Chat Scoring Module - ML-based toxicity, vulgarity and sensitive data detection for MoveIT chatbot.
 Uses keyword matching with weighted scoring and regex pattern detection.
 """
 

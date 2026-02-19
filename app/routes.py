@@ -88,7 +88,7 @@ def validate_password_strength(password):
 # Username blacklist - inappropriate or reserved words
 USERNAME_BLACKLIST = [
     'admin', 'administrator', 'root', 'superuser', 'system', 'moderator', 'mod',
-    'support', 'helpdesk', 'staff', 'official', 'moveit', 'operator',
+    'support', 'helpdesk', 'staff', 'official', 'MoveIT', 'operator',
     'fuck', 'shit', 'ass', 'bitch', 'damn', 'cunt', 'dick', 'pussy', 'nigger', 'nigga',
     'bastard', 'whore', 'slut', 'fag', 'faggot', 'retard', 'idiot', 'stupid',
     'null', 'undefined', 'none', 'test', 'user', 'guest', 'anonymous', 'default'
@@ -188,7 +188,7 @@ def send_admin_security_alert(email, username, alert_data):
     """Send security alert email for admin login attempts"""
     try:
         msg = Message(
-            subject='Security Alert: Admin Login Attempt from Unauthorized Device - MOVEit',
+            subject='Security Alert: Admin Login Attempt from Unauthorized Device - MoveIT',
             recipients=[email]
         )
 
@@ -226,7 +226,7 @@ def send_admin_security_alert(email, username, alert_data):
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MOVEit. Please do not reply to this email.
+                        This is an automated security notification from MoveIT. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -253,7 +253,7 @@ def send_admin_security_alert(email, username, alert_data):
 
         If this was NOT you, your credentials may be compromised. Change your password immediately and contact support.
 
-        This is an automated security notification from MOVEit.
+        This is an automated security notification from MoveIT.
         '''
 
         mail.send(msg)
@@ -266,7 +266,7 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
     """Send account creation notification email"""
     try:
         msg = Message(
-            subject='New Account Created - MOVEit',
+            subject='New Account Created - MoveIT',
             recipients=[email]
         )
 
@@ -274,7 +274,7 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #48bb78;">Welcome to MOVEit!</h2>
+                    <h2 style="color: #48bb78;">Welcome to MoveIT!</h2>
                     <p>Hello <strong>{username}</strong>,</p>
                     <p>A new account has been successfully created with this email address.</p>
 
@@ -293,9 +293,9 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
                         <p>If you did not create this account, please contact us immediately at <a href="mailto:support@moveit.com">support@moveit.com</a></p>
                     </div>
 
-                    <p>Thank you for choosing MOVEit!</p>
+                    <p>Thank you for choosing MoveIT!</p>
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MOVEit. Please do not reply to this email.
+                        This is an automated security notification from MoveIT. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -303,7 +303,7 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
         '''
 
         msg.body = f'''
-        Welcome to MOVEit!
+        Welcome to MoveIT!
 
         Hello {username},
 
@@ -320,9 +320,9 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
         Was this you?
         If you did not create this account, please contact us immediately at support@moveit.com
 
-        Thank you for choosing MOVEit!
+        Thank you for choosing MoveIT!
 
-        This is an automated security notification from MOVEit. Please do not reply to this email.
+        This is an automated security notification from MoveIT. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -335,7 +335,7 @@ def send_mfa_disabled_email(email, username, ip_address, location):
     """Send security notification when MFA is disabled"""
     try:
         msg = Message(
-            subject='Security Alert: Two-Factor Authentication Disabled - MOVEit',
+            subject='Security Alert: Two-Factor Authentication Disabled - MoveIT',
             recipients=[email]
         )
 
@@ -345,7 +345,7 @@ def send_mfa_disabled_email(email, username, ip_address, location):
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
                     <h2 style="color: #c53030;">Security Alert: MFA Disabled</h2>
                     <p>Hello <strong>{username}</strong>,</p>
-                    <p>Two-Factor Authentication (MFA) has been <strong>disabled</strong> on your MOVEit account.</p>
+                    <p>Two-Factor Authentication (MFA) has been <strong>disabled</strong> on your MoveIT account.</p>
 
                     <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0;">
                         <h3 style="margin-top: 0; color: #c53030;">Action Details:</h3>
@@ -377,7 +377,7 @@ def send_mfa_disabled_email(email, username, ip_address, location):
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MOVEit. Please do not reply to this email.
+                        This is an automated security notification from MoveIT. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -389,7 +389,7 @@ def send_mfa_disabled_email(email, username, ip_address, location):
 
         Hello {username},
 
-        Two-Factor Authentication (MFA) has been disabled on your MOVEit account.
+        Two-Factor Authentication (MFA) has been disabled on your MoveIT account.
 
         Action Details:
         - Action: MFA Disabled
@@ -411,7 +411,7 @@ def send_mfa_disabled_email(email, username, ip_address, location):
         - Re-enable MFA
         - Contact support at support@moveit.com
 
-        This is an automated security notification from MOVEit. Please do not reply to this email.
+        This is an automated security notification from MoveIT. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -424,7 +424,7 @@ def send_account_locked_email(email, username, ip_address, location, unlock_time
     """Send security notification when account is locked due to failed login attempts"""
     try:
         msg = Message(
-            subject='Security Alert: Account Locked - MOVEit',
+            subject='Security Alert: Account Locked - MoveIT',
             recipients=[email]
         )
 
@@ -462,7 +462,7 @@ def send_account_locked_email(email, username, ip_address, location, unlock_time
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MOVEit. Please do not reply to this email.
+                        This is an automated security notification from MoveIT. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -493,7 +493,7 @@ def send_account_locked_email(email, username, ip_address, location, unlock_time
         - Enable Two-Factor Authentication if not already enabled
         - Contact support at support@moveit.com
 
-        This is an automated security notification from MOVEit. Please do not reply to this email.
+        This is an automated security notification from MoveIT. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -507,7 +507,7 @@ def send_impossible_travel_email(email, username, last_location, current_locatio
     """Send security alert when impossible travel is detected and account is locked"""
     try:
         msg = Message(
-            subject='URGENT Security Alert: Suspicious Login Detected - MOVEit',
+            subject='URGENT Security Alert: Suspicious Login Detected - MoveIT',
             recipients=[email]
         )
 
@@ -554,7 +554,7 @@ def send_impossible_travel_email(email, username, last_location, current_locatio
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MOVEit. Please do not reply to this email.
+                        This is an automated security notification from MoveIT. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -590,7 +590,7 @@ def send_impossible_travel_email(email, username, last_location, current_locatio
         - Review your account activity for any unauthorized access
         - Enable Two-Factor Authentication if not already enabled
 
-        This is an automated security notification from MOVEit. Please do not reply to this email.
+        This is an automated security notification from MoveIT. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -604,7 +604,7 @@ def send_password_reset_email(email, username, otp_code):
     """Send password reset email with OTP code only"""
     try:
         msg = Message(
-            subject='Password Reset Request - MOVEit',
+            subject='Password Reset Request - MoveIT',
             recipients=[email]
         )
 
@@ -629,7 +629,7 @@ def send_password_reset_email(email, username, otp_code):
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MOVEit. Please do not reply to this email.
+                        This is an automated security notification from MoveIT. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -637,7 +637,7 @@ def send_password_reset_email(email, username, otp_code):
         '''
 
         msg.body = f'''
-        Password Reset Request - MOVEit
+        Password Reset Request - MoveIT
 
         Hello {username},
 
@@ -651,7 +651,7 @@ def send_password_reset_email(email, username, otp_code):
         If you did not request a password reset, please ignore this email. Your password will remain unchanged.
         For security reasons, this verification code will expire in 15 minutes.
 
-        This is an automated security notification from MOVEit. Please do not reply to this email.
+        This is an automated security notification from MoveIT. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -1009,12 +1009,12 @@ def register():
                     # Send OTP email
                     try:
                         msg = Message(
-                            'Verify Your Email - MoveIt',
+                            'Verify Your Email - MoveIT',
                             recipients=[email]
                         )
                         msg.html = f'''
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                            <h2 style="color: #007aff;">Welcome to MoveIt!</h2>
+                            <h2 style="color: #007aff;">Welcome to MoveIT!</h2>
                             <p>Hi {username},</p>
                             <p>Thank you for registering. Please verify your email address using the code below:</p>
                             <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
@@ -1133,7 +1133,7 @@ def resend_verification():
     # Send new OTP email
     try:
         msg = Message(
-            'Verify Your Email - MoveIt',
+            'Verify Your Email - MoveIT',
             recipients=[pending['email']]
         )
         msg.html = f'''
@@ -1734,14 +1734,14 @@ def delete_account_request():
     # Send OTP email
     try:
         msg = Message(
-            'Account Deletion Verification - MoveIt',
+            'Account Deletion Verification - MoveIT',
             recipients=[user.email]
         )
         msg.html = f'''
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #c53030;">Account Deletion Request</h2>
             <p>Hi {user.username},</p>
-            <p>You have requested to delete your MoveIt account. Use the code below to confirm:</p>
+            <p>You have requested to delete your MoveIT account. Use the code below to confirm:</p>
             <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
                 <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #c53030;">{otp}</span>
             </div>
@@ -1872,7 +1872,7 @@ def change_password():
         # Send email notification
         try:
             msg = Message(
-                'Password Changed - MoveIt Security Alert',
+                'Password Changed - MoveIT Security Alert',
                 recipients=[user.email]
             )
             msg.html = f'''
@@ -1882,7 +1882,7 @@ def change_password():
                 <p>Your password was changed on <strong>{datetime.utcnow().strftime('%B %d, %Y at %I:%M %p')} UTC</strong>.</p>
                 <p>If you did not make this change, please contact support immediately and secure your account.</p>
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                <p style="color: #718096; font-size: 12px;">This is an automated security notification from MoveIt.</p>
+                <p style="color: #718096; font-size: 12px;">This is an automated security notification from MoveIT.</p>
             </div>
             '''
             mail.send(msg)
@@ -1934,7 +1934,7 @@ def mfa_setup_required():
     totp = pyotp.TOTP(user.mfa_secret)
     provisioning_uri = totp.provisioning_uri(
         name=user.email,
-        issuer_name='MOVEit Authentication'
+        issuer_name='MoveIT Authentication'
     )
 
     # Create QR code image
@@ -2024,7 +2024,7 @@ def admin_mfa_setup():
     totp = pyotp.TOTP(user.mfa_secret)
     provisioning_uri = totp.provisioning_uri(
         name=user.email,
-        issuer_name='MOVEit Admin'
+        issuer_name='MoveIT Admin'
     )
 
     # Create QR code image
@@ -2097,7 +2097,7 @@ def mfa_setup():
     totp = pyotp.TOTP(mfa_secret)
     provisioning_uri = totp.provisioning_uri(
         name=user.email,
-        issuer_name='MOVEit Authentication'
+        issuer_name='MoveIT Authentication'
     )
 
     # Create QR code image
@@ -2386,14 +2386,14 @@ def send_secondary_verification():
     # Send OTP email
     try:
         msg = Message(
-            'Verify Secondary Email - MoveIt',
+            'Verify Secondary Email - MoveIT',
             recipients=[secondary_email]
         )
         msg.html = f'''
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #007aff;">Verify Your Secondary Email</h2>
             <p>Hi,</p>
-            <p>You are adding this email as a secondary verification email for the MoveIt account: <strong>{user.username}</strong></p>
+            <p>You are adding this email as a secondary verification email for the MoveIT account: <strong>{user.username}</strong></p>
             <p>Use the code below to verify:</p>
             <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
                 <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #007aff;">{otp}</span>
@@ -2462,7 +2462,7 @@ def verify_secondary_email():
 
         # Notify primary email
         msg = Message(
-            'Secondary Email Verified - MoveIt',
+            'Secondary Email Verified - MoveIT',
             recipients=[user.email]
         )
         msg.html = f'''
@@ -2485,14 +2485,14 @@ def verify_secondary_email():
 
         # Notify secondary email
         msg2 = Message(
-            'You are now a verification contact - MoveIt',
+            'You are now a verification contact - MoveIT',
             recipients=[secondary_email]
         )
         msg2.html = f'''
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #34c759;">Email Verified Successfully</h2>
             <p>Hi,</p>
-            <p>Your email has been verified as a secondary contact for the MoveIt account: <strong>{user.username}</strong></p>
+            <p>Your email has been verified as a secondary contact for the MoveIT account: <strong>{user.username}</strong></p>
             <p>You will receive security alerts when sensitive actions are performed on this account.</p>
         </div>
         '''
@@ -2528,7 +2528,7 @@ def disable_secondary_verification():
         location = get_location_from_ip(ip_address)
 
         msg = Message(
-            'Secondary Verification Disabled - MoveIt',
+            'Secondary Verification Disabled - MoveIT',
             recipients=[user.email]
         )
         msg.html = f'''
@@ -2544,14 +2544,14 @@ def disable_secondary_verification():
 
         if old_secondary_email:
             msg2 = Message(
-                'Removed as verification contact - MoveIt',
+                'Removed as verification contact - MoveIT',
                 recipients=[old_secondary_email]
             )
             msg2.html = f'''
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #ff9500;">Verification Contact Removed</h2>
                 <p>Hi,</p>
-                <p>You have been removed as a secondary verification contact for the MoveIt account: <strong>{user.username}</strong></p>
+                <p>You have been removed as a secondary verification contact for the MoveIT account: <strong>{user.username}</strong></p>
                 <p>You will no longer receive security alerts for this account.</p>
             </div>
             '''

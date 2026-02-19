@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "======================================"
-echo "   MoveIt - Secure File Sharing"
+echo "   MoveIT - Secure File Sharing"
 echo "======================================"
 echo ""
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 echo ""
 echo "======================================"
-echo "Starting MoveIt application..."
+echo "Starting MoveIT application..."
 echo "Access the app at: http://localhost:5000"
 echo "Press Ctrl+C to stop the server"
 echo "======================================"

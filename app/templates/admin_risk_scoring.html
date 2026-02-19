@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}User Risk Scoring - Admin - MoveIt{% endblock %}
+{% block title %}User Risk Scoring - Admin - OpenShare{% endblock %}
 
 {% block content %}
 <style>
@@ -428,7 +428,7 @@
                         </td>
                         <td>
                             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                <a href="mailto:{{ user.email }}?subject=Security Alert - Your Account&body=Dear {{ user.username }},%0D%0A%0D%0AWe noticed unusual activity on your account with a risk score of {{ user.risk_score|int }}. Please verify your recent login activity.%0D%0A%0D%0ARisk Factors:%0D%0A{% for factor in user.risk_factors %}- {{ factor }}%0D%0A{% endfor %}%0D%0A%0D%0AIf this was not you, please change your password immediately and enable MFA.%0D%0A%0D%0ABest regards,%0D%0AMoveIt Security Team" class="action-btn action-btn-contact">
+                                <a href="mailto:{{ user.email }}?subject=Security Alert - Your Account&body=Dear {{ user.username }},%0D%0A%0D%0AWe noticed unusual activity on your account with a risk score of {{ user.risk_score|int }}. Please verify your recent login activity.%0D%0A%0D%0ARisk Factors:%0D%0A{% for factor in user.risk_factors %}- {{ factor }}%0D%0A{% endfor %}%0D%0A%0D%0AIf this was not you, please change your password immediately and enable MFA.%0D%0A%0D%0ABest regards,%0D%0AOpenShare Security Team" class="action-btn action-btn-contact">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                                         <polyline points="22,6 12,13 2,6"></polyline>
