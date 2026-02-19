@@ -832,8 +832,31 @@ def login():
                     was_locked_before = user.account_locked
                     user.record_failed_login()
 
+                    # Calculate and record risk score for this failed attempt
+                    _fail_ip = get_client_ip()
+                    _fail_location = get_location_from_ip(_fail_ip)
+                    _fail_device = get_device_fingerprint()
+                    _fail_history = LoginHistory.query.filter_by(user_id=user.id).order_by(LoginHistory.timestamp.desc()).limit(20).all()
+                    _fail_history_data = [{'timestamp': h.timestamp, 'ip': h.ip_address, 'location': h.location} for h in _fail_history]
+                    _fail_login_data = build_login_data(user, _fail_ip, _fail_location, _fail_device, _fail_history_data)
+                    _fail_risk_score, _fail_risk_level, _fail_risk_factors = ml_analyzer.calculate_risk_score(_fail_login_data, _fail_history_data)
+                    _fail_record = LoginHistory(
+                        user_id=user.id,
+                        ip_address=_fail_ip,
+                        location=_fail_location,
+                        device_fingerprint=_fail_device,
+                        user_agent=request.headers.get('User-Agent', '')[:500],
+                        risk_score=_fail_risk_score,
+                        risk_level=_fail_risk_level,
+                        risk_factors=json.dumps(_fail_risk_factors),
+                        success=False,
+                        failure_reason='Invalid password'
+                    )
+                    db.session.add(_fail_record)
+                    db.session.commit()
+
                     # Log failed login to SIEM
-                    ip_address = get_client_ip()
+                    ip_address = _fail_ip
                     siem.login_failed(username=username, ip=ip_address, reason="invalid password")
 
                     # Send email if account just got locked
