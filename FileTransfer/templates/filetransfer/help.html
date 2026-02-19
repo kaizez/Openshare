@@ -265,54 +265,10 @@
         text-decoration: none;
     }
 
-    /* Quick links */
-    .quick-links {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 14px;
-        margin-top: 28px;
-    }
-
-    .quick-link {
-        background: #fff;
-        border: 1px solid #edf2f7;
-        border-radius: 14px;
-        padding: 20px;
-        text-align: center;
-        text-decoration: none;
-        transition: all 0.2s;
-    }
-
-    .quick-link:hover {
-        border-color: #c6f6d5;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(56, 161, 105, 0.06);
-        text-decoration: none;
-    }
-
-    .quick-link .ql-emoji {
-        font-size: 28px;
-        display: block;
-        margin-bottom: 10px;
-    }
-
-    .quick-link .ql-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: #1a202c;
-        margin-bottom: 4px;
-    }
-
-    .quick-link .ql-desc {
-        font-size: 12px;
-        color: #a0aec0;
-    }
-
     @media (max-width: 768px) {
         .help-wrapper { padding: 32px 16px 60px; }
         .help-header h1 { font-size: 28px; }
         .chat-cta { flex-direction: column; text-align: center; }
-        .quick-links { grid-template-columns: 1fr; }
         .faq-answer p { padding-left: 22px; }
     }
 </style>
@@ -332,27 +288,8 @@
         <input type="text" id="faqSearch" placeholder="Search for answers..." autocomplete="off">
     </div>
 
-    <!-- Quick Links -->
-    <div class="quick-links">
-        <a href="{{ url_for('filetransfer.index') }}" class="quick-link">
-            <span class="ql-emoji">📤</span>
-            <div class="ql-title">Upload Files</div>
-            <div class="ql-desc">Start transferring now</div>
-        </a>
-        <a href="{{ url_for('main.profile') }}" class="quick-link">
-            <span class="ql-emoji">👤</span>
-            <div class="ql-title">My Profile</div>
-            <div class="ql-desc">Account settings</div>
-        </a>
-        <a href="{{ url_for('main.chatbot_page') }}" class="quick-link">
-            <span class="ql-emoji">🤖</span>
-            <div class="ql-title">AI Chat</div>
-            <div class="ql-desc">Ask anything</div>
-        </a>
-    </div>
-
     <!-- Category Tabs -->
-    <div class="help-tabs" style="margin-top: 40px;">
+    <div class="help-tabs">
         <div class="help-tab active" data-cat="general"><span class="tab-emoji">👋</span> General</div>
         <div class="help-tab" data-cat="files"><span class="tab-emoji">📂</span> File Transfer</div>
         <div class="help-tab" data-cat="security"><span class="tab-emoji">🛡️</span> Security</div>

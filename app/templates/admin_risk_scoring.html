@@ -28,54 +28,6 @@
         margin: 0;
     }
 
-    .admin-nav {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-    }
-
-    .nav-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 20px;
-        border-radius: 10px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 600;
-        transition: all 0.2s;
-    }
-
-    .nav-btn-primary {
-        background: #007aff;
-        color: white;
-    }
-
-    .nav-btn-primary:hover {
-        background: #0066d6;
-    }
-
-    .nav-btn-secondary {
-        background: #f7fafc;
-        color: #2d3748;
-        border: 1px solid #e2e8f0;
-    }
-
-    .nav-btn-secondary:hover {
-        background: #edf2f7;
-    }
-
-    .nav-btn-active {
-        background: #007aff;
-        color: white;
-    }
-
-    .nav-btn-active:hover {
-        background: #0066d6;
-    }
-
     .admin-card {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(20px);
@@ -360,13 +312,6 @@
             overflow-x: auto;
         }
 
-        .admin-nav {
-            flex-direction: column;
-        }
-
-        .nav-btn {
-            justify-content: center;
-        }
     }
 </style>
 
@@ -376,75 +321,7 @@
         <p>Monitor and manage user login risk levels from ML analysis</p>
     </div>
 
-    <!-- Navigation -->
-    <div class="admin-nav">
-        <a href="{{ url_for('main.index') }}" class="nav-btn nav-btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            Home
-        </a>
-        <a href="{{ url_for('main.admin_dashboard') }}" class="nav-btn nav-btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-            Users
-        </a>
-        <a href="{{ url_for('main.admin_filetransfer') }}" class="nav-btn nav-btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            File Transfer
-        </a>
-        <a href="{{ url_for('main.admin_devices') }}" class="nav-btn nav-btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-            Devices
-        </a>
-        <a href="{{ url_for('main.admin_risk_scoring') }}" class="nav-btn nav-btn-active">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            Risk Scoring
-        </a>
-        <a href="{{ url_for('main.admin_chat_history') }}" class="nav-btn nav-btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            Chat History
-        </a>
-        <a href="{{ url_for('main.admin_keystroke_scoring') }}" class="nav-btn nav-btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
-            </svg>
-            Keystroke Scoring
-        </a>
-        <a href="https://{{ request.host.split(':')[0] }}:5002" target="_blank" class="nav-btn nav-btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-            SIEM
-        </a>
-        <a href="{{ url_for('main.logout') }}" class="nav-btn nav-btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-            Log Out
-        </a>
-    </div>
+    {% set active_page = 'risk_scoring' %}{% include 'admin_nav.html' %}
 
     <!-- Stats Overview -->
     <div class="admin-card">

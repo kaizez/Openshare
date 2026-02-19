@@ -7,6 +7,7 @@ Any k of n shares can reconstruct the original secret.
 import secrets
 import hashlib
 import base64
+import string
 from typing import List, Tuple, Optional
 
 # A large prime for the finite field (must be larger than any secret we encode)
@@ -103,14 +104,50 @@ def split_secret(secret: str, threshold: int = DEFAULT_THRESHOLD,
     shares = []
     for i in range(1, num_shares + 1):
         y = _eval_polynomial(coefficients, i, _PRIME)
-        # Format: "SHARE-{index}-{hex_value}" (human-readable)
         share_hex = format(y, 'x')
         share_str = f"{i}-{share_hex}"
-        # Encode as base64 for cleaner display
-        encoded = base64.b32encode(share_str.encode()).decode().rstrip('=')
+        # Encode with mixed symbols for stronger-looking shares
+        encoded = _encode_share(share_str)
         shares.append(encoded)
 
     return shares
+
+
+# Custom encoding alphabet: uppercase, lowercase, digits, symbols
+_SHARE_ALPHABET = string.ascii_uppercase + string.ascii_lowercase + string.digits + '!@#$%&*+-=?~'
+_SHARE_BASE = len(_SHARE_ALPHABET)  # 75 characters
+
+
+_GROUP_SEP = '.'  # Use dot as group separator (not in alphabet)
+
+
+def _encode_share(raw: str) -> str:
+    """Encode a share string into a mixed alphanumeric+symbol format with grouping."""
+    raw_bytes = raw.encode('utf-8')
+    num = int.from_bytes(raw_bytes, byteorder='big')
+
+    if num == 0:
+        return _SHARE_ALPHABET[0]
+
+    chars = []
+    while num > 0:
+        chars.append(_SHARE_ALPHABET[num % _SHARE_BASE])
+        num //= _SHARE_BASE
+    encoded = ''.join(reversed(chars))
+
+    # Format in groups of 5 separated by dots for readability
+    groups = [encoded[i:i+5] for i in range(0, len(encoded), 5)]
+    return _GROUP_SEP.join(groups)
+
+
+def _decode_share(encoded: str) -> str:
+    """Decode a mixed symbol share back to raw format."""
+    clean = encoded.replace(_GROUP_SEP, '')
+    num = 0
+    for char in clean:
+        num = num * _SHARE_BASE + _SHARE_ALPHABET.index(char)
+    raw_bytes = num.to_bytes((num.bit_length() + 7) // 8, byteorder='big')
+    return raw_bytes.decode('utf-8')
 
 
 def reconstruct_secret(shares: List[str], threshold: int = DEFAULT_THRESHOLD) -> Optional[str]:
@@ -131,9 +168,15 @@ def reconstruct_secret(shares: List[str], threshold: int = DEFAULT_THRESHOLD) ->
         # Decode shares
         points = []
         for share in shares[:threshold]:
-            # Pad base32 and decode
-            padded = share + '=' * ((8 - len(share) % 8) % 8)
-            decoded = base64.b32decode(padded).decode()
+            # Try new mixed-symbol format first
+            try:
+                decoded = _decode_share(share)
+            except Exception:
+                # Fallback: legacy base32 format
+                padded = share + '=' * ((8 - len(share) % 8) % 8)
+                decoded = base64.b32decode(padded).decode()
+
+            # Parse "index-hexvalue"
             parts = decoded.split('-', 1)
             x = int(parts[0])
             y = int(parts[1], 16)

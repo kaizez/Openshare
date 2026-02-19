@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+
+{% block title %}Chat Scoring - Admin - MoveIt{% endblock %}
+
+{% block content %}
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+
+    .admin-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .admin-header h1 {
+        color: #000;
+        font-size: 32px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+    }
+
+    .admin-header p {
+        color: #8e8e93;
+        font-size: 16px;
+        margin: 0;
+    }
+
+    .admin-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .admin-section {
+        padding: 24px;
+    }
+
+    .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #000;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 16px 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #f7fafc;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 4px;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        color: #8e8e93;
+    }
+
+    .stat-number.warning-color { color: #ff9500; }
+    .stat-number.danger-color { color: #ff3b30; }
+    .stat-number.success-color { color: #34c759; }
+
+    .search-box {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        margin-bottom: 16px;
+        box-sizing: border-box;
+    }
+
+    .search-box:focus {
+        outline: none;
+        border-color: #007aff;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+
+    /* User score cards */
+    .user-score-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: all 0.2s;
+    }
+
+    .user-score-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .user-score-card.risk-critical {
+        border-left: 4px solid #ff3b30;
+    }
+
+    .user-score-card.risk-warning {
+        border-left: 4px solid #ff9500;
+    }
+
+    .user-score-card.risk-caution {
+        border-left: 4px solid #ffcc00;
+    }
+
+    .user-score-card.risk-good {
+        border-left: 4px solid #34c759;
+    }
+
+    .user-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        color: #fff;
+    }
+
+    .avatar-good { background: #34c759; }
+    .avatar-caution { background: #ffcc00; color: #2d3748; }
+    .avatar-warning { background: #ff9500; }
+    .avatar-critical { background: #ff3b30; }
+
+    .user-name {
+        font-weight: 600;
+        font-size: 15px;
+        color: #2d3748;
+    }
+
+    .user-email {
+        font-size: 12px;
+        color: #8e8e93;
+    }
+
+    .behavior-score {
+        text-align: center;
+    }
+
+    .score-value {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .score-label {
+        font-size: 11px;
+        color: #8e8e93;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .score-good { color: #34c759; }
+    .score-caution { color: #ffcc00; }
+    .score-warning { color: #ff9500; }
+    .score-critical { color: #ff3b30; }
+
+    .user-metrics {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .metric {
+        text-align: center;
+        padding: 10px 8px;
+        background: #f7fafc;
+        border-radius: 8px;
+    }
+
+    .metric-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #2d3748;
+    }
+
+    .metric-label {
+        font-size: 11px;
+        color: #8e8e93;
+        margin-top: 2px;
+    }
+
+    /* Score bar */
+    .score-bar-container {
+        width: 100%;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .score-bar {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.5s ease;
+    }
+
+    .bar-good { background: #34c759; }
+    .bar-caution { background: #ffcc00; }
+    .bar-warning { background: #ff9500; }
+    .bar-critical { background: #ff3b30; }
+
+    /* Flagged messages expandable */
+    .flagged-section {
+        margin-top: 12px;
+    }
+
+    .flagged-toggle {
+        background: none;
+        border: 1px solid #e2e8f0;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #8e8e93;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .flagged-toggle:hover {
+        background: #f7fafc;
+        color: #2d3748;
+    }
+
+    .flagged-messages {
+        display: none;
+        margin-top: 12px;
+    }
+
+    .flagged-messages.show {
+        display: block;
+    }
+
+    .flagged-msg {
+        background: rgba(255, 59, 48, 0.04);
+        border: 1px solid rgba(255, 59, 48, 0.12);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        font-size: 13px;
+    }
+
+    .flagged-msg-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+
+    .flagged-msg-time {
+        font-size: 11px;
+        color: #8e8e93;
+    }
+
+    .flagged-msg-score {
+        font-size: 11px;
+        font-weight: 700;
+        color: #ff3b30;
+    }
+
+    .flagged-msg-text {
+        color: #2d3748;
+        word-wrap: break-word;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .badge-good { background: rgba(52, 199, 89, 0.15); color: #34c759; }
+    .badge-caution { background: rgba(255, 204, 0, 0.15); color: #b8860b; }
+    .badge-warning { background: rgba(255, 149, 0, 0.15); color: #ff9500; }
+    .badge-critical { background: rgba(255, 59, 48, 0.15); color: #ff3b30; }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #8e8e93;
+    }
+
+    .empty-state svg {
+        margin-bottom: 16px;
+        opacity: 0.4;
+    }
+
+    /* How it works section */
+    .how-it-works {
+        background: #f7fafc;
+        border-radius: 14px;
+        padding: 24px;
+        margin-top: 24px;
+    }
+
+    .how-it-works h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2d3748;
+        margin: 0 0 16px 0;
+    }
+
+    .how-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+    }
+
+    .how-item {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .how-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .how-text h4 {
+        font-size: 13px;
+        font-weight: 600;
+        color: #2d3748;
+        margin: 0 0 4px 0;
+    }
+
+    .how-text p {
+        font-size: 12px;
+        color: #8e8e93;
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    @media (max-width: 768px) {
+        .user-metrics {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .user-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+    }
+</style>
+
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>Chat Scoring</h1>
+        <p>ML-powered toxicity analysis and user behavior monitoring</p>
+    </div>
+
+    {% set active_page = 'chat_scoring' %}{% include 'admin_nav.html' %}
+
+    <!-- Stats Overview -->
+    <div class="admin-card">
+        <div class="admin-section">
+            <h2 class="section-title">Overview</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ total_chats }}</div>
+                    <div class="stat-label">Total Messages</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number danger-color">{{ total_flagged }}</div>
+                    <div class="stat-label">Vulgar Messages</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number warning-color">{{ total_warnings }}</div>
+                    <div class="stat-label">Warnings Issued</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number {% if users_with_issues > 0 %}danger-color{% else %}success-color{% endif %}">{{ users_with_issues }}</div>
+                    <div class="stat-label">Users with Issues</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <input type="text" class="search-box" id="userSearch" placeholder="Search by username..." oninput="filterUsers()">
+
+    <!-- User Scoring Cards -->
+    <div id="userCards">
+        {% if user_scores %}
+            {% for u in user_scores %}
+            <div class="user-score-card risk-{{ u.risk_level }}" data-username="{{ u.username|lower }}">
+                <div class="user-header">
+                    <div class="user-info">
+                        <div class="user-avatar avatar-{{ u.risk_level }}">{{ u.username[0]|upper }}</div>
+                        <div>
+                            <div class="user-name">{{ u.username }}</div>
+                            <div class="user-email">{{ u.email }}</div>
+                        </div>
+                    </div>
+                    <div class="behavior-score">
+                        <div class="score-value score-{{ u.risk_level }}">{{ u.behavior_score }}</div>
+                        <div class="score-label">Behavior Score</div>
+                    </div>
+                </div>
+
+                <!-- Score Bar -->
+                <div class="score-bar-container">
+                    <div class="score-bar bar-{{ u.risk_level }}" style="width: {{ u.behavior_score }}%;"></div>
+                </div>
+
+                <!-- Metrics -->
+                <div class="user-metrics">
+                    <div class="metric">
+                        <div class="metric-value">{{ u.total_messages }}</div>
+                        <div class="metric-label">Messages</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">{{ u.flagged_count }}</div>
+                        <div class="metric-label">Flagged</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">{{ u.vulgar_count }}</div>
+                        <div class="metric-label">Vulgar</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">{{ u.avg_toxicity }}</div>
+                        <div class="metric-label">Avg Toxicity</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">{{ u.warnings_issued }}</div>
+                        <div class="metric-label">Warnings</div>
+                    </div>
+                </div>
+
+                <!-- Risk Badge -->
+                <span class="badge badge-{{ u.risk_level }}">
+                    {% if u.risk_level == 'good' %}Good Behavior
+                    {% elif u.risk_level == 'caution' %}Caution
+                    {% elif u.risk_level == 'warning' %}Warning
+                    {% elif u.risk_level == 'critical' %}Critical
+                    {% endif %}
+                </span>
+
+                <!-- Flagged Messages (expandable) -->
+                {% if u.recent_flagged %}
+                <div class="flagged-section">
+                    <button class="flagged-toggle" onclick="toggleFlagged(this)">
+                        Show {{ u.recent_flagged|length }} Recent Vulgar Message{{ 's' if u.recent_flagged|length > 1 else '' }}
+                    </button>
+                    <div class="flagged-messages">
+                        {% for msg in u.recent_flagged %}
+                        <div class="flagged-msg">
+                            <div class="flagged-msg-header">
+                                <span class="flagged-msg-time">{{ msg.sgt_timestamp }}</span>
+                                <span class="flagged-msg-score">Score: {{ msg.toxicity_score }}</span>
+                            </div>
+                            <div class="flagged-msg-text">{{ msg.message[:200] }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                </svg>
+                <h3>No Chat Data Yet</h3>
+                <p>Chat scoring will appear here once users start interacting with the AI assistant.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- How It Works -->
+    <div class="how-it-works">
+        <h3>How Chat Scoring Works</h3>
+        <div class="how-grid">
+            <div class="how-item">
+                <div class="how-icon" style="background: rgba(0, 122, 255, 0.1);">🔍</div>
+                <div class="how-text">
+                    <h4>Message Analysis</h4>
+                    <p>Every chat message is scanned for vulgarities, threats, and inappropriate content using pattern matching with leet-speak detection.</p>
+                </div>
+            </div>
+            <div class="how-item">
+                <div class="how-icon" style="background: rgba(255, 149, 0, 0.1);">📊</div>
+                <div class="how-text">
+                    <h4>Toxicity Scoring</h4>
+                    <p>Each message gets a toxicity score (0.0 - 1.0). Scores above 0.5 trigger a warning to the user in real-time.</p>
+                </div>
+            </div>
+            <div class="how-item">
+                <div class="how-icon" style="background: rgba(52, 199, 89, 0.1);">👤</div>
+                <div class="how-text">
+                    <h4>Behavior Score</h4>
+                    <p>Each user gets a behavior score (0-100) based on their overall chat history, factoring in frequency and severity of violations.</p>
+                </div>
+            </div>
+            <div class="how-item">
+                <div class="how-icon" style="background: rgba(255, 59, 48, 0.1);">⚠️</div>
+                <div class="how-text">
+                    <h4>Risk Levels</h4>
+                    <p>Users are classified as Good (80+), Caution (60-79), Warning (40-59), or Critical (below 40) based on behavior score.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterUsers() {
+        var query = document.getElementById('userSearch').value.toLowerCase();
+        var cards = document.querySelectorAll('.user-score-card');
+        cards.forEach(function(card) {
+            var username = card.getAttribute('data-username');
+            card.style.display = username.indexOf(query) !== -1 ? '' : 'none';
+        });
+    }
+
+    function toggleFlagged(btn) {
+        var msgs = btn.nextElementSibling;
+        if (msgs.classList.contains('show')) {
+            msgs.classList.remove('show');
+            btn.textContent = btn.textContent.replace('Hide', 'Show');
+        } else {
+            msgs.classList.add('show');
+            btn.textContent = btn.textContent.replace('Show', 'Hide');
+        }
+    }
+</script>
+{% endblock %}

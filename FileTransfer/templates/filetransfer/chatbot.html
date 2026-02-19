@@ -4,77 +4,176 @@
 
 {% block extra_css %}
 <style>
-    /* ChatGPT-inspired Light Mode Layout */
-    body { background-color: #ffffff; color: #374151; }
-    
+    body { background-color: #f9fafb; color: #374151; }
+
     .chat-container {
-        max-width: 800px;
+        max-width: 820px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
         height: 85vh;
-        background-color: #ffffff;
+        background-color: #f9fafb;
     }
 
-    /* Message Area */
     #chat-box {
         flex: 1;
         overflow-y: auto;
-        padding: 40px 20px;
+        padding: 40px 24px;
         scrollbar-width: thin;
     }
 
     .message-wrapper {
         display: flex;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-        padding: 1rem;
-        border-radius: 8px;
+        gap: 14px;
+        margin-bottom: 24px;
+        max-width: 720px;
     }
 
-    .user-msg-row { background-color: transparent; }
-    .ai-msg-row { background-color: #f7f7f8; } /* Light gray for AI */
+    .user-msg-row {
+        flex-direction: row-reverse;
+        margin-left: auto;
+    }
 
     .avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 4px;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: bold;
         flex-shrink: 0;
         color: white;
+        font-size: 15px;
     }
-    .user-avatar { background-color: #5436da; } /* Purple for User */
-    .ai-avatar { background-color: #10a37f; }   /* Green for Assistant */
+
+    .user-avatar { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .ai-avatar { background: linear-gradient(135deg, #38a169, #2f855a); }
 
     .message-content {
-        line-height: 1.6;
-        font-size: 1rem;
+        line-height: 1.65;
+        font-size: 14px;
         word-wrap: break-word;
         color: #374151;
+        padding: 14px 18px;
+        border-radius: 18px;
+        max-width: 85%;
     }
 
-    /* Floating Rounded Input Bar */
+    .user-msg-row .message-content {
+        background: #38a169;
+        color: #fff;
+        border-bottom-right-radius: 6px;
+    }
+
+    .user-msg-row .message-content strong { color: #d4edda; }
+
+    .ai-msg-row .message-content {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-bottom-left-radius: 6px;
+    }
+
+    /* Input Area */
     .input-area {
         position: sticky;
         bottom: 0;
-        padding: 0 20px 20px 20px;
-        background: linear-gradient(transparent, #ffffff 50%);
+        padding: 0 24px 24px;
+        background: linear-gradient(transparent, #f9fafb 40%);
+    }
+
+    /* Rate limit & char count bar */
+    .input-status-bar {
+        max-width: 720px;
+        margin: 0 auto 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .rate-limit-display {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #718096;
+    }
+
+    .rate-dots {
+        display: flex;
+        gap: 5px;
+    }
+
+    .rate-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #38a169;
+        transition: background 0.3s, transform 0.2s;
+    }
+
+    .rate-dot.used {
+        background: #e2e8f0;
+        transform: scale(0.85);
+    }
+
+    .rate-dot.warning {
+        background: #ff9500;
+    }
+
+    .cooldown-timer {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #e53e3e;
+    }
+
+    .cooldown-timer.show {
+        display: flex;
+    }
+
+    .char-counter {
+        font-size: 12px;
+        font-weight: 600;
+        color: #a0aec0;
+        transition: color 0.2s;
+    }
+
+    .char-counter.over-limit {
+        color: #e53e3e;
     }
 
     .input-wrapper {
-        position: relative;
-        max-width: 768px;
+        max-width: 720px;
         margin: 0 auto;
-        background-color: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        padding: 10px 15px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 24px;
+        padding: 8px 8px 8px 20px;
         display: flex;
         align-items: center;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        gap: 12px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-wrapper:focus-within {
+        border-color: #38a169;
+        box-shadow: 0 4px 24px rgba(56, 161, 105, 0.1);
+    }
+
+    .input-wrapper.locked {
+        border-color: #e53e3e;
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .input-wrapper.over-limit {
+        border-color: #e53e3e;
+        box-shadow: 0 4px 24px rgba(229, 62, 62, 0.1);
     }
 
     #user-input {
@@ -82,56 +181,91 @@
         border: none;
         color: #374151;
         width: 100%;
-        padding: 10px;
+        padding: 10px 0;
         outline: none;
-        font-size: 1rem;
+        font-size: 15px;
     }
 
+    #user-input::placeholder { color: #a0aec0; }
+
     .send-btn {
-        background-color: #e5e7eb;
-        color: #9ca3af;
+        background: #e2e8f0;
+        color: #a0aec0;
         border: none;
-        border-radius: 8px;
-        width: 32px;
-        height: 32px;
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s;
+        transition: all 0.25s;
     }
 
-    .send-btn.active { 
-        background-color: #10a37f; 
-        color: white; 
+    .send-btn:hover { background: #cbd5e0; }
+
+    .send-btn.active {
+        background: #38a169;
+        color: white;
+        box-shadow: 0 2px 8px rgba(56, 161, 105, 0.3);
     }
 
-    /* Green Rounded Navigation Button */
+    .send-btn.active:hover { background: #2f855a; }
+
+    .send-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    /* Lock overlay message */
+    .lock-banner {
+        display: none;
+        max-width: 720px;
+        margin: 0 auto 10px;
+        padding: 10px 16px;
+        background: rgba(229, 62, 62, 0.08);
+        border: 1px solid rgba(229, 62, 62, 0.2);
+        border-radius: 12px;
+        font-size: 13px;
+        color: #e53e3e;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .lock-banner.show { display: block; }
+
     .btn-green-pill {
-        background-color: #2D9964 !important;
+        background-color: #38a169 !important;
         color: white !important;
         border: none;
-        border-radius: 15px !important;
+        border-radius: 100px !important;
         font-weight: 600;
-        padding: 10px 25px;
-        transition: opacity 0.2s;
+        padding: 10px 24px;
+        transition: all 0.2s;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        font-size: 0.9rem;
+        font-size: 13px;
     }
 
     .btn-green-pill:hover {
-        opacity: 0.9;
+        background-color: #2f855a !important;
         color: white !important;
     }
 
     .audit-note {
-        font-size: 0.75rem;
-        color: #6b7280;
+        font-size: 12px;
+        color: #a0aec0;
         text-align: center;
-        margin-top: 10px;
+        margin-top: 12px;
+    }
+
+    @media (max-width: 768px) {
+        #chat-box { padding: 24px 16px; }
+        .input-area { padding: 0 16px 20px; }
+        .message-wrapper { max-width: 100%; }
     }
 </style>
 {% endblock %}
@@ -143,81 +277,224 @@
             <div class="avatar ai-avatar">🤖</div>
             <div class="message-content">
                <strong>MoveBot</strong><br>
-                Hello! I am MoveBot. I can help you with MoveIt account issues, security policies, or file transfers.
-</div>
+                Hello! I am MoveBot. I can help you with MoveIT account issues, security policies, or file transfers.
+            </div>
         </div>
     </div>
 
     <div class="input-area">
-        <div class="input-wrapper">
-            <input type="text" id="user-input" placeholder="Message MoveLorh Assistant..." oninput="toggleBtn()" onkeypress="if(event.key === 'Enter') sendMessage()">
+        <!-- Lock banner -->
+        <div class="lock-banner" id="lockBanner"></div>
+
+        <!-- Status bar: rate dots + char counter -->
+        <div class="input-status-bar">
+            <div class="rate-limit-display">
+                <div class="rate-dots" id="rateDots">
+                    <div class="rate-dot" id="dot-0"></div>
+                    <div class="rate-dot" id="dot-1"></div>
+                    <div class="rate-dot" id="dot-2"></div>
+                    <div class="rate-dot" id="dot-3"></div>
+                    <div class="rate-dot" id="dot-4"></div>
+                </div>
+                <span id="rateLabel">5/5</span>
+                <div class="cooldown-timer" id="cooldownTimer">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="cooldownText">60s</span>
+                </div>
+            </div>
+            <div class="char-counter" id="charCounter">0 / 100</div>
+        </div>
+
+        <!-- Input -->
+        <div class="input-wrapper" id="inputWrapper">
+            <input type="text" id="user-input" placeholder="Message MoveBot Assistant..." maxlength="150" oninput="handleInput()" onkeypress="if(event.key === 'Enter') sendMessage()">
             <button class="send-btn" id="send-btn" onclick="sendMessage()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
         </div>
-        
-        <div class="d-flex justify-content-center mt-3">
-            <a href="{{ url_for('main.help_page') }}" class="btn-green-pill shadow-sm">
-                ⬅ Back to FAQ
+
+        <div style="text-align: center; margin-top: 14px;">
+            <a href="{{ url_for('main.help_page') }}" class="btn-green-pill">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                Back to FAQ
             </a>
         </div>
-        
+
         <div class="audit-note">Logs are audited for security purposes.</div>
     </div>
 </div>
 
 <script>
-    function toggleBtn() {
-        const input = document.getElementById('user-input');
-        const btn = document.getElementById('send-btn');
-        btn.classList.toggle('active', input.value.trim().length > 0);
+(function() {
+    'use strict';
+
+    var MAX_MESSAGES = 5;
+    var COOLDOWN_SECONDS = 60;
+    var CHAR_LIMIT = 100;
+
+    var messagesUsed = 0;
+    var isLocked = false;
+    var cooldownInterval = null;
+
+    function updateRateDots() {
+        var remaining = MAX_MESSAGES - messagesUsed;
+        document.getElementById('rateLabel').textContent = remaining + '/' + MAX_MESSAGES;
+
+        for (var i = 0; i < MAX_MESSAGES; i++) {
+            var dot = document.getElementById('dot-' + i);
+            if (i < remaining) {
+                dot.className = 'rate-dot';
+                if (remaining <= 2) dot.className = 'rate-dot warning';
+            } else {
+                dot.className = 'rate-dot used';
+            }
+        }
     }
 
-    function appendMessage(sender, text, isAi = false) {
-        const chatBox = document.getElementById('chat-box');
-        const wrapper = document.createElement('div');
-        wrapper.className = `message-wrapper ${isAi ? 'ai-msg-row' : 'user-msg-row'}`;
+    function lockChat(seconds) {
+        isLocked = true;
+        var wrapper = document.getElementById('inputWrapper');
+        var banner = document.getElementById('lockBanner');
+        var timerEl = document.getElementById('cooldownTimer');
+        var btn = document.getElementById('send-btn');
 
-        const avatar = document.createElement('div');
-        avatar.className = `avatar ${isAi ? 'ai-avatar' : 'user-avatar'}`;
-        avatar.innerText = isAi ? "🤖" : "U";
+        wrapper.classList.add('locked');
+        banner.classList.add('show');
+        timerEl.classList.add('show');
+        btn.disabled = true;
 
-        const content = document.createElement('div');
-        content.className = "message-content";
-        content.innerHTML = `<strong>${sender}</strong><br>${text}`;
+        var remaining = seconds;
+        updateCooldownDisplay(remaining, banner);
+
+        cooldownInterval = setInterval(function() {
+            remaining--;
+            if (remaining <= 0) {
+                unlockChat();
+            } else {
+                updateCooldownDisplay(remaining, banner);
+            }
+        }, 1000);
+    }
+
+    function updateCooldownDisplay(secs, banner) {
+        document.getElementById('cooldownText').textContent = secs + 's';
+        banner.textContent = 'Rate limit reached. Chat unlocks in ' + secs + ' seconds.';
+    }
+
+    function unlockChat() {
+        isLocked = false;
+        messagesUsed = 0;
+
+        clearInterval(cooldownInterval);
+        cooldownInterval = null;
+
+        var wrapper = document.getElementById('inputWrapper');
+        var banner = document.getElementById('lockBanner');
+        var timerEl = document.getElementById('cooldownTimer');
+        var btn = document.getElementById('send-btn');
+
+        wrapper.classList.remove('locked');
+        banner.classList.remove('show');
+        timerEl.classList.remove('show');
+        btn.disabled = false;
+
+        updateRateDots();
+        handleInput();
+    }
+
+    window.handleInput = function() {
+        var input = document.getElementById('user-input');
+        var btn = document.getElementById('send-btn');
+        var counter = document.getElementById('charCounter');
+        var wrapper = document.getElementById('inputWrapper');
+        var len = input.value.length;
+        var overLimit = len > CHAR_LIMIT;
+
+        counter.textContent = len + ' / ' + CHAR_LIMIT;
+
+        if (overLimit) {
+            counter.classList.add('over-limit');
+            wrapper.classList.add('over-limit');
+            btn.classList.remove('active');
+            btn.disabled = true;
+        } else {
+            counter.classList.remove('over-limit');
+            wrapper.classList.remove('over-limit');
+            if (!isLocked) {
+                var hasText = input.value.trim().length > 0;
+                btn.classList.toggle('active', hasText);
+                btn.disabled = !hasText;
+            }
+        }
+    };
+
+    function appendMessage(sender, text, isAi) {
+        var chatBox = document.getElementById('chat-box');
+        var wrapper = document.createElement('div');
+        wrapper.className = 'message-wrapper ' + (isAi ? 'ai-msg-row' : 'user-msg-row');
+
+        var avatar = document.createElement('div');
+        avatar.className = 'avatar ' + (isAi ? 'ai-avatar' : 'user-avatar');
+        avatar.textContent = isAi ? '🤖' : 'U';
+
+        var content = document.createElement('div');
+        content.className = 'message-content';
+        var strong = document.createElement('strong');
+        strong.textContent = sender;
+        content.appendChild(strong);
+        content.appendChild(document.createElement('br'));
+        content.appendChild(document.createTextNode(text));
 
         wrapper.appendChild(avatar);
         wrapper.appendChild(content);
         chatBox.appendChild(wrapper);
-
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    async function sendMessage() {
-        const input = document.getElementById('user-input');
-        const message = input.value.trim();
-        if (!message) return;
+    window.sendMessage = async function() {
+        var input = document.getElementById('user-input');
+        var message = input.value.trim();
+
+        if (!message || isLocked) return;
+        if (message.length > CHAR_LIMIT) return;
+
+        // Use up one message
+        messagesUsed++;
+        updateRateDots();
 
         appendMessage('You', message, false);
         input.value = '';
-        toggleBtn();
+        handleInput();
+
+        // Lock if limit hit
+        if (messagesUsed >= MAX_MESSAGES) {
+            lockChat(COOLDOWN_SECONDS);
+        }
 
         try {
-            const response = await fetch('/chat', {
+            var response = await fetch('/chat', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': "{{ csrf_token() }}" 
+                    'X-CSRFToken': "{{ csrf_token() }}"
                 },
                 body: JSON.stringify({ message: message })
             });
 
-            const data = await response.json();
-            appendMessage('MoveBot', data.reply || data.error || "Error", true);
+            var data = await response.json();
+            if (data.warning) {
+                appendMessage('Warning', data.warning, true);
+            }
+            appendMessage('MoveBot', data.reply || data.error || 'Error', true);
 
         } catch (error) {
             appendMessage('System', 'Service unreachable.', true);
         }
-    }
+    };
+
+    // Init
+    updateRateDots();
+    document.getElementById('send-btn').disabled = true;
+})();
 </script>
 {% endblock %}

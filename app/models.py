@@ -183,6 +183,8 @@ class ChatHistory(db.Model):
     ip_address = db.Column(db.String(45), nullable=True)
     flagged = db.Column(db.Boolean, default=False)
     flag_reason = db.Column(db.String(255), nullable=True)
+    toxicity_score = db.Column(db.Float, default=0.0)
+    warning_issued = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def __repr__(self):

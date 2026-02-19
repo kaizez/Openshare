@@ -249,36 +249,6 @@
     </section>
     {% endif %}
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-top">
-                <div class="footer-logo">
-                    <div class="mascot-logo-small">
-                        <div class="character-head">
-                            <div class="eyes">
-                                <div class="eye">
-                                    <div class="pupil"></div>
-                                </div>
-                                <div class="eye">
-                                    <div class="pupil"></div>
-                                </div>
-                            </div>
-                            <div class="mouth"></div>
-                        </div>
-                    </div>
-                    <span class="brand-name">MoveIt</span>
-                </div>
-                <div class="footer-links">
-                    <a href="{{ url_for('main.login') }}">Login</a>
-                    <a href="{{ url_for('main.register') }}">Sign Up</a>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p class="footer-text">&copy; 2026 MoveIt. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
 </div>
 
 <style>
@@ -602,36 +572,6 @@
     margin-bottom: 24px;
 }
 
-/* Footer */
-.footer-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #edf2f7;
-    margin-bottom: 20px;
-}
-
-.footer-links {
-    display: flex;
-    gap: 24px;
-}
-
-.footer-links a {
-    color: #a0aec0;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    transition: color 0.2s;
-}
-
-.footer-links a:hover {
-    color: #38a169;
-}
-
-.footer-bottom {
-    text-align: center;
-}
 
 /* Buttons */
 .hero-buttons .btn {

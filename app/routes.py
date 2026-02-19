@@ -6,6 +6,7 @@ from app.siem_logger import SIEMLogger
 from app.ml_security import LoginBehaviorAnalyzer, build_login_data
 from app.keystroke_dynamics import keystroke_analyzer
 from app.shamir_recovery import generate_recovery_shares, recover_mfa_secret, hash_share
+from app.chat_scoring import score_message, get_user_behavior_score
 import geoip2.database
 import geoip2.errors
 import os
@@ -1057,6 +1058,15 @@ def verify_email():
         if otp != pending['otp']:
             flash('Invalid verification code', 'error')
         else:
+            # Check if username or email was taken in the meantime
+            existing_user = User.query.filter(
+                (User.username == pending['username']) | (User.email == pending['email'])
+            ).first()
+            if existing_user:
+                session.pop('pending_registration', None)
+                flash('Username or email is already taken. Please register again with a different username.', 'error')
+                return redirect(url_for('main.register'))
+
             # OTP verified - create the user account
             ip_address = get_client_ip()
             location = get_location_from_ip(ip_address)
@@ -2889,6 +2899,74 @@ def admin_keystroke_scoring():
     return render_template('admin_keystroke_scoring.html', users=users_keystroke, current_user=user)
 
 
+@bp.route('/admin/chat-scoring')
+def admin_chat_scoring():
+    """Admin page showing per-user chat behavior scores and toxicity analysis"""
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or not user.is_admin:
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('filetransfer.index'))
+
+    # Get all users who have chat history
+    all_users = User.query.all()
+    user_scores = []
+
+    for u in all_users:
+        chat_records = ChatHistory.query.filter_by(user_id=u.id).all()
+        if not chat_records:
+            continue
+
+        behavior = get_user_behavior_score(chat_records)
+
+        # Get recent flagged messages (last 5)
+        recent_flagged = ChatHistory.query.filter(
+            ChatHistory.user_id == u.id,
+            ChatHistory.toxicity_score >= 0.5
+        ).order_by(ChatHistory.timestamp.desc()).limit(5).all()
+
+        # Convert timestamps to SGT
+        sgt_offset = timedelta(hours=8)
+        for msg in recent_flagged:
+            if msg.timestamp:
+                msg.sgt_timestamp = (msg.timestamp + sgt_offset).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                msg.sgt_timestamp = 'N/A'
+
+        user_scores.append({
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'behavior_score': behavior['behavior_score'],
+            'total_messages': behavior['total_messages'],
+            'flagged_count': behavior['flagged_count'],
+            'vulgar_count': behavior['vulgar_count'],
+            'avg_toxicity': behavior['avg_toxicity'],
+            'warnings_issued': behavior['warnings_issued'],
+            'risk_level': behavior['risk_level'],
+            'recent_flagged': recent_flagged
+        })
+
+    # Sort by behavior score ascending (worst first)
+    user_scores.sort(key=lambda x: x['behavior_score'])
+
+    # Overall stats
+    total_chats = ChatHistory.query.count()
+    total_flagged = ChatHistory.query.filter(ChatHistory.toxicity_score >= 0.5).count()
+    total_warnings = ChatHistory.query.filter_by(warning_issued=True).count()
+    users_with_issues = sum(1 for u in user_scores if u['risk_level'] in ('warning', 'critical'))
+
+    return render_template('admin_chat_scoring.html',
+                           user_scores=user_scores,
+                           total_chats=total_chats,
+                           total_flagged=total_flagged,
+                           total_warnings=total_warnings,
+                           users_with_issues=users_with_issues,
+                           current_user=user)
+
+
 @bp.route('/admin/toggle-admin/<int:user_id>', methods=['POST'])
 def toggle_admin(user_id):
     """Toggle admin status for a user - requires TOTP verification"""
@@ -2999,8 +3077,9 @@ def delete_user(user_id):
         ip=get_client_ip()
     )
 
-    # Delete user's login history first (foreign key constraint)
+    # Delete related records first (foreign key constraints)
     LoginHistory.query.filter_by(user_id=target_user.id).delete()
+    ChatHistory.query.filter_by(user_id=target_user.id).delete()
 
     # Delete the user
     db.session.delete(target_user)
@@ -3790,7 +3869,7 @@ def admin_get_file_logs(file_id):
 
 @bp.route('/chatbot')
 def chatbot_page():
-    """Render the MoveLorh Assistant interface"""
+    """Render the MoveIT Assistant interface"""
     if 'user_id' not in session:
         flash('Please login to access the assistant', 'error')
         return redirect(url_for('main.login'))
@@ -3801,7 +3880,7 @@ def chatbot_page():
 @bp.route('/chat', methods=['POST'])
 @limiter.limit("5 per minute")
 def chat():
-    """Handle AI communication and secure logging for MoveLorh"""
+    """Handle AI communication and secure logging for MoveIT"""
     user_data = request.get_json()
     raw_message = user_data.get('message', '')
     sanitized_message = html.escape(raw_message.strip())
@@ -3836,12 +3915,55 @@ def chat():
         flag_reasons.append('nric')
         prompt_message = re.sub(nric_pattern, '[REDACTED-NRIC]', prompt_message)
 
+    # --- Vulgarity/Toxicity + Sensitive Info scoring ---
+    toxicity_result = score_message(sanitized_message)
+    toxicity_score = toxicity_result['score']
+    should_warn = toxicity_result['should_warn']
+    detected_categories = toxicity_result.get('categories', [])
+
+    # Flag vulgar content
+    if toxicity_result['flagged_words']:
+        flagged = True
+        if toxicity_result['severity'] in ('moderate', 'severe'):
+            flag_reasons.append(f"vulgarity_{toxicity_result['severity']}")
+
+        siem.custom_event(
+            event_type='chatbot_vulgarity_detected',
+            description=f"User {username} used vulgar language (score: {toxicity_score}, severity: {toxicity_result['severity']})",
+            severity='Warning' if toxicity_result['severity'] == 'moderate' else ('High' if toxicity_result['severity'] == 'severe' else 'Info'),
+            user_id=username,
+            ip=client_ip
+        )
+
+    # Flag sensitive information (credentials, identity, financial, system, attacks)
+    if toxicity_result.get('sensitive_matches'):
+        flagged = True
+        for match in toxicity_result['sensitive_matches']:
+            flag_reasons.append(f"{match['category']}:{match['type']}")
+
+        sensitive_labels = [m['label'] for m in toxicity_result['sensitive_matches']]
+        sensitive_cats = set(m['category'] for m in toxicity_result['sensitive_matches'])
+
+        siem_severity = 'Info'
+        if sensitive_cats & {'credentials', 'attack'}:
+            siem_severity = 'High'
+        elif sensitive_cats & {'identity', 'financial'}:
+            siem_severity = 'Warning'
+
+        siem.custom_event(
+            event_type='chatbot_sensitive_info_detected',
+            description=f"User {username} shared sensitive info: {', '.join(sensitive_labels)} (score: {toxicity_score})",
+            severity=siem_severity,
+            user_id=username,
+            ip=client_ip
+        )
+
     flag_reason_str = ', '.join(flag_reasons) if flag_reasons else None
 
     ollama_host = "https://ai.nypdsf.me"
 
     system_context = (
-    "You are MoveBot, the specialized security support assistant for the MoveIt platform. "
+    "You are MoveBot, the specialized security support assistant for the MoveIT platform. "
 
     "TECHNICAL ARCHITECTURE KNOWLEDGE: "
     "1. Physical file storage is located in the '/app/uploads' directory on the server filesystem. "
@@ -3850,8 +3972,13 @@ def chat():
     "4. The 'storagedb' is an isolated database used for secure, long-term backups. "
     "5. A Python-based Sync Service bridges data between workingdb and storagedb every 60 minutes. "
     "6. All files are encrypted using AES-256 before being moved to long-term storage. "
-    "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect MoveLorh accounts from unauthorized access."
+    "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect MoveIT accounts from unauthorized access. "
 
+    "SENSITIVE INFORMATION HANDLING: "
+    "1. If a user shares sensitive information like passwords, NRIC, credit card numbers, phone numbers, API keys, or file paths, gently remind them: 'Please avoid sharing sensitive personal information in chat. Your data security is our priority.' "
+    "2. Do NOT refuse the conversation or mention MFA when a user shares sensitive data. Simply advise them not to share it and offer to help with their actual question. "
+    "3. If a user shares credentials or passwords, tell them: 'For your safety, please never share passwords or credentials in chat. If you need to reset your password, go to your Profile settings.' "
+    "4. Be helpful and friendly, not dismissive. Always ask how you can help them further. "
 
     "SECURITY POLICIES & GUARDRAILS: "
     "1. Multi-Factor Authentication (MFA) is mandatory for all accounts to protect against credential theft. "
@@ -3868,7 +3995,7 @@ def chat():
     "IDENTITY RULES: "
     "1. Always identify as MoveBot. "
     "2. NEVER mention being an AI, a language model, or Qwen. "
-    "4. If asked who you are, say: 'I am MoveBot, your MoveIt security assistant.' "
+    "4. If asked who you are, say: 'I am MoveBot, your MoveIT security assistant.' "
 )
 
     formatted_prompt = f"System: {system_context}\nUser: {prompt_message}\nAssistant:"
@@ -3927,7 +4054,9 @@ def chat():
                 response=ai_reply[:2000],
                 ip_address=client_ip,
                 flagged=flagged,
-                flag_reason=flag_reason_str
+                flag_reason=flag_reason_str,
+                toxicity_score=toxicity_score,
+                warning_issued=should_warn
             )
             db.session.add(chat_record)
             db.session.commit()
@@ -3935,7 +4064,29 @@ def chat():
             print(f"[Chat] Error saving chat history: {db_err}")
             db.session.rollback()
 
-        return jsonify({'reply': ai_reply})
+        # Build response with optional warning
+        response_data = {'reply': ai_reply}
+        if should_warn:
+            warning_parts = []
+            if 'vulgarity' in detected_categories:
+                warning_parts.append('inappropriate language')
+            sensitive_cats = [c for c in detected_categories if c != 'vulgarity']
+            cat_labels = {
+                'financial': 'financial information (e.g. credit card)',
+                'identity': 'personal identity information (e.g. NRIC, phone)',
+                'credentials': 'credentials or secrets (e.g. passwords, API keys)',
+                'system': 'system information (e.g. file paths, IP addresses)',
+                'attack': 'potential security attack patterns'
+            }
+            for cat in sensitive_cats:
+                if cat in cat_labels:
+                    warning_parts.append(cat_labels[cat])
+
+            if warning_parts:
+                response_data['warning'] = f"Your message contained {', '.join(warning_parts)}. This has been logged for security review."
+            response_data['toxicity_score'] = toxicity_score
+
+        return jsonify(response_data)
 
     except requests.exceptions.RequestException as e:
         print(f"Network error connecting to AI Engine: {str(e)}")
