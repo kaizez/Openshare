@@ -1,4 +1,5 @@
 import os
+import sys
 import secrets
 import string
 import time
@@ -11,6 +12,12 @@ import json
 import magic
 import pyotp
 from functools import wraps
+
+# Fix import path: ensure /app is in sys.path before importing from the app package
+# This prevents 'app' from being resolved relative to FileTransfer when it's in sys.path
+if '/app' not in sys.path:
+    sys.path.insert(0, '/app')
+
 from app.siem_logger import SIEMLogger
 
 # SIEM logger — reports file events to the same engine the auth module uses
