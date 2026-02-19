@@ -77,11 +77,12 @@
                                 <th>Event Type</th>
                                 <th>Description</th>
                                 <th>Severity</th>
+                                <th style="width:32px;"></th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for log in logs %}
-                            <tr>
+                            <tr class="log-row" onclick="toggleLogActions({{ loop.index }})" style="cursor:pointer;">
                                 <td>{{ log['timestamp'][:19] if log['timestamp']|length > 19 else log['timestamp'] }}</td>
                                 <td>{{ log['log_source'] }}</td>
                                 <td>{{ log['event_type'] }}</td>
@@ -90,6 +91,34 @@
                                     <span class="severity-badge severity-{{ log['severity'].lower() }}">
                                         {{ log['severity'] }}
                                     </span>
+                                </td>
+                                <td style="text-align:center;">
+                                    <span id="chevron-{{ loop.index }}" style="color:#a0aec0; font-size:10px; display:inline-block; transition:transform 0.2s;">▼</span>
+                                </td>
+                            </tr>
+                            <tr id="log-actions-{{ loop.index }}" style="display:none; background:#f0f7ff;">
+                                <td colspan="6" style="padding:10px 16px;">
+                                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                        {% if log.get('user_id') %}
+                                        <button class="playbook-btn btn-terminate-session"
+                                                data-user="{{ log['user_id'] }}"
+                                                data-desc="{{ log['description'][:80] }}"
+                                                onclick="event.stopPropagation(); showTerminateSessionModal(this.dataset.user, this.dataset.desc)">
+                                            Terminate Session — {{ log['user_id'] }}
+                                        </button>
+                                        {% endif %}
+                                        {% if log.get('ip_address') and log['ip_address'] not in ('', 'unknown') %}
+                                        <button class="playbook-btn btn-block-ip"
+                                                data-ip="{{ log['ip_address'] }}"
+                                                data-desc="{{ log['description'][:80] }}"
+                                                onclick="event.stopPropagation(); showBlockIPModal(this.dataset.ip, this.dataset.desc)">
+                                            Block IP — {{ log['ip_address'] }}
+                                        </button>
+                                        {% endif %}
+                                        {% if not log.get('user_id') and (not log.get('ip_address') or log['ip_address'] in ('', 'unknown')) %}
+                                        <span style="color:#718096; font-size:12px;">No actions available for this log entry.</span>
+                                        {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}

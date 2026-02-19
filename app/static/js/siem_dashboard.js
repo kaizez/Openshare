@@ -1,5 +1,23 @@
 // Dashboard JavaScript for Playbook Actions
 
+// Toggle log row action dropdown
+function toggleLogActions(index) {
+    const actionsRow = document.getElementById('log-actions-' + index);
+    const chevron = document.getElementById('chevron-' + index);
+    if (!actionsRow) return;
+
+    const isOpen = actionsRow.style.display !== 'none';
+
+    // Close all open rows first
+    document.querySelectorAll('[id^="log-actions-"]').forEach(row => row.style.display = 'none');
+    document.querySelectorAll('[id^="chevron-"]').forEach(ch => ch.style.transform = '');
+
+    if (!isOpen) {
+        actionsRow.style.display = 'table-row';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
 // Show Block IP Modal
 function showBlockIPModal(ipAddress, description) {
     document.getElementById('blockIPAddress').value = ipAddress;
