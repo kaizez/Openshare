@@ -102,6 +102,24 @@
                     <p>No security logs found. Logs will appear here once events are ingested.</p>
                 </div>
                 {% endif %}
+
+                {% if log_pages > 1 %}
+                <div class="log-pagination">
+                    {% if log_page > 1 %}
+                    <a href="{{ url_for('siem.siem_dashboard', page=log_page - 1) }}" class="page-btn">&larr; Newer</a>
+                    {% else %}
+                    <span class="page-btn page-btn-disabled">&larr; Newer</span>
+                    {% endif %}
+
+                    <span class="page-info">Page {{ log_page }} of {{ log_pages }} &nbsp;({{ log_total }} logs)</span>
+
+                    {% if log_page < log_pages %}
+                    <a href="{{ url_for('siem.siem_dashboard', page=log_page + 1) }}" class="page-btn">Older &rarr;</a>
+                    {% else %}
+                    <span class="page-btn page-btn-disabled">Older &rarr;</span>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
 
             <!-- Alerts & Playbooks -->

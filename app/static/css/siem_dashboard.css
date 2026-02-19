@@ -642,3 +642,42 @@ body {
     font-family: monospace;
     letter-spacing: 0.03em;
 }
+
+.log-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px 0 4px;
+    border-top: 1px solid #e2e8f0;
+    margin-top: 12px;
+}
+
+.page-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #2d3748;
+    color: #90cdf4;
+    text-decoration: none;
+    border: 1.5px solid #4a5568;
+    transition: background 0.15s;
+}
+
+.page-btn:hover {
+    background: #4a5568;
+}
+
+.page-btn-disabled {
+    opacity: 0.35;
+    cursor: default;
+    color: #718096;
+    background: #f7fafc;
+    border-color: #e2e8f0;
+}
+
+.page-info {
+    font-size: 13px;
+    color: #718096;
+}

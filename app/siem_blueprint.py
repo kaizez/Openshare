@@ -131,9 +131,12 @@ def disconnect():
 @require_admin
 @require_siem_token
 def siem_dashboard():
+    page = request.args.get('page', 1, type=int)
     try:
         resp = requests.get(f'{SIEM_URL}/api/dashboard/data',
-                            headers=_auth_headers(), timeout=10)
+                            headers=_auth_headers(),
+                            params={'page': page},
+                            timeout=10)
         if resp.status_code == 401:
             session.pop('siem_token', None)
             session.pop('siem_username', None)
@@ -142,6 +145,9 @@ def siem_dashboard():
     except requests.RequestException:
         data = {
             'logs': [],
+            'log_page': 1,
+            'log_pages': 1,
+            'log_total': 0,
             'alerts': [],
             'stats': {'critical': 0, 'high': 0, 'quarantined_ips': 0, 'new_alerts': 0},
             'quarantined_ips': [],
@@ -151,6 +157,9 @@ def siem_dashboard():
     user = _get_user()
     return render_template('siem/dashboard.html',
                            logs=data['logs'],
+                           log_page=data.get('log_page', 1),
+                           log_pages=data.get('log_pages', 1),
+                           log_total=data.get('log_total', 0),
                            alerts=data['alerts'],
                            stats=data['stats'],
                            quarantined_ips=data['quarantined_ips'],
