@@ -115,6 +115,12 @@ class SIEMEngine:
         # Store the log in database first
         self._store_log(log_data, timestamp)
 
+        # Track session lifecycle in active_sessions table
+        if event_type == 'session_start' and user_id:
+            self._track_session_start(user_id, log_data.get('session_id', ''), ip_address, timestamp)
+        elif event_type in ['session_end', 'logout'] and user_id:
+            self._track_session_end(user_id, log_data.get('session_id'))
+
         # Update user baseline for behavior analysis
         if user_id and event_type in ['file_download', 'file_upload']:
             self._update_user_baseline(user_id, event_type, file_size)
@@ -860,6 +866,58 @@ class SIEMEngine:
                            '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
                            '172.30.', '172.31.', '192.168.', '127.', 'localhost']
         return any(ip_address.startswith(prefix) for prefix in private_prefixes)
+
+    def _track_session_start(self, user_id: str, session_id: str, ip_address: str, timestamp: datetime):
+        """Insert an active session row when a session_start event arrives."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            # Use session_id from event or generate a fallback unique key
+            sid = session_id or f'{user_id}-{timestamp.isoformat()}'
+            cursor.execute('''
+                INSERT IGNORE INTO active_sessions (user_id, session_id, ip_address, created_at, last_activity, status)
+                VALUES (%s, %s, %s, %s, %s, 'active')
+            ''', (user_id, sid, ip_address, timestamp, timestamp))
+            connection.commit()
+        except mysql.connector.Error as e:
+            print(f"Error tracking session start: {e}")
+            if connection:
+                connection.rollback()
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+
+    def _track_session_end(self, user_id: str, session_id: Optional[str]):
+        """Mark active session(s) as terminated when logout or session_end arrives."""
+        connection = None
+        cursor = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            if session_id:
+                cursor.execute('''
+                    UPDATE active_sessions SET status = 'terminated'
+                    WHERE session_id = %s AND status = 'active'
+                ''', (session_id,))
+            else:
+                cursor.execute('''
+                    UPDATE active_sessions SET status = 'terminated'
+                    WHERE user_id = %s AND status = 'active'
+                ''', (user_id,))
+            connection.commit()
+        except mysql.connector.Error as e:
+            print(f"Error tracking session end: {e}")
+            if connection:
+                connection.rollback()
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
 
     def _store_log(self, log_data: Dict, timestamp: datetime):
         """Store log entry in MySQL database."""
