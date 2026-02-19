@@ -81,6 +81,8 @@ class User(db.Model):
             return True
         except VerifyMismatchError:
             return False
+        except Exception:
+            return False
 
     def is_oauth_user(self):
         return self.oauth_provider is not None

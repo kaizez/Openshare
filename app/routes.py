@@ -1634,11 +1634,13 @@ def profile():
         working_db = Database()
         working_db.ensure_connection()
         cursor = working_db.connection.cursor(dictionary=True, buffered=True)
+        # Count files uploaded by this user (match by user_id as INT)
         cursor.execute(
             "SELECT COUNT(*) as files, COALESCE(SUM(download_count), 0) as downloads FROM file_metadata WHERE uploaded_by = %s",
-            (user.id,)
+            (int(user.id),)
         )
         row = cursor.fetchone()
+        print(f"[Profile] user.id={user.id}, query result={row}", flush=True)
         if row:
             file_count = row['files'] or 0
             upload_count = row['files'] or 0
@@ -1646,7 +1648,9 @@ def profile():
         cursor.close()
         working_db.close()
     except Exception as e:
-        print(f"[Profile] Error querying workingdb for file stats: {e}")
+        import traceback
+        print(f"[Profile] Error querying workingdb for file stats: {e}", flush=True)
+        traceback.print_exc()
 
     return render_template('profile.html',
                            user=user,
@@ -2211,13 +2215,12 @@ def mfa_disable():
         return jsonify({'success': False, 'message': 'User not found'}), 404
 
     # Check if user is OAuth user (they don't have password)
-    if user.oauth_provider:
-        # For OAuth users, we can disable without password
-        # Or you could require re-authentication with OAuth
+    if user.oauth_provider and not user.password_hash:
+        # For OAuth users without a password, allow without password
         pass
     else:
         # Get password from request
-        password = request.form.get('password')
+        password = request.form.get('password') or request.json.get('password', '') if request.is_json else request.form.get('password')
 
         if not password:
             return jsonify({'success': False, 'message': 'Password is required'}), 400

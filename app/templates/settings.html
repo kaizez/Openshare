@@ -875,12 +875,17 @@ document.getElementById('disableMfaForm').addEventListener('submit', async funct
     const errorMessage = document.getElementById('errorMessage');
 
     try {
+        const bodyParts = [];
+        bodyParts.push('csrf_token=' + encodeURIComponent("{{ csrf_token() }}"));
+        if (password) bodyParts.push('password=' + encodeURIComponent(password));
+
         const response = await fetch("{{ url_for('main.mfa_disable') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': "{{ csrf_token() }}"
             },
-            body: password ? 'password=' + encodeURIComponent(password) : ''
+            body: bodyParts.join('&')
         });
 
         const result = await response.json();
