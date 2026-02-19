@@ -775,6 +775,9 @@ def login():
                             risk_score=risk_score,
                             risk_factors=risk_factors
                         )
+                        user.account_locked = True
+                        user.locked_until = None  # Manual unlock required
+                        db.session.commit()
                         flash('Login blocked due to suspicious activity. Please contact support.', 'error')
                         return render_template('login.html')
 
@@ -808,6 +811,10 @@ def login():
                                     'device_whitelisted': device_allowed,
                                     'ip_whitelisted': ip_allowed
                                 })
+
+                                user.account_locked = True
+                                user.locked_until = None  # Manual unlock required
+                                db.session.commit()
 
                                 return render_template('admin_unauthorized.html',
                                     device_match=device_allowed,
