@@ -451,6 +451,32 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
+    function appendStreamingMessage(sender) {
+        var chatBox = document.getElementById('chat-box');
+        var wrapper = document.createElement('div');
+        wrapper.className = 'message-wrapper ai-msg-row';
+
+        var avatar = document.createElement('div');
+        avatar.className = 'avatar ai-avatar';
+        avatar.textContent = '🤖';
+
+        var content = document.createElement('div');
+        content.className = 'message-content';
+        var strong = document.createElement('strong');
+        strong.textContent = sender;
+        content.appendChild(strong);
+        content.appendChild(document.createElement('br'));
+
+        var textSpan = document.createElement('span');
+        content.appendChild(textSpan);
+
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(content);
+        chatBox.appendChild(wrapper);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return textSpan;
+    }
+
     window.sendMessage = async function() {
         var input = document.getElementById('user-input');
         var message = input.value.trim();
@@ -471,8 +497,11 @@
             lockChat(COOLDOWN_SECONDS);
         }
 
+        var chatBox = document.getElementById('chat-box');
+        var textSpan = appendStreamingMessage('MoveBot');
+
         try {
-            var response = await fetch('/chat', {
+            var response = await fetch('/chat/stream', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -481,14 +510,44 @@
                 body: JSON.stringify({ message: message })
             });
 
-            var data = await response.json();
-            if (data.warning) {
-                appendMessage('Warning', data.warning, true);
+            if (!response.ok) {
+                textSpan.textContent = 'Service error. Please try again.';
+                return;
             }
-            appendMessage('MoveBot', data.reply || data.error || 'Error', true);
+
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+
+            while (true) {
+                var result = await reader.read();
+                if (result.done) break;
+
+                buffer += decoder.decode(result.value, { stream: true });
+                var parts = buffer.split('\n\n');
+                buffer = parts.pop(); // keep last incomplete chunk
+
+                for (var i = 0; i < parts.length; i++) {
+                    var part = parts[i].trim();
+                    if (!part.startsWith('data: ')) continue;
+                    try {
+                        var data = JSON.parse(part.slice(6));
+                        if (data.token) {
+                            textSpan.textContent += data.token;
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        }
+                        if (data.error) {
+                            textSpan.textContent = data.error;
+                        }
+                        if (data.warning) {
+                            appendMessage('Warning', data.warning, true);
+                        }
+                    } catch (e) {}
+                }
+            }
 
         } catch (error) {
-            appendMessage('System', 'Service unreachable.', true);
+            textSpan.textContent = 'Service unreachable.';
         }
     };
 

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify, Response, stream_with_context
 from flask_mail import Message
 from app import oauth, mail, limiter
 from app.models import db, User, LoginHistory, ChatHistory
@@ -4097,7 +4097,223 @@ def chat():
     except Exception as e:
         return jsonify({'reply': f"System Error: {str(e)}"}), 500
 
-    
+
+@bp.route('/chat/stream', methods=['POST'])
+@limiter.limit("5 per minute")
+def chat_stream():
+    """Handle AI chat with token-by-token streaming via SSE"""
+    user_data = request.get_json()
+    raw_message = user_data.get('message', '')
+    sanitized_message = html.escape(raw_message.strip())
+
+    def err_event(msg):
+        def _gen():
+            yield f"data: {json.dumps({'error': msg})}\n\n"
+        return Response(stream_with_context(_gen()), mimetype='text/event-stream',
+                        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+    if not sanitized_message:
+        return err_event('Please enter a message.')
+    if len(sanitized_message) > 500:
+        return err_event('Message too long. Please keep your message under 500 characters.')
+
+    client_ip = get_client_ip()
+    user_id = session.get('user_id')
+    username = session.get('user', 'unknown')
+
+    # --- Sensitive content filtering ---
+    flagged = False
+    flag_reasons = []
+    prompt_message = sanitized_message
+
+    cc_pattern = r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b'
+    if re.search(cc_pattern, sanitized_message):
+        flagged = True
+        flag_reasons.append('credit_card')
+        prompt_message = re.sub(cc_pattern, '[REDACTED-CC]', prompt_message)
+
+    nric_pattern = r'\b[STFGMstfgm]\d{7}[A-Za-z]\b'
+    if re.search(nric_pattern, sanitized_message):
+        flagged = True
+        flag_reasons.append('nric')
+        prompt_message = re.sub(nric_pattern, '[REDACTED-NRIC]', prompt_message)
+
+    toxicity_result = score_message(sanitized_message)
+    toxicity_score = toxicity_result['score']
+    should_warn = toxicity_result['should_warn']
+    detected_categories = toxicity_result.get('categories', [])
+
+    if toxicity_result['flagged_words']:
+        flagged = True
+        if toxicity_result['severity'] in ('moderate', 'severe'):
+            flag_reasons.append(f"vulgarity_{toxicity_result['severity']}")
+        siem.custom_event(
+            event_type='chatbot_vulgarity_detected',
+            description=f"User {username} used vulgar language (score: {toxicity_score}, severity: {toxicity_result['severity']})",
+            severity='Warning' if toxicity_result['severity'] == 'moderate' else ('High' if toxicity_result['severity'] == 'severe' else 'Info'),
+            user_id=username,
+            ip=client_ip
+        )
+
+    if toxicity_result.get('sensitive_matches'):
+        flagged = True
+        for match in toxicity_result['sensitive_matches']:
+            flag_reasons.append(f"{match['category']}:{match['type']}")
+        sensitive_labels = [m['label'] for m in toxicity_result['sensitive_matches']]
+        sensitive_cats = set(m['category'] for m in toxicity_result['sensitive_matches'])
+        siem_severity = 'Info'
+        if sensitive_cats & {'credentials', 'attack'}:
+            siem_severity = 'High'
+        elif sensitive_cats & {'identity', 'financial'}:
+            siem_severity = 'Warning'
+        siem.custom_event(
+            event_type='chatbot_sensitive_info_detected',
+            description=f"User {username} shared sensitive info: {', '.join(sensitive_labels)} (score: {toxicity_score})",
+            severity=siem_severity,
+            user_id=username,
+            ip=client_ip
+        )
+
+    flag_reason_str = ', '.join(flag_reasons) if flag_reasons else None
+
+    ollama_host = "https://ai.nypdsf.me"
+    system_context = (
+        "You are MoveBot, the specialized security support assistant for the MoveIT platform. "
+        "TECHNICAL ARCHITECTURE KNOWLEDGE: "
+        "1. Physical file storage is located in the '/app/uploads' directory on the server filesystem. "
+        "2. User credentials, sessions, and security settings are stored in the 'auth_db' MySQL database. "
+        "3. The 'workingdb' MySQL database is the primary store for file metadata and transfer logs. "
+        "4. The 'storagedb' is an isolated database used for secure, long-term backups. "
+        "5. A Python-based Sync Service bridges data between workingdb and storagedb every 60 minutes. "
+        "6. All files are encrypted using AES-256 before being moved to long-term storage. "
+        "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect MoveIT accounts from unauthorized access. "
+        "SENSITIVE INFORMATION HANDLING: "
+        "1. If a user shares sensitive information like passwords, NRIC, credit card numbers, phone numbers, API keys, or file paths, gently remind them: 'Please avoid sharing sensitive personal information in chat. Your data security is our priority.' "
+        "2. Do NOT refuse the conversation or mention MFA when a user shares sensitive data. Simply advise them not to share it and offer to help with their actual question. "
+        "3. If a user shares credentials or passwords, tell them: 'For your safety, please never share passwords or credentials in chat. If you need to reset your password, go to your Profile settings.' "
+        "4. Be helpful and friendly, not dismissive. Always ask how you can help them further. "
+        "SECURITY POLICIES & GUARDRAILS: "
+        "1. Multi-Factor Authentication (MFA) is mandatory for all accounts to protect against credential theft. "
+        "2. Users can only access their own files; AES-256 and session isolation prevent unauthorized access. "
+        "3. Never provide raw SQL queries, internal API keys, or instructions on bypassing security features. "
+        "4. If a user asks for hacking help or sensitive database 'dumps,' provide a professional refusal. "
+        "RESPONSE STYLE: "
+        "1. Keep answers extremely short and concise (max 3 sentences). "
+        "2. Use bullet points or numbered lists for multi-step information. "
+        "3. Avoid long paragraphs and fluff; get straight to the point. "
+        "4. Do not say 'I am an AI model' or use overly formal introductory phrases."
+        "IDENTITY RULES: "
+        "1. Always identify as MoveBot. "
+        "2. NEVER mention being an AI, a language model, or Qwen. "
+        "4. If asked who you are, say: 'I am MoveBot, your MoveIT security assistant.' "
+    )
+
+    formatted_prompt = f"System: {system_context}\nUser: {prompt_message}\nAssistant:"
+    payload = {
+        "model": "qwen2.5:1.5b",
+        "prompt": formatted_prompt,
+        "stream": True,
+        "options": {"temperature": 0.7}
+    }
+
+    def generate():
+        full_reply = []
+        try:
+            with requests.post(f"{ollama_host}/api/generate", json=payload, stream=True, timeout=30) as r:
+                if r.status_code == 404:
+                    yield f"data: {json.dumps({'error': 'AI Service Error: Model not found on the remote server.'})}\n\n"
+                    return
+                for line in r.iter_lines():
+                    if line:
+                        chunk = json.loads(line)
+                        token = chunk.get('response', '')
+                        if token:
+                            full_reply.append(token)
+                            yield f"data: {json.dumps({'token': token})}\n\n"
+                        if chunk.get('done'):
+                            break
+        except requests.exceptions.RequestException:
+            yield f"data: {json.dumps({'error': 'I am having trouble connecting right now.'})}\n\n"
+            return
+        except Exception as e:
+            yield f"data: {json.dumps({'error': f'System Error: {str(e)}'})}\n\n"
+            return
+
+        ai_reply = ''.join(full_reply)
+
+        # --- SIEM Logging ---
+        if flagged:
+            siem.chatbot_sensitive_query(
+                user_id=username,
+                query=sanitized_message,
+                ip=client_ip,
+                sensitivity_type=flag_reason_str
+            )
+        else:
+            siem.chatbot_query(
+                user_id=username,
+                query=sanitized_message,
+                ip=client_ip
+            )
+
+        suspicious_patterns = ['bypass', 'crack', 'sql injection', 'dump', 'root access']
+        if any(term in sanitized_message.lower() for term in suspicious_patterns):
+            siem.custom_event(
+                event_type='chatbot_security_query',
+                description=f"User {username} queried sensitive terms: {sanitized_message}",
+                severity='Warning',
+                user_id=username,
+                ip=client_ip
+            )
+
+        # --- Persist to ChatHistory ---
+        try:
+            chat_record = ChatHistory(
+                user_id=user_id if user_id else 0,
+                username=username,
+                message=sanitized_message,
+                response=ai_reply[:2000],
+                ip_address=client_ip,
+                flagged=flagged,
+                flag_reason=flag_reason_str,
+                toxicity_score=toxicity_score,
+                warning_issued=should_warn
+            )
+            db.session.add(chat_record)
+            db.session.commit()
+        except Exception as db_err:
+            print(f"[Chat] Error saving chat history: {db_err}")
+            db.session.rollback()
+
+        # --- Final event with optional warning ---
+        final_data = {'done': True}
+        if should_warn:
+            warning_parts = []
+            if 'vulgarity' in detected_categories:
+                warning_parts.append('inappropriate language')
+            sensitive_cats_list = [c for c in detected_categories if c != 'vulgarity']
+            cat_labels = {
+                'financial': 'financial information (e.g. credit card)',
+                'identity': 'personal identity information (e.g. NRIC, phone)',
+                'credentials': 'credentials or secrets (e.g. passwords, API keys)',
+                'system': 'system information (e.g. file paths, IP addresses)',
+                'attack': 'potential security attack patterns'
+            }
+            for cat in sensitive_cats_list:
+                if cat in cat_labels:
+                    warning_parts.append(cat_labels[cat])
+            if warning_parts:
+                final_data['warning'] = f"Your message contained {', '.join(warning_parts)}. This has been logged for security review."
+
+        yield f"data: {json.dumps(final_data)}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+    )
+
+
 @bp.route('/admin/chat-history')
 def admin_chat_history():
     """Admin page showing all chatbot conversation history"""
