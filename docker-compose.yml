@@ -219,18 +219,20 @@ services:
       working-db:
         condition: service_healthy
 
-  siem-dashboard:
-    build:
-      context: ./siem_dashboard
-    container_name: moveit-siem-dashboard
-    restart: always
-    ports:
-      - "5002:5001"
-    environment:
-      SIEM_URL: ${SIEM_URL}
-      SIEM_DASHBOARD_SECRET: ${SIEM_DASHBOARD_SECRET}
-    networks:
-      - moveit-network
+  # siem-dashboard is now integrated into the main app at /siem
+  # The standalone container is no longer needed.
+  # siem-dashboard:
+  #   build:
+  #     context: ./siem_dashboard
+  #   container_name: moveit-siem-dashboard
+  #   restart: always
+  #   ports:
+  #     - "5002:5001"
+  #   environment:
+  #     SIEM_URL: ${SIEM_URL}
+  #     SIEM_DASHBOARD_SECRET: ${SIEM_DASHBOARD_SECRET}
+  #   networks:
+  #     - moveit-network
 
   # ============================================
   # Data Retention Service - Cleans up old files

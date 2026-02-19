@@ -21,6 +21,11 @@ from FileTransfer.retention_api import retention_bp
 csrf.exempt(retention_bp)
 app.register_blueprint(retention_bp)
 
+# Register SIEM Dashboard blueprint
+from app.siem_blueprint import siem_bp
+csrf.exempt(siem_bp)
+app.register_blueprint(siem_bp)
+
 # Debug: Catch 400 errors to see what's causing them
 @app.errorhandler(400)
 def handle_400(e):
