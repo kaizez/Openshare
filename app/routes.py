@@ -55,6 +55,8 @@ def init_user_session(user):
     user.current_session_id = session_id
     db.session.commit()
 
+    siem.session_start(str(user.id), get_client_ip(), session_id)
+
 
 def sanitize_input(text):
     """Sanitize user input by escaping HTML and removing dangerous characters"""
@@ -1544,6 +1546,7 @@ def logout():
     # Log logout to SIEM before clearing session
     if 'user' in session:
         siem.logout(user_id=session['user'], ip=get_client_ip())
+        siem.session_end(str(session['user_id']), get_client_ip(), session.get('session_id', ''))
 
     session.pop('user', None)
     session.pop('user_id', None)
