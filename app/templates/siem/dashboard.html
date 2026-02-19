@@ -119,6 +119,7 @@
                         <div class="alert-meta">
                             {% if alert['ip_address'] %}<span>IP: {{ alert['ip_address'] }}</span>{% endif %}
                             {% if alert['user_id'] %}<span>User: {{ alert['user_id'] }}</span>{% endif %}
+                            {% if alert.get('mitre_technique') %}<span class="mitre-badge">MITRE: {{ alert['mitre_technique'] }}</span>{% endif %}
                         </div>
                         <div class="playbook-actions">
                             {% if alert['ip_address'] and alert['ip_address'] != 'unknown' %}
