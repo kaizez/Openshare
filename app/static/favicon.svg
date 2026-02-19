@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background -->
+  <rect width="100" height="100" fill="#f0fff4" rx="12"/>
+
+  <!-- Character head (white with green border) -->
+  <rect x="12" y="22" width="76" height="60" fill="white" stroke="#48bb78" stroke-width="4" rx="6"/>
+
+  <!-- Green tab / hair at top-left -->
+  <rect x="12" y="12" width="28" height="12" fill="#48bb78" rx="3"/>
+
+  <!-- Green horizontal line near top of head -->
+  <line x1="18" y1="32" x2="82" y2="32" stroke="#48bb78" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Sunglasses — left lens -->
+  <rect x="19" y="40" width="25" height="17" fill="#2d3748" stroke="#2d3748" stroke-width="1" rx="5"/>
+
+  <!-- Sunglasses — right lens -->
+  <rect x="56" y="40" width="25" height="17" fill="#2d3748" stroke="#2d3748" stroke-width="1" rx="5"/>
+
+  <!-- Bridge between lenses -->
+  <line x1="44" y1="48" x2="56" y2="48" stroke="#2d3748" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Smile -->
+  <path d="M 34 66 Q 50 80 66 66" fill="none" stroke="#48bb78" stroke-width="3" stroke-linecap="round"/>
+</svg>
