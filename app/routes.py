@@ -787,42 +787,6 @@ def login():
                     # Log to SIEM - initial password verification (full login logged after MFA if enabled)
                     ip = get_client_ip()
 
-                    # ADMIN SECURITY CHECK
-                    # Super admin bypasses device/IP checks - uses MAC verification instead
-                    # Regular admins also use MAC verification after MFA
-                    if user.is_admin and not user.is_super_admin:
-                        # Check if this is a regular admin with device whitelist (legacy check)
-                        allowed_devices = json.loads(user.whitelisted_devices or '[]')
-                        allowed_ips = json.loads(user.whitelisted_ips or '[]')
-
-                        # Only apply legacy device/IP check if they have whitelisted devices but no MAC
-                        if allowed_devices and not user.mac_address_registered:
-                            device_id = get_device_fingerprint()
-                            current_ip = get_client_ip()
-
-                            device_allowed = device_id in allowed_devices
-                            ip_allowed = current_ip in allowed_ips
-
-                            if not device_allowed or not ip_allowed:
-                                send_admin_security_alert(user.email, user.username, {
-                                    'device_id': device_id,
-                                    'ip': current_ip,
-                                    'location': get_location_from_ip(current_ip),
-                                    'device_whitelisted': device_allowed,
-                                    'ip_whitelisted': ip_allowed
-                                })
-
-                                user.account_locked = True
-                                user.locked_until = None  # Manual unlock required
-                                db.session.commit()
-
-                                return render_template('admin_unauthorized.html',
-                                    device_match=device_allowed,
-                                    ip_match=ip_allowed,
-                                    device_id=device_id,
-                                    current_ip=current_ip
-                                )
-
                     # Check if MFA is enabled
                     if user.mfa_enabled:
                         # Store user ID temporarily for MFA verification
@@ -849,25 +813,6 @@ def login():
                         # Complete login
                         init_user_session(user)
                         flash('Login successful!', 'success')
-
-                        # Auto-whitelist device and IP for admins (first login without MFA)
-                        if user.is_admin:
-                            device_id = get_device_fingerprint()
-                            current_ip = get_client_ip()
-
-                            # Add device to whitelist if not already
-                            devices = json.loads(user.whitelisted_devices or '[]')
-                            if device_id not in devices:
-                                devices.append(device_id)
-                                user.whitelisted_devices = json.dumps(devices)
-
-                            # Add IP to whitelist if not already
-                            ips = json.loads(user.whitelisted_ips or '[]')
-                            if current_ip not in ips:
-                                ips.append(current_ip)
-                                user.whitelisted_ips = json.dumps(ips)
-
-                            db.session.commit()
 
                         # Log successful login to SIEM
                         siem.login_success(
@@ -2007,22 +1952,6 @@ def admin_mfa_setup():
                 # Clear setup session
                 session.pop('admin_mfa_setup_user_id', None)
 
-                # Auto-whitelist device and IP for admin
-                device_id = get_device_fingerprint()
-                current_ip = get_client_ip()
-
-                devices = json.loads(user.whitelisted_devices or '[]')
-                if device_id not in devices:
-                    devices.append(device_id)
-                    user.whitelisted_devices = json.dumps(devices)
-
-                ips = json.loads(user.whitelisted_ips or '[]')
-                if current_ip not in ips:
-                    ips.append(current_ip)
-                    user.whitelisted_ips = json.dumps(ips)
-
-                db.session.commit()
-
                 # Complete login
                 init_user_session(user)
                 session['email'] = user.email
@@ -2173,25 +2102,6 @@ def mfa_verify():
                 if user.is_admin and not user.is_super_admin and user.mac_address_registered:
                     session['mac_verify_user_id'] = user.id
                     return redirect(url_for('main.admin_mac_verify'))
-
-                # Auto-whitelist device and IP for admins
-                if user.is_admin:
-                    device_id = get_device_fingerprint()
-                    current_ip = get_client_ip()
-
-                    # Add device to whitelist if not already
-                    devices = json.loads(user.whitelisted_devices or '[]')
-                    if device_id not in devices:
-                        devices.append(device_id)
-                        user.whitelisted_devices = json.dumps(devices)
-
-                    # Add IP to whitelist if not already
-                    ips = json.loads(user.whitelisted_ips or '[]')
-                    if current_ip not in ips:
-                        ips.append(current_ip)
-                        user.whitelisted_ips = json.dumps(ips)
-
-                    db.session.commit()
 
                 # Complete login
                 init_user_session(user)
@@ -2584,173 +2494,6 @@ def disable_secondary_verification():
     return jsonify({'success': True, 'message': 'Secondary verification disabled'})
 
 
-@bp.route('/admin/devices', methods=['GET'])
-def admin_devices():
-    """Admin device management page"""
-    if 'user_id' not in session:
-        return redirect(url_for('main.login'))
-
-    user = User.query.get(session['user_id'])
-
-    if not user or not user.is_admin:
-        return "Access denied. Admin only.", 403
-
-    # Get whitelisted devices and IPs
-    devices = json.loads(user.whitelisted_devices or '[]')
-    ips = json.loads(user.whitelisted_ips or '[]')
-
-    # Get current device and IP
-    current_device = get_device_fingerprint()
-    current_ip = get_client_ip()
-
-    return render_template('admin_devices.html',
-                         devices=devices,
-                         ips=ips,
-                         current_device=current_device,
-                         current_ip=current_ip,
-                         user=user)
-
-@bp.route('/admin/register-device', methods=['POST'])
-def register_admin_device():
-    """Register a new trusted device for admin"""
-    if 'user_id' not in session:
-        return redirect(url_for('main.login'))
-
-    user = User.query.get(session['user_id'])
-
-    if not user or not user.is_admin:
-        return "Access denied. Admin only.", 403
-
-    # Require MFA to register new device
-    mfa_code = request.form.get('mfa_code')
-
-    if not user.mfa_secret:
-        flash('Please enable MFA first before registering devices', 'error')
-        return redirect(url_for('main.admin_devices'))
-
-    totp = pyotp.TOTP(user.mfa_secret)
-    if not totp.verify(mfa_code, valid_window=1):
-        flash('Invalid MFA code. Please try again.', 'error')
-        return redirect(url_for('main.admin_devices'))
-
-    # Get current device and IP
-    device_id = get_device_fingerprint()
-    current_ip = get_client_ip()
-
-    # Add device to whitelist
-    devices = json.loads(user.whitelisted_devices or '[]')
-    if device_id not in devices:
-        devices.append(device_id)
-        user.whitelisted_devices = json.dumps(devices)
-
-    # Add IP to whitelist
-    ips = json.loads(user.whitelisted_ips or '[]')
-    if current_ip not in ips:
-        ips.append(current_ip)
-        user.whitelisted_ips = json.dumps(ips)
-
-    db.session.commit()
-
-    flash('Device and IP registered successfully!', 'success')
-    return redirect(url_for('main.admin_devices'))
-
-@bp.route('/admin/remove-device', methods=['POST'])
-def remove_admin_device():
-    """Remove a device from whitelist"""
-    if 'user_id' not in session:
-        return redirect(url_for('main.login'))
-
-    user = User.query.get(session['user_id'])
-
-    if not user or not user.is_admin:
-        return "Access denied. Admin only.", 403
-
-    device_id = request.form.get('device_id')
-
-    if device_id:
-        devices = json.loads(user.whitelisted_devices or '[]')
-        if device_id in devices:
-            devices.remove(device_id)
-            user.whitelisted_devices = json.dumps(devices)
-            db.session.commit()
-            flash('Device removed successfully', 'success')
-
-    return redirect(url_for('main.admin_devices'))
-
-@bp.route('/admin/remove-ip', methods=['POST'])
-def remove_admin_ip():
-    """Remove an IP from whitelist"""
-    if 'user_id' not in session:
-        return redirect(url_for('main.login'))
-
-    user = User.query.get(session['user_id'])
-
-    if not user or not user.is_admin:
-        return "Access denied. Admin only.", 403
-
-    ip_address = request.form.get('ip_address')
-
-    if ip_address:
-        ips = json.loads(user.whitelisted_ips or '[]')
-        if ip_address in ips:
-            ips.remove(ip_address)
-            user.whitelisted_ips = json.dumps(ips)
-            db.session.commit()
-            flash('IP address removed successfully', 'success')
-
-    return redirect(url_for('main.admin_devices'))
-
-
-@bp.route('/admin/add-device', methods=['POST'])
-def add_admin_device():
-    """Manually add a device to whitelist"""
-    if 'user_id' not in session:
-        return redirect(url_for('main.login'))
-
-    user = User.query.get(session['user_id'])
-
-    if not user or not user.is_admin:
-        return "Access denied. Admin only.", 403
-
-    device_hash = request.form.get('device_hash', '').strip()
-
-    if device_hash:
-        devices = json.loads(user.whitelisted_devices or '[]')
-        if device_hash not in devices:
-            devices.append(device_hash)
-            user.whitelisted_devices = json.dumps(devices)
-            db.session.commit()
-            flash('Device added successfully', 'success')
-        else:
-            flash('Device already in whitelist', 'info')
-
-    return redirect(url_for('main.admin_devices'))
-
-
-@bp.route('/admin/add-ip', methods=['POST'])
-def add_admin_ip():
-    """Manually add an IP to whitelist"""
-    if 'user_id' not in session:
-        return redirect(url_for('main.login'))
-
-    user = User.query.get(session['user_id'])
-
-    if not user or not user.is_admin:
-        return "Access denied. Admin only.", 403
-
-    ip_address = request.form.get('ip_address', '').strip()
-
-    if ip_address:
-        ips = json.loads(user.whitelisted_ips or '[]')
-        if ip_address not in ips:
-            ips.append(ip_address)
-            user.whitelisted_ips = json.dumps(ips)
-            db.session.commit()
-            flash('IP address added successfully', 'success')
-        else:
-            flash('IP address already in whitelist', 'info')
-
-    return redirect(url_for('main.admin_devices'))
 
 
 # ==================== ADMIN DASHBOARD & MAC VERIFICATION ====================

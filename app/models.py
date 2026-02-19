@@ -40,9 +40,6 @@ class User(db.Model):
     # Admin security fields
     is_admin = db.Column(db.Boolean, default=False)
     is_super_admin = db.Column(db.Boolean, default=False)  # First admin, no MAC check needed
-    whitelisted_devices = db.Column(db.Text, nullable=True)  # JSON array of device fingerprints
-    whitelisted_ips = db.Column(db.Text, nullable=True)  # JSON array of IP addresses
-
     # MAC address verification for admins
     registered_mac_address = db.Column(db.String(17), nullable=True)  # XX:XX:XX:XX:XX:XX format
     mac_address_registered = db.Column(db.Boolean, default=False)  # Whether MAC is set up
