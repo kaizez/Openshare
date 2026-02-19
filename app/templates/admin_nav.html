@@ -12,59 +12,89 @@
         display: flex;
         flex-direction: column;
         z-index: 100;
+        overflow: visible;
+        transition: width 0.2s ease;
+    }
+
+    .sidebar-inner {
         overflow-y: auto;
-        transition: width 0.2s ease, transform 0.2s ease;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
     }
 
     .admin-sidebar.collapsed {
-        transform: translateX(-220px);
+        width: 56px;
     }
 
-    /* Hamburger toggle */
-    .sidebar-hamburger {
-        position: fixed;
-        top: 14px;
-        left: 14px;
+    /* Toggle button */
+    .sidebar-toggle {
+        position: absolute;
+        top: 12px;
+        right: -18px;
         width: 36px;
         height: 36px;
         background: #fff;
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border-radius: 50%;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
         cursor: pointer;
         z-index: 102;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-        transition: background 0.15s;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        transition: background 0.15s, transform 0.2s;
+        color: #4a5568;
     }
 
-    .sidebar-hamburger:hover { background: #f7fafc; }
+    .sidebar-toggle:hover { background: #f7fafc; }
 
-    .sidebar-hamburger .bar {
+    /* Arrow icon (expanded) */
+    .sidebar-toggle .arrow-icon { display: flex; }
+    .sidebar-toggle .hamburger-icon { display: none; }
+
+    /* Hamburger icon (collapsed) */
+    .admin-sidebar.collapsed .sidebar-toggle {
+        position: fixed;
+        top: 14px;
+        left: 10px;
+        right: auto;
+    }
+    .admin-sidebar.collapsed .sidebar-toggle .arrow-icon { display: none; }
+    .admin-sidebar.collapsed .sidebar-toggle .hamburger-icon { display: flex; }
+
+    .sidebar-toggle .hamburger-icon {
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .sidebar-toggle .hamburger-icon .bar {
         width: 18px;
         height: 2px;
         background: #4a5568;
         border-radius: 1px;
-        transition: all 0.2s;
-    }
-
-    .sidebar-hamburger.open .bar:nth-child(1) {
-        transform: rotate(45deg) translate(4px, 4px);
-    }
-    .sidebar-hamburger.open .bar:nth-child(2) { opacity: 0; }
-    .sidebar-hamburger.open .bar:nth-child(3) {
-        transform: rotate(-45deg) translate(4px, -4px);
     }
 
     /* Header row */
     .sidebar-header {
-        padding: 14px 16px 14px 54px;
+        padding: 14px 12px;
         border-bottom: 1px solid #edf2f7;
         display: flex;
         align-items: center;
+        min-height: 52px;
+    }
+
+    .sidebar-header .sidebar-brand {
+        overflow: hidden;
+        white-space: nowrap;
+        transition: opacity 0.15s, width 0.2s;
+    }
+
+    .admin-sidebar.collapsed .sidebar-brand {
+        opacity: 0;
+        width: 0;
     }
 
     .sidebar-header h2 {
@@ -75,17 +105,16 @@
         letter-spacing: -0.3px;
     }
 
-    .sidebar-header span {
+    .sidebar-header .brand-sub {
         font-size: 10px;
         color: #a0aec0;
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-left: 8px;
     }
 
     .sidebar-section {
-        padding: 0 10px;
+        padding: 0 8px;
         margin-bottom: 4px;
     }
 
@@ -96,6 +125,26 @@
         text-transform: uppercase;
         letter-spacing: 0.8px;
         padding: 10px 10px 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        transition: opacity 0.15s;
+    }
+
+    .admin-sidebar.collapsed .sidebar-label {
+        opacity: 0;
+        height: 0;
+        padding: 0;
+        margin: 0;
+    }
+
+    .admin-sidebar.collapsed .sidebar-link {
+        justify-content: center;
+        padding: 10px 0;
+        gap: 0;
+    }
+
+    .admin-sidebar.collapsed .sidebar-section {
+        padding: 0 4px;
     }
 
     .sidebar-link {
@@ -111,6 +160,7 @@
         transition: all 0.15s;
         margin-bottom: 1px;
         white-space: nowrap;
+        position: relative;
     }
 
     .sidebar-link:hover {
@@ -130,12 +180,42 @@
     .sidebar-link svg {
         flex-shrink: 0;
         opacity: 0.7;
+        min-width: 16px;
     }
 
     .sidebar-link.active svg { opacity: 1; }
 
+    /* Link text */
+    .sidebar-link .link-text {
+        overflow: hidden;
+        transition: opacity 0.15s, width 0.2s;
+    }
+
+    .admin-sidebar.collapsed .link-text {
+        opacity: 0;
+        width: 0;
+    }
+
+    /* Tooltip on collapsed hover */
+    .admin-sidebar.collapsed .sidebar-link:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 52px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #1a202c;
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        z-index: 200;
+        pointer-events: none;
+    }
+
     .sidebar-footer {
-        padding: 10px;
+        padding: 8px;
         border-top: 1px solid #edf2f7;
         margin-top: auto;
     }
@@ -152,8 +232,7 @@
     }
 
     .admin-container.sidebar-collapsed {
-        margin-left: 0 !important;
-        padding-top: 60px !important;
+        margin-left: 56px !important;
     }
 
     /* Overlay when open on small screens */
@@ -172,6 +251,11 @@
 
         .admin-sidebar.mobile-open {
             transform: translateX(0);
+            width: 220px;
+        }
+
+        .admin-sidebar.collapsed {
+            width: 220px;
         }
 
         .admin-container {
@@ -179,96 +263,114 @@
             padding-top: 60px !important;
         }
 
+        .admin-container.sidebar-collapsed {
+            margin-left: 0 !important;
+        }
+
         .sidebar-overlay.show { display: block; }
+
+        .sidebar-toggle {
+            top: 14px;
+            right: auto;
+            left: 14px;
+            position: fixed;
+        }
     }
 </style>
-
-<!-- Hamburger Button (always visible) -->
-<button class="sidebar-hamburger" id="sidebarHamburger" onclick="toggleSidebar()">
-    <span class="bar"></span>
-    <span class="bar"></span>
-    <span class="bar"></span>
-</button>
 
 <!-- Overlay for mobile -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
 <nav class="admin-sidebar" id="adminSidebar">
+    <!-- Toggle button - outside inner so not clipped -->
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+        <span class="arrow-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </span>
+        <span class="hamburger-icon">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </span>
+    </button>
+
+    <div class="sidebar-inner">
     <div class="sidebar-header">
-        <h2>OpenShare</h2>
-        <span>Admin</span>
+        <div class="sidebar-brand">
+            <h2>OpenShare</h2>
+            <div class="brand-sub">Admin</div>
+        </div>
     </div>
 
     <div class="sidebar-section">
         <div class="sidebar-label">Overview</div>
-        <a href="{{ url_for('main.index') }}" class="sidebar-link">
+        <a href="{{ url_for('main.index') }}" class="sidebar-link" data-tooltip="Home">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            Home
+            <span class="link-text">Home</span>
         </a>
-        <a href="{{ url_for('main.admin_dashboard') }}" class="sidebar-link {% if active_page == 'users' %}active{% endif %}">
+        <a href="{{ url_for('main.admin_dashboard') }}" class="sidebar-link {% if active_page == 'users' %}active{% endif %}" data-tooltip="Users">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            Users
+            <span class="link-text">Users</span>
         </a>
     </div>
 
     <div class="sidebar-section">
         <div class="sidebar-label">Management</div>
-        <a href="{{ url_for('main.admin_filetransfer') }}" class="sidebar-link {% if active_page == 'filetransfer' %}active{% endif %}">
+        <a href="{{ url_for('main.admin_filetransfer') }}" class="sidebar-link {% if active_page == 'filetransfer' %}active{% endif %}" data-tooltip="File Transfer">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            File Transfer
+            <span class="link-text">File Transfer</span>
         </a>
-        <a href="{{ url_for('main.admin_devices') }}" class="sidebar-link {% if active_page == 'devices' %}active{% endif %}">
+        <a href="{{ url_for('main.admin_devices') }}" class="sidebar-link {% if active_page == 'devices' %}active{% endif %}" data-tooltip="Devices">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-            Devices
+            <span class="link-text">Devices</span>
         </a>
     </div>
 
     <div class="sidebar-section">
         <div class="sidebar-label">Security</div>
-        <a href="{{ url_for('main.admin_risk_scoring') }}" class="sidebar-link {% if active_page == 'risk_scoring' %}active{% endif %}">
+        <a href="{{ url_for('main.admin_risk_scoring') }}" class="sidebar-link {% if active_page == 'risk_scoring' %}active{% endif %}" data-tooltip="Risk Scoring">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            Risk Scoring
+            <span class="link-text">Risk Scoring</span>
         </a>
-        <a href="{{ url_for('main.admin_keystroke_scoring') }}" class="sidebar-link {% if active_page == 'keystroke_scoring' %}active{% endif %}">
+        <a href="{{ url_for('main.admin_keystroke_scoring') }}" class="sidebar-link {% if active_page == 'keystroke_scoring' %}active{% endif %}" data-tooltip="Keystroke Scoring">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path></svg>
-            Keystroke Scoring
+            <span class="link-text">Keystroke Scoring</span>
         </a>
-        <a href="{{ url_for('siem.index') }}" class="sidebar-link {% if active_page == 'siem' %}active{% endif %}">
+        <a href="{{ url_for('siem.index') }}" class="sidebar-link {% if active_page == 'siem' %}active{% endif %}" data-tooltip="SIEM">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-            SIEM
+            <span class="link-text">SIEM</span>
         </a>
     </div>
 
     <div class="sidebar-section">
         <div class="sidebar-label">AI & Chat</div>
-        <a href="{{ url_for('main.admin_chat_history') }}" class="sidebar-link {% if active_page == 'chat_history' %}active{% endif %}">
+        <a href="{{ url_for('main.admin_chat_history') }}" class="sidebar-link {% if active_page == 'chat_history' %}active{% endif %}" data-tooltip="Chat History">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-            Chat History
+            <span class="link-text">Chat History</span>
         </a>
-        <a href="{{ url_for('main.admin_chat_scoring') }}" class="sidebar-link {% if active_page == 'chat_scoring' %}active{% endif %}">
+        <a href="{{ url_for('main.admin_chat_scoring') }}" class="sidebar-link {% if active_page == 'chat_scoring' %}active{% endif %}" data-tooltip="Chat Scoring">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-            Chat Scoring
+            <span class="link-text">Chat Scoring</span>
         </a>
     </div>
 
     <div class="sidebar-footer">
-        <a href="{{ url_for('main.logout') }}" class="sidebar-link logout-link">
+        <a href="{{ url_for('main.logout') }}" class="sidebar-link logout-link" data-tooltip="Log Out">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            Log Out
+            <span class="link-text">Log Out</span>
         </a>
     </div>
+    </div><!-- end sidebar-inner -->
 </nav>
 
 <script>
 (function() {
     var KEY = 'admin_sidebar_open';
     var sidebar = document.getElementById('adminSidebar');
-    var hamburger = document.getElementById('sidebarHamburger');
     var overlay = document.getElementById('sidebarOverlay');
     var container = document.querySelector('.admin-container');
     var isMobile = window.innerWidth <= 900;
 
-    // Default: open on desktop, closed on mobile
     var saved = localStorage.getItem(KEY);
     var isOpen = isMobile ? false : (saved !== '0');
 
@@ -276,13 +378,11 @@
         if (isOpen) {
             sidebar.classList.remove('collapsed');
             sidebar.classList.add('mobile-open');
-            hamburger.classList.add('open');
             if (container) container.classList.remove('sidebar-collapsed');
             if (isMobile) overlay.classList.add('show');
         } else {
             sidebar.classList.add('collapsed');
             sidebar.classList.remove('mobile-open');
-            hamburger.classList.remove('open');
             if (container) container.classList.add('sidebar-collapsed');
             overlay.classList.remove('show');
         }
