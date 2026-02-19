@@ -230,11 +230,6 @@ header {
 }
 
 
-/* Transparent wrapper on desktop — children act as direct flex items */
-.mobile-menu {
-    display: contents;
-}
-
 .header-nav {
     display: flex;
     gap: 8px;
@@ -1108,74 +1103,41 @@ footer p {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    header {
-        position: sticky;
-        top: 0;
-        z-index: 200;
-    }
-
     .header-container {
-        flex-wrap: nowrap;
+        flex-direction: row;
+        flex-wrap: wrap;
         gap: 8px;
         align-items: center;
-        position: relative;
     }
 
     .header-left {
-        flex: 1;
         display: flex;
         justify-content: flex-start;
     }
 
     .hamburger-btn {
         display: flex;
-        flex-shrink: 0;
+        margin-left: auto;
     }
 
-    /* Mobile menu: hidden dropdown overlay below the header */
-    .mobile-menu {
-        display: flex;
-        flex-direction: column;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: white;
-        border-top: 1px solid #edf2f7;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        z-index: 199;
-        padding: 0 12px;
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease, padding 0.3s ease;
-    }
-
-    .mobile-menu.open {
-        max-height: 600px;
-        padding: 12px;
-    }
-
-    .header-nav {
-        flex-direction: column;
-        width: 100%;
-        gap: 4px;
-        flex: none;
-        justify-content: flex-start;
-    }
-
+    /* Nav sections hidden by default on mobile; shown when toggled */
+    .header-nav,
     .header-right {
-        flex-direction: column;
+        display: none;
         width: 100%;
-        gap: 4px;
+        flex-direction: column;
+        gap: 8px;
         flex: none;
-        border-top: 1px solid #edf2f7;
-        padding-top: 8px;
-        margin-top: 4px;
+    }
+
+    .header-nav.nav-open,
+    .header-right.nav-open {
+        display: flex;
     }
 
     .nav-link {
         width: 100%;
-        justify-content: flex-start;
+        justify-content: center;
     }
 
     .upload-area {
