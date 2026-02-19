@@ -485,21 +485,6 @@ input:checked + .toggle-slider:before {
     </div>
 
     <!-- Admin Security Card -->
-    {% if user.is_admin %}
-    <div class="settings-card">
-        <div class="settings-section">
-            <div class="section-title">Admin Security</div>
-
-            <div class="setting-item">
-                <div class="setting-info">
-                    <p class="setting-label">Device Management</p>
-                    <p class="setting-description">Manage whitelisted devices and IP addresses for admin access</p>
-                </div>
-                <a href="{{ url_for('main.admin_devices') }}" class="change-password-btn">Manage</a>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Account Information Card -->
     <div class="settings-card">
