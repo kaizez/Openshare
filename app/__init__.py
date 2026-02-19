@@ -50,7 +50,7 @@ def create_app():
     app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True') == 'True'
     app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
-    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'MoveIT <noreply@moveit.com>')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'OpenShare <noreply@openshare.com>')
 
     # reCAPTCHA Configuration
     app.config['RECAPTCHA_SITE_KEY'] = os.environ.get('RECAPTCHA_SITE_KEY', '')
@@ -197,7 +197,7 @@ def _ensure_admin_exists():
     # Get admin credentials from environment variables (with defaults)
     admin_username = os.environ.get('DEFAULT_ADMIN_USERNAME', 'admin')
     admin_password = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'admin')
-    admin_email = os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@moveit.local')
+    admin_email = os.environ.get('DEFAULT_ADMIN_EMAIL', 'admin@openshare.local')
 
     # Check if the username already exists (edge case: user exists but not super admin)
     existing_user = User.query.filter_by(username=admin_username).first()

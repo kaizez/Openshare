@@ -1,6 +1,6 @@
 {% extends "filetransfer/filetransfer_base.html" %}
 
-{% block title %}MoveIT Assistant{% endblock %}
+{% block title %}OpenShare Assistant{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -276,8 +276,8 @@
         <div class="message-wrapper ai-msg-row">
             <div class="avatar ai-avatar">🤖</div>
             <div class="message-content">
-               <strong>MoveBot</strong><br>
-                Hello! I am MoveBot. I can help you with MoveIT account issues, security policies, or file transfers.
+               <strong>OpenShareBot</strong><br>
+                Hello! I am OpenShareBot. I can help you with OpenShare account issues, security policies, or file transfers.
             </div>
         </div>
     </div>
@@ -307,7 +307,7 @@
 
         <!-- Input -->
         <div class="input-wrapper" id="inputWrapper">
-            <input type="text" id="user-input" placeholder="Message MoveBot Assistant..." maxlength="150" oninput="handleInput()" onkeypress="if(event.key === 'Enter') sendMessage()">
+            <input type="text" id="user-input" placeholder="Message OpenShareBot Assistant..." maxlength="150" oninput="handleInput()" onkeypress="if(event.key === 'Enter') sendMessage()">
             <button class="send-btn" id="send-btn" onclick="sendMessage()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
@@ -498,7 +498,7 @@
         }
 
         var chatBox = document.getElementById('chat-box');
-        var textSpan = appendStreamingMessage('MoveBot');
+        var textSpan = appendStreamingMessage('OpenShareBot');
 
         try {
             var response = await fetch('/chat/stream', {

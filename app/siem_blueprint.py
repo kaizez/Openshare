@@ -1,7 +1,7 @@
 """
 SIEM Dashboard Blueprint.
 
-Integrates the standalone SIEM dashboard into the main MoveIT app.
+Integrates the standalone SIEM dashboard into the main OpenShare app.
 - Auth is handled by the main app session (session['user_id'] + user.is_admin).
 - SIEM engine token is stored as session['siem_token'] within the same session.
 - All routes live under /siem.

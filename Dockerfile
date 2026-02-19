@@ -35,7 +35,7 @@ RUN mkdir -p /app/certs && \
     -keyout /app/certs/key.pem \
     -out /app/certs/cert.pem \
     -days 825 \
-    -subj "/C=SG/ST=Singapore/L=Singapore/O=MoveIT/CN=${HOST_IP}" \
+    -subj "/C=SG/ST=Singapore/L=Singapore/O=OpenShare/CN=${HOST_IP}" \
     -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:${HOST_IP}"
 
 # Expose port

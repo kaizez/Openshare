@@ -30,7 +30,7 @@ class SIEMLogger:
     """
 
     def __init__(self, siem_url: str, api_key: Optional[str] = None,
-                 log_source: str = "MoveIT_app", timeout: int = 5):
+                 log_source: str = "OpenShare_app", timeout: int = 5):
         """
         Initialize SIEM Logger.
 

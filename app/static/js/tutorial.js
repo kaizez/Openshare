@@ -168,8 +168,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (currentPath.includes('/login')) {
         tutorialSteps = [
             {
-                title: 'Welcome to MoveIT Login',
-                description: 'This is where you can access your MoveIT account. Let me show you how to get started!',
+                title: 'Welcome to OpenShare Login',
+                description: 'This is where you can access your OpenShare account. Let me show you how to get started!',
                 highlight: '💡 Tip: You can close this guide anytime by clicking "Skip"'
             },
             {
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 highlight: '⚡ Fast and secure authentication'
             },
             {
-                title: 'New to MoveIT?',
+                title: 'New to OpenShare?',
                 description: 'Don\'t have an account yet? Click "Register here" at the bottom to create a new account.',
                 highlight: '🎉 Registration is quick and easy!'
             }
@@ -196,13 +196,13 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (currentPath.includes('/register')) {
         tutorialSteps = [
             {
-                title: 'Create Your MoveIT Account',
+                title: 'Create Your OpenShare Account',
                 description: 'Welcome! Let\'s set up your new account. Follow these steps to get started.',
                 highlight: '🚀 You\'re just a few steps away!'
             },
             {
                 title: 'Choose a Username',
-                description: 'Pick a unique username that will identify you on MoveIT. This will be visible to other users.',
+                description: 'Pick a unique username that will identify you on OpenShare. This will be visible to other users.',
                 highlight: '💡 Choose something memorable'
             },
             {

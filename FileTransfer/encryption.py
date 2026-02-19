@@ -1,5 +1,5 @@
 """
-Encryption utilities for MoveIT file transfer system.
+Encryption utilities for OpenShare file transfer system.
 Provides encryption for files and sensitive data like OTP codes.
 Uses Fernet (AES-128-CBC with HMAC) for symmetric encryption.
 """

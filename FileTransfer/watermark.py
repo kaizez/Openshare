@@ -1,5 +1,5 @@
 """
-Forensic watermark system for MoveIT file transfer.
+Forensic watermark system for OpenShare file transfer.
 
 Each download produces a UNIQUE copy of the file with the watermark bytes
 appended to the end.  This changes the file's SHA-256 hash, so uploading a
@@ -32,8 +32,8 @@ WATERMARK_VERSION  = '1.0'
 
 # Sentinel bytes that bracket the appended watermark block.
 # Chosen to be highly unlikely to appear in ordinary file content.
-_WM_HEADER = b'\x00\x00MoveIT_WMv1\x00'   # 14 bytes
-_WM_FOOTER = b'\x00MoveIT_WMEv1\x00\x00'  # 15 bytes
+_WM_HEADER = b'\x00\x00OpenShare_WMv1\x00'   # 14 bytes
+_WM_FOOTER = b'\x00OpenShare_WMEv1\x00\x00'  # 15 bytes
 
 
 # ── Key management ────────────────────────────────────────────────────────────

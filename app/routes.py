@@ -88,7 +88,7 @@ def validate_password_strength(password):
 # Username blacklist - inappropriate or reserved words
 USERNAME_BLACKLIST = [
     'admin', 'administrator', 'root', 'superuser', 'system', 'moderator', 'mod',
-    'support', 'helpdesk', 'staff', 'official', 'MoveIT', 'operator',
+    'support', 'helpdesk', 'staff', 'official', 'OpenShare', 'operator',
     'fuck', 'shit', 'ass', 'bitch', 'damn', 'cunt', 'dick', 'pussy', 'nigger', 'nigga',
     'bastard', 'whore', 'slut', 'fag', 'faggot', 'retard', 'idiot', 'stupid',
     'null', 'undefined', 'none', 'test', 'user', 'guest', 'anonymous', 'default'
@@ -188,7 +188,7 @@ def send_admin_security_alert(email, username, alert_data):
     """Send security alert email for admin login attempts"""
     try:
         msg = Message(
-            subject='Security Alert: Admin Login Attempt from Unauthorized Device - MoveIT',
+            subject='Security Alert: Admin Login Attempt from Unauthorized Device - OpenShare',
             recipients=[email]
         )
 
@@ -221,12 +221,12 @@ def send_admin_security_alert(email, username, alert_data):
                         <ul>
                             <li>Your credentials may be compromised</li>
                             <li>Change your password immediately</li>
-                            <li>Contact support at <a href="mailto:support@moveit.com">support@moveit.com</a></li>
+                            <li>Contact support at <a href="mailto:support@openshare.com">support@openshare.com</a></li>
                         </ul>
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MoveIT. Please do not reply to this email.
+                        This is an automated security notification from OpenShare. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -253,7 +253,7 @@ def send_admin_security_alert(email, username, alert_data):
 
         If this was NOT you, your credentials may be compromised. Change your password immediately and contact support.
 
-        This is an automated security notification from MoveIT.
+        This is an automated security notification from OpenShare.
         '''
 
         mail.send(msg)
@@ -266,7 +266,7 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
     """Send account creation notification email"""
     try:
         msg = Message(
-            subject='New Account Created - MoveIT',
+            subject='New Account Created - OpenShare',
             recipients=[email]
         )
 
@@ -274,7 +274,7 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #48bb78;">Welcome to MoveIT!</h2>
+                    <h2 style="color: #48bb78;">Welcome to OpenShare!</h2>
                     <p>Hello <strong>{username}</strong>,</p>
                     <p>A new account has been successfully created with this email address.</p>
 
@@ -290,12 +290,12 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
 
                     <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0;">
                         <h3 style="margin-top: 0; color: #c53030;">Was this you?</h3>
-                        <p>If you did not create this account, please contact us immediately at <a href="mailto:support@moveit.com">support@moveit.com</a></p>
+                        <p>If you did not create this account, please contact us immediately at <a href="mailto:support@openshare.com">support@openshare.com</a></p>
                     </div>
 
-                    <p>Thank you for choosing MoveIT!</p>
+                    <p>Thank you for choosing OpenShare!</p>
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MoveIT. Please do not reply to this email.
+                        This is an automated security notification from OpenShare. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -303,7 +303,7 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
         '''
 
         msg.body = f'''
-        Welcome to MoveIT!
+        Welcome to OpenShare!
 
         Hello {username},
 
@@ -318,11 +318,11 @@ def send_account_creation_email(email, username, ip_address, location, signup_me
         - Date & Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
 
         Was this you?
-        If you did not create this account, please contact us immediately at support@moveit.com
+        If you did not create this account, please contact us immediately at support@openshare.com
 
-        Thank you for choosing MoveIT!
+        Thank you for choosing OpenShare!
 
-        This is an automated security notification from MoveIT. Please do not reply to this email.
+        This is an automated security notification from OpenShare. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -335,7 +335,7 @@ def send_mfa_disabled_email(email, username, ip_address, location):
     """Send security notification when MFA is disabled"""
     try:
         msg = Message(
-            subject='Security Alert: Two-Factor Authentication Disabled - MoveIT',
+            subject='Security Alert: Two-Factor Authentication Disabled - OpenShare',
             recipients=[email]
         )
 
@@ -345,7 +345,7 @@ def send_mfa_disabled_email(email, username, ip_address, location):
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
                     <h2 style="color: #c53030;">Security Alert: MFA Disabled</h2>
                     <p>Hello <strong>{username}</strong>,</p>
-                    <p>Two-Factor Authentication (MFA) has been <strong>disabled</strong> on your MoveIT account.</p>
+                    <p>Two-Factor Authentication (MFA) has been <strong>disabled</strong> on your OpenShare account.</p>
 
                     <div style="background-color: #fff5f5; border-left: 4px solid #fc8181; padding: 15px; margin: 20px 0;">
                         <h3 style="margin-top: 0; color: #c53030;">Action Details:</h3>
@@ -372,12 +372,12 @@ def send_mfa_disabled_email(email, username, ip_address, location):
                         <ul>
                             <li>Change your password immediately</li>
                             <li>Re-enable MFA</li>
-                            <li>Contact support at <a href="mailto:support@moveit.com">support@moveit.com</a></li>
+                            <li>Contact support at <a href="mailto:support@openshare.com">support@openshare.com</a></li>
                         </ul>
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MoveIT. Please do not reply to this email.
+                        This is an automated security notification from OpenShare. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -389,7 +389,7 @@ def send_mfa_disabled_email(email, username, ip_address, location):
 
         Hello {username},
 
-        Two-Factor Authentication (MFA) has been disabled on your MoveIT account.
+        Two-Factor Authentication (MFA) has been disabled on your OpenShare account.
 
         Action Details:
         - Action: MFA Disabled
@@ -409,9 +409,9 @@ def send_mfa_disabled_email(email, username, ip_address, location):
         If you did not disable MFA, your account may be compromised. Please:
         - Change your password immediately
         - Re-enable MFA
-        - Contact support at support@moveit.com
+        - Contact support at support@openshare.com
 
-        This is an automated security notification from MoveIT. Please do not reply to this email.
+        This is an automated security notification from OpenShare. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -424,7 +424,7 @@ def send_account_locked_email(email, username, ip_address, location, unlock_time
     """Send security notification when account is locked due to failed login attempts"""
     try:
         msg = Message(
-            subject='Security Alert: Account Locked - MoveIT',
+            subject='Security Alert: Account Locked - OpenShare',
             recipients=[email]
         )
 
@@ -457,12 +457,12 @@ def send_account_locked_email(email, username, ip_address, location, unlock_time
                         <ul>
                             <li>Change your password immediately after the account unlocks</li>
                             <li>Enable Two-Factor Authentication if not already enabled</li>
-                            <li>Contact support at <a href="mailto:support@moveit.com">support@moveit.com</a></li>
+                            <li>Contact support at <a href="mailto:support@openshare.com">support@openshare.com</a></li>
                         </ul>
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MoveIT. Please do not reply to this email.
+                        This is an automated security notification from OpenShare. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -491,9 +491,9 @@ def send_account_locked_email(email, username, ip_address, location, unlock_time
         If you did not attempt to login, your account may be under attack. Please:
         - Change your password immediately after the account unlocks
         - Enable Two-Factor Authentication if not already enabled
-        - Contact support at support@moveit.com
+        - Contact support at support@openshare.com
 
-        This is an automated security notification from MoveIT. Please do not reply to this email.
+        This is an automated security notification from OpenShare. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -507,7 +507,7 @@ def send_impossible_travel_email(email, username, last_location, current_locatio
     """Send security alert when impossible travel is detected and account is locked"""
     try:
         msg = Message(
-            subject='URGENT Security Alert: Suspicious Login Detected - MoveIT',
+            subject='URGENT Security Alert: Suspicious Login Detected - OpenShare',
             recipients=[email]
         )
 
@@ -539,7 +539,7 @@ def send_impossible_travel_email(email, username, last_location, current_locatio
                         <p>For your security, we have immediately locked your account.</p>
                         <p>To unlock your account, please contact our support team:</p>
                         <ul>
-                            <li>Email: <a href="mailto:support@moveit.com">support@moveit.com</a></li>
+                            <li>Email: <a href="mailto:support@openshare.com">support@openshare.com</a></li>
                         </ul>
                     </div>
 
@@ -554,7 +554,7 @@ def send_impossible_travel_email(email, username, last_location, current_locatio
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MoveIT. Please do not reply to this email.
+                        This is an automated security notification from OpenShare. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -582,7 +582,7 @@ def send_impossible_travel_email(email, username, last_location, current_locatio
         Your Account Has Been Locked
         For your security, we have immediately locked your account.
         To unlock your account, please contact our support team:
-        - Email: support@moveit.com
+        - Email: support@openshare.com
 
         Recommended Actions:
         - Contact support immediately to verify your identity
@@ -590,7 +590,7 @@ def send_impossible_travel_email(email, username, last_location, current_locatio
         - Review your account activity for any unauthorized access
         - Enable Two-Factor Authentication if not already enabled
 
-        This is an automated security notification from MoveIT. Please do not reply to this email.
+        This is an automated security notification from OpenShare. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -604,7 +604,7 @@ def send_password_reset_email(email, username, otp_code):
     """Send password reset email with OTP code only"""
     try:
         msg = Message(
-            subject='Password Reset Request - MoveIT',
+            subject='Password Reset Request - OpenShare',
             recipients=[email]
         )
 
@@ -629,7 +629,7 @@ def send_password_reset_email(email, username, otp_code):
                     </div>
 
                     <p style="color: #718096; font-size: 12px; margin-top: 30px;">
-                        This is an automated security notification from MoveIT. Please do not reply to this email.
+                        This is an automated security notification from OpenShare. Please do not reply to this email.
                     </p>
                 </div>
             </body>
@@ -637,7 +637,7 @@ def send_password_reset_email(email, username, otp_code):
         '''
 
         msg.body = f'''
-        Password Reset Request - MoveIT
+        Password Reset Request - OpenShare
 
         Hello {username},
 
@@ -651,7 +651,7 @@ def send_password_reset_email(email, username, otp_code):
         If you did not request a password reset, please ignore this email. Your password will remain unchanged.
         For security reasons, this verification code will expire in 15 minutes.
 
-        This is an automated security notification from MoveIT. Please do not reply to this email.
+        This is an automated security notification from OpenShare. Please do not reply to this email.
         '''
 
         mail.send(msg)
@@ -1009,12 +1009,12 @@ def register():
                     # Send OTP email
                     try:
                         msg = Message(
-                            'Verify Your Email - MoveIT',
+                            'Verify Your Email - OpenShare',
                             recipients=[email]
                         )
                         msg.html = f'''
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                            <h2 style="color: #007aff;">Welcome to MoveIT!</h2>
+                            <h2 style="color: #007aff;">Welcome to OpenShare!</h2>
                             <p>Hi {username},</p>
                             <p>Thank you for registering. Please verify your email address using the code below:</p>
                             <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
@@ -1133,7 +1133,7 @@ def resend_verification():
     # Send new OTP email
     try:
         msg = Message(
-            'Verify Your Email - MoveIT',
+            'Verify Your Email - OpenShare',
             recipients=[pending['email']]
         )
         msg.html = f'''
@@ -1738,14 +1738,14 @@ def delete_account_request():
     # Send OTP email
     try:
         msg = Message(
-            'Account Deletion Verification - MoveIT',
+            'Account Deletion Verification - OpenShare',
             recipients=[user.email]
         )
         msg.html = f'''
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #c53030;">Account Deletion Request</h2>
             <p>Hi {user.username},</p>
-            <p>You have requested to delete your MoveIT account. Use the code below to confirm:</p>
+            <p>You have requested to delete your OpenShare account. Use the code below to confirm:</p>
             <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
                 <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #c53030;">{otp}</span>
             </div>
@@ -1876,7 +1876,7 @@ def change_password():
         # Send email notification
         try:
             msg = Message(
-                'Password Changed - MoveIT Security Alert',
+                'Password Changed - OpenShare Security Alert',
                 recipients=[user.email]
             )
             msg.html = f'''
@@ -1886,7 +1886,7 @@ def change_password():
                 <p>Your password was changed on <strong>{datetime.utcnow().strftime('%B %d, %Y at %I:%M %p')} UTC</strong>.</p>
                 <p>If you did not make this change, please contact support immediately and secure your account.</p>
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-                <p style="color: #718096; font-size: 12px;">This is an automated security notification from MoveIT.</p>
+                <p style="color: #718096; font-size: 12px;">This is an automated security notification from OpenShare.</p>
             </div>
             '''
             mail.send(msg)
@@ -1938,7 +1938,7 @@ def mfa_setup_required():
     totp = pyotp.TOTP(user.mfa_secret)
     provisioning_uri = totp.provisioning_uri(
         name=user.email,
-        issuer_name='MoveIT Authentication'
+        issuer_name='OpenShare Authentication'
     )
 
     # Create QR code image
@@ -2028,7 +2028,7 @@ def admin_mfa_setup():
     totp = pyotp.TOTP(user.mfa_secret)
     provisioning_uri = totp.provisioning_uri(
         name=user.email,
-        issuer_name='MoveIT Admin'
+        issuer_name='OpenShare Admin'
     )
 
     # Create QR code image
@@ -2101,7 +2101,7 @@ def mfa_setup():
     totp = pyotp.TOTP(mfa_secret)
     provisioning_uri = totp.provisioning_uri(
         name=user.email,
-        issuer_name='MoveIT Authentication'
+        issuer_name='OpenShare Authentication'
     )
 
     # Create QR code image
@@ -2389,14 +2389,14 @@ def send_secondary_verification():
     # Send OTP email
     try:
         msg = Message(
-            'Verify Secondary Email - MoveIT',
+            'Verify Secondary Email - OpenShare',
             recipients=[secondary_email]
         )
         msg.html = f'''
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #007aff;">Verify Your Secondary Email</h2>
             <p>Hi,</p>
-            <p>You are adding this email as a secondary verification email for the MoveIT account: <strong>{user.username}</strong></p>
+            <p>You are adding this email as a secondary verification email for the OpenShare account: <strong>{user.username}</strong></p>
             <p>Use the code below to verify:</p>
             <div style="background: #f7fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
                 <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #007aff;">{otp}</span>
@@ -2465,7 +2465,7 @@ def verify_secondary_email():
 
         # Notify primary email
         msg = Message(
-            'Secondary Email Verified - MoveIT',
+            'Secondary Email Verified - OpenShare',
             recipients=[user.email]
         )
         msg.html = f'''
@@ -2488,14 +2488,14 @@ def verify_secondary_email():
 
         # Notify secondary email
         msg2 = Message(
-            'You are now a verification contact - MoveIT',
+            'You are now a verification contact - OpenShare',
             recipients=[secondary_email]
         )
         msg2.html = f'''
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #34c759;">Email Verified Successfully</h2>
             <p>Hi,</p>
-            <p>Your email has been verified as a secondary contact for the MoveIT account: <strong>{user.username}</strong></p>
+            <p>Your email has been verified as a secondary contact for the OpenShare account: <strong>{user.username}</strong></p>
             <p>You will receive security alerts when sensitive actions are performed on this account.</p>
         </div>
         '''
@@ -2531,7 +2531,7 @@ def disable_secondary_verification():
         location = get_location_from_ip(ip_address)
 
         msg = Message(
-            'Secondary Verification Disabled - MoveIT',
+            'Secondary Verification Disabled - OpenShare',
             recipients=[user.email]
         )
         msg.html = f'''
@@ -2547,14 +2547,14 @@ def disable_secondary_verification():
 
         if old_secondary_email:
             msg2 = Message(
-                'Removed as verification contact - MoveIT',
+                'Removed as verification contact - OpenShare',
                 recipients=[old_secondary_email]
             )
             msg2.html = f'''
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #ff9500;">Verification Contact Removed</h2>
                 <p>Hi,</p>
-                <p>You have been removed as a secondary verification contact for the MoveIT account: <strong>{user.username}</strong></p>
+                <p>You have been removed as a secondary verification contact for the OpenShare account: <strong>{user.username}</strong></p>
                 <p>You will no longer receive security alerts for this account.</p>
             </div>
             '''
@@ -3872,7 +3872,7 @@ def admin_get_file_logs(file_id):
 
 @bp.route('/chatbot')
 def chatbot_page():
-    """Render the MoveIT Assistant interface"""
+    """Render the OpenShare Assistant interface"""
     if 'user_id' not in session:
         flash('Please login to access the assistant', 'error')
         return redirect(url_for('main.login'))
@@ -3883,7 +3883,7 @@ def chatbot_page():
 @bp.route('/chat', methods=['POST'])
 @limiter.limit("5 per minute")
 def chat():
-    """Handle AI communication and secure logging for MoveIT"""
+    """Handle AI communication and secure logging for OpenShare"""
     user_data = request.get_json()
     raw_message = user_data.get('message', '')
     sanitized_message = html.escape(raw_message.strip())
@@ -3966,7 +3966,7 @@ def chat():
     ollama_host = "https://ai.nypdsf.me"
 
     system_context = (
-    "You are MoveBot, the specialized security support assistant for the MoveIT platform. "
+    "You are OpenShareBot, the specialized security support assistant for the OpenShare platform. "
 
     "TECHNICAL ARCHITECTURE KNOWLEDGE: "
     "1. Physical file storage is located in the '/app/uploads' directory on the server filesystem. "
@@ -3975,7 +3975,7 @@ def chat():
     "4. The 'storagedb' is an isolated database used for secure, long-term backups. "
     "5. A Python-based Sync Service bridges data between workingdb and storagedb every 60 minutes. "
     "6. All files are encrypted using AES-256 before being moved to long-term storage. "
-    "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect MoveIT accounts from unauthorized access. "
+    "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect OpenShare accounts from unauthorized access. "
 
     "SENSITIVE INFORMATION HANDLING: "
     "1. If a user shares sensitive information like passwords, NRIC, credit card numbers, phone numbers, API keys, or file paths, gently remind them: 'Please avoid sharing sensitive personal information in chat. Your data security is our priority.' "
@@ -3996,9 +3996,9 @@ def chat():
     "4. Do not say 'I am an AI model' or use overly formal introductory phrases."
 
     "IDENTITY RULES: "
-    "1. Always identify as MoveBot. "
+    "1. Always identify as OpenShareBot. "
     "2. NEVER mention being an AI, a language model, or Qwen. "
-    "4. If asked who you are, say: 'I am MoveBot, your MoveIT security assistant.' "
+    "4. If asked who you are, say: 'I am OpenShareBot, your OpenShare security assistant.' "
 )
 
     formatted_prompt = f"System: {system_context}\nUser: {prompt_message}\nAssistant:"
@@ -4178,7 +4178,7 @@ def chat_stream():
 
     ollama_host = "https://ai.nypdsf.me"
     system_context = (
-        "You are MoveBot, the specialized security support assistant for the MoveIT platform. "
+        "You are OpenShareBot, the specialized security support assistant for the OpenShare platform. "
         "TECHNICAL ARCHITECTURE KNOWLEDGE: "
         "1. Physical file storage is located in the '/app/uploads' directory on the server filesystem. "
         "2. User credentials, sessions, and security settings are stored in the 'auth_db' MySQL database. "
@@ -4186,7 +4186,7 @@ def chat_stream():
         "4. The 'storagedb' is an isolated database used for secure, long-term backups. "
         "5. A Python-based Sync Service bridges data between workingdb and storagedb every 60 minutes. "
         "6. All files are encrypted using AES-256 before being moved to long-term storage. "
-        "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect MoveIT accounts from unauthorized access. "
+        "If a user asks how to bypass or disable security features like MFA, do not just refuse. Instead, concisely explain that MFA is a mandatory security requirement designed to protect OpenShare accounts from unauthorized access. "
         "SENSITIVE INFORMATION HANDLING: "
         "1. If a user shares sensitive information like passwords, NRIC, credit card numbers, phone numbers, API keys, or file paths, gently remind them: 'Please avoid sharing sensitive personal information in chat. Your data security is our priority.' "
         "2. Do NOT refuse the conversation or mention MFA when a user shares sensitive data. Simply advise them not to share it and offer to help with their actual question. "
@@ -4203,9 +4203,9 @@ def chat_stream():
         "3. Avoid long paragraphs and fluff; get straight to the point. "
         "4. Do not say 'I am an AI model' or use overly formal introductory phrases."
         "IDENTITY RULES: "
-        "1. Always identify as MoveBot. "
+        "1. Always identify as OpenShareBot. "
         "2. NEVER mention being an AI, a language model, or Qwen. "
-        "4. If asked who you are, say: 'I am MoveBot, your MoveIT security assistant.' "
+        "4. If asked who you are, say: 'I am OpenShareBot, your OpenShare security assistant.' "
     )
 
     formatted_prompt = f"System: {system_context}\nUser: {prompt_message}\nAssistant:"

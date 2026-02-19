@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoveIT Data Retention Policy Module
+OpenShare Data Retention Policy Module
 
 This module manages data retention policies for files and logs.
 Retention is applied per-file based on upload_time, not as a global DB reset.
@@ -76,7 +76,7 @@ DEFAULT_RETENTION_POLICY = {
 
 class RetentionPolicy:
     """
-    Manages data retention policies for the MoveIT system.
+    Manages data retention policies for the OpenShare system.
 
     Policies are stored in a JSON file and can be modified at runtime.
     Changes take effect immediately on the next cleanup cycle.

@@ -1,7 +1,7 @@
 version: "3.9"
 
 # ============================================
-# MoveIT - Dual Database with Isolated Storage
+# OpenShare - Dual Database with Isolated Storage
 # ============================================
 # App        → Working DB only
 # Working DB → Storage DB (via sync service)
@@ -14,7 +14,7 @@ services:
   # ============================================
   working-db:
     image: mysql:8.0
-    container_name: moveit-working-db
+    container_name: openshare-working-db
     restart: always
     ports:
       - "3306:3306"
@@ -40,7 +40,7 @@ services:
   # Only on sync_network - App CANNOT reach this
   storage-db:
     image: mysql:8.0
-    container_name: moveit-storage-db
+    container_name: openshare-storage-db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${STORAGE_DB_ROOT_PASSWORD:-StorageRoot2024!}
@@ -65,7 +65,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.sync
-    container_name: moveit-sync
+    container_name: openshare-sync
     restart: always
     environment:
       WORKING_DB_HOST: working-db
@@ -100,7 +100,7 @@ services:
   # ONLY on app_network - cannot reach Storage DB
   app:
     build: .
-    container_name: moveit-app
+    container_name: openshare-app
     restart: always
     ports:
       - "5000:5000"
@@ -140,7 +140,7 @@ services:
   # Processes pending virus scans in background
   vt-worker:
     build: .
-    container_name: moveit-vt-worker
+    container_name: openshare-vt-worker
     restart: always
     command: python3 vt_worker.py
     environment:

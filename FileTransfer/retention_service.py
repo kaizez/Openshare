@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoveIT Data Retention Service
+OpenShare Data Retention Service
 
 This service runs periodically to clean up files and logs based on the
 configured retention policy. It deletes files that are older than their
@@ -640,7 +640,7 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
 
     print("=" * 50)
-    print("MoveIT Data Retention Service")
+    print("OpenShare Data Retention Service")
     print("=" * 50)
 
     service = RetentionService()

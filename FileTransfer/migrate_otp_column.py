@@ -95,7 +95,7 @@ def migrate_database(config, db_name):
 
 def main():
     print("=" * 60)
-    print("MoveIT Database Migration")
+    print("OpenShare Database Migration")
     print("Fixing current_otp_code column size for encrypted OTPs")
     print("=" * 60)
     

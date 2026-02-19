@@ -187,7 +187,7 @@ if __name__ == '__main__':
         subprocess.run([
             'openssl', 'req', '-x509', '-newkey', 'rsa:4096', '-nodes',
             '-keyout', key_file, '-out', cert_file,
-            '-days', '365', '-subj', '/C=SG/ST=Singapore/L=Singapore/O=MoveIT/CN=localhost'
+            '-days', '365', '-subj', '/C=SG/ST=Singapore/L=Singapore/O=OpenShare/CN=localhost'
         ], check=True)
 
     app.run(host='0.0.0.0', port=port, ssl_context=(cert_file, key_file))

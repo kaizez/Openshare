@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoveIT Data Retention API
+OpenShare Data Retention API
 
 Flask Blueprint providing API endpoints to manage retention policies.
 These endpoints are intended for admin page integration.

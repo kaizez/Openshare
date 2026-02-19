@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoveIT FileTransfer Security Module
+OpenShare FileTransfer Security Module
 
 Comprehensive security implementation for the file transfer system including:
 - Rate limiting per endpoint

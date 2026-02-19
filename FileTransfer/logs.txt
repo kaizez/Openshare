@@ -56,7 +56,7 @@ app.py
 
 I'll verify the app logs to ensure it reloaded successfully.
 
-\root\MoveIT > docker logs moveit-app --tail 20
+\root\OpenShare > docker logs openshare-app --tail 20
 
 192.168.7.5 - - [31/Jan/2026 15:13:03] "POST /upload HTTP/1.1" 400 -
 [Upload] Starting VT hybrid scan for MyCV.pdf
@@ -194,7 +194,7 @@ Everything seems correct. I will create a final response.
 
 I'll do one last check commands to make sure everything is running fine. The logs showed reload. I'll check docker ps just in case.
 
-\root\MoveIT > docker compose ps
+\root\OpenShare > docker compose ps
 
 Ran terminal command
 Relocate

@@ -2,9 +2,9 @@
 
 ## What Is It
 
-The SIEM dashboard is a web page you open in your browser. It shows you every security event happening inside MoveIT — logins, file transfers, failed attempts, alerts, blocked IPs. It is not the security brain. It is a window into the security brain.
+The SIEM dashboard is a web page you open in your browser. It shows you every security event happening inside OpenShare — logins, file transfers, failed attempts, alerts, blocked IPs. It is not the security brain. It is a window into the security brain.
 
-The security brain is the **SIEM engine**. It lives in a completely separate repo (`MoveIT-SIEM`), in its own Docker container, with its own database. The dashboard never talks to that database directly. It only asks the engine for data, and the engine answers.
+The security brain is the **SIEM engine**. It lives in a completely separate repo (`OpenShare-SIEM`), in its own Docker container, with its own database. The dashboard never talks to that database directly. It only asks the engine for data, and the engine answers.
 
 ---
 
@@ -23,20 +23,20 @@ Your Browser
          │       │  all data and actions go here
          ▼       ▼
 ┌─────────────────────────┐
-│   SIEM Engine           │   ← MoveIT-SIEM repo (separate docker)
+│   SIEM Engine           │   ← OpenShare-SIEM repo (separate docker)
 │   (the security brain)  │      stores logs, runs detection, manages alerts
 └────────────┬────────────┘
              │
              ▼
 ┌─────────────────────────┐
-│   SIEM Database         │   ← MySQL inside MoveIT-SIEM
+│   SIEM Database         │   ← MySQL inside OpenShare-SIEM
 │   (the memory)          │      17 tables: logs, alerts, IPs, files, etc.
 └─────────────────────────┘
 
 Meanwhile, in the background:
 
 ┌─────────────────────────┐
-│   MoveIT App            │   ← the main app (auth + file transfer)
+│   OpenShare App            │   ← the main app (auth + file transfer)
 │                         │      sends security events TO the engine
 └─────────────────────────┘
 ```
@@ -45,7 +45,7 @@ Meanwhile, in the background:
 
 ## How Login Works
 
-The dashboard has its own login page. It does not use MoveIT's login. It authenticates directly with the SIEM engine.
+The dashboard has its own login page. It does not use OpenShare's login. It authenticates directly with the SIEM engine.
 
 ```
 1. You open localhost:5002
@@ -59,7 +59,7 @@ The dashboard has its own login page. It does not use MoveIT's login. It authent
 8. Dashboard redirects you to the main dashboard page
 ```
 
-The credentials are the ones in `MoveIT-SIEM/.env` under `USERS`. Example: if `USERS=ayden:password123`, you log in as `ayden` / `password123`.
+The credentials are the ones in `OpenShare-SIEM/.env` under `USERS`. Example: if `USERS=ayden:password123`, you log in as `ayden` / `password123`.
 
 ---
 
@@ -128,7 +128,7 @@ The same pattern applies to all playbook actions:
 The dashboard only shows what the engine has. The engine only has what was sent to it. Here is the full loop:
 
 ```
-1. Something happens in MoveIT (a login, a file upload, a failed attempt)
+1. Something happens in OpenShare (a login, a file upload, a failed attempt)
 2. The code calls siem_logger:
        siem.login_success(user_id="ayden", ip="1.2.3.4")
        siem.file_uploaded(user_id="ayden", filename="doc.pdf", ...)
@@ -151,7 +151,7 @@ The dashboard only shows what the engine has. The engine only has what was sent 
 
 ## What Sends Logs to the Engine
 
-Two parts of MoveIT send logs. Each one identifies itself with a `log_source` tag so you can tell them apart on the dashboard.
+Two parts of OpenShare send logs. Each one identifies itself with a `log_source` tag so you can tell them apart on the dashboard.
 
 | log_source        | File                    | Events it sends                                                                 |
 |-------------------|-------------------------|---------------------------------------------------------------------------------|
@@ -178,9 +178,9 @@ Two parts of MoveIT send logs. Each one identifies itself with a `log_source` ta
 
 | Port (host)  | What is running                          |
 |--------------|------------------------------------------|
-| 5001         | SIEM Engine (MoveIT-SIEM docker)         |
+| 5001         | SIEM Engine (OpenShare-SIEM docker)         |
 | 5002         | SIEM Dashboard (this repo)               |
-| 5005         | MoveIT main app (auth + file transfer)   |
+| 5005         | OpenShare main app (auth + file transfer)   |
 
 ---
 

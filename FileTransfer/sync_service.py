@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MoveIT Sync Service
+OpenShare Sync Service
 Syncs data from Working DB to Storage DB periodically.
 Runs as a separate container with access to both databases.
 """
@@ -365,7 +365,7 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
 
     print("=" * 50)
-    print("MoveIT Sync Service")
+    print("OpenShare Sync Service")
     print("=" * 50)
     print(f"Working DB: {WORKING_DB_CONFIG['host']}:{WORKING_DB_CONFIG['port']}")
     print(f"Storage DB: {STORAGE_DB_CONFIG['host']}:{STORAGE_DB_CONFIG['port']}")

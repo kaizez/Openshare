@@ -35,8 +35,8 @@ test_*.py
 *.db
 instance/
 
-# Ignore MoveIT (built separately)
-MoveIT/
+# Ignore OpenShare (built separately)
+OpenShare/
 
 # Ignore misc
 nul
