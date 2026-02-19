@@ -189,6 +189,11 @@ def _ensure_admin_exists():
 
     if super_admin:
         print(f"[Init] Super admin exists: {super_admin.username}")
+        # Migrate legacy moveit.local email to openshare.local
+        if super_admin.email and 'moveit.local' in super_admin.email:
+            super_admin.email = super_admin.email.replace('moveit.local', 'openshare.local')
+            db.session.commit()
+            print(f"[Init] Updated admin email to {super_admin.email}")
         return
 
     # No super admin found - create default admin account
