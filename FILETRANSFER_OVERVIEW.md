@@ -1,487 +1,299 @@
 # OpenShare File Transfer System — Technical Overview
 
-> Generated: 2026-02-23
+> Updated: 2026-02-24
 
 ---
 
-## Table of Contents
+## 1. Dual Database System
 
-1. [High-Level Architecture](#1-high-level-architecture)
-2. [Container Layout](#2-container-layout)
-3. [Network Architecture](#3-network-architecture)
-4. [Database Architecture](#4-database-architecture)
-5. [Database Class](#5-database-class-filetransferdbpy)
-6. [Encryption System](#6-encryption-system-filetransferencryptionpy)
-7. [File Upload Flow](#7-file-upload-flow)
-8. [File Download Flow](#8-file-download-flow)
-9. [VirusTotal Integration](#9-virustotal-integration)
-10. [DB Sync Service](#10-db-sync-service-filetransfersync_servicepy)
-11. [Retention Service](#11-retention-service-filetransferretention_servicepy)
-12. [Forensic Watermark System](#12-forensic-watermark-system-filetransferwatermarkpy)
-13. [ML Trust-Score Analyzer](#13-ml-trust-score-analyzer-filetransferml_analyzerpy)
-14. [Admin File Transfer Panel](#14-admin-file-transfer-panel)
-15. [Security Layers Summary](#15-security-layers-summary)
-16. [Session Format](#16-session-format)
-17. [SIEM Integration](#17-siem-integration)
+Files live in **working-db** while active. The `openshare-sync` container runs hourly, copying clean files into the isolated **storage-db**, then NULLing the content in working-db and setting `is_archived=TRUE`.
 
----
-
-## 1. High-Level Architecture
-
-OpenShare is a dual-application Flask platform composed of:
-
-| Component | Path | Role |
-|-----------|------|------|
-| **Auth App** | `app/` | User authentication, admin panel, session management |
-| **FileTransfer** | `FileTransfer/` | File upload/download logic (Flask Blueprint) |
-
-The FileTransfer module is **not** a standalone Flask app in production. It is registered as a Blueprint inside the main Auth App. This means they share one process, one port (`5000` internally / `5005` externally), and one Flask session. `app/routes.py` adds FileTransfer to the main app via `sys.path` and Blueprint registration.
-
----
-
-## 2. Container Layout
-
-Defined in `docker-compose.yml`:
-
-| Container | External Port | Role |
-|-----------|--------------|------|
-| `openshare-app` | `5005→5000` | Main Flask app (auth + file transfer) |
-| `openshare-auth-db` | `3307→3306` | MySQL: user accounts, sessions, SIEM |
-| `openshare-working-db` | `3309→3306` | MySQL: active files, scan queue, logs |
-| `openshare-storage-db` | *(none)* | MySQL: archived file content — **isolated** |
-| `openshare-movelorh-db` | `3310→3306` | MySQL: auxiliary / legacy |
-| `openshare-sync` | `8081→8080` | Sync service (working-db → storage-db) |
-| `openshare-vt-worker` | *(none)* | VirusTotal background scanner |
-| `openshare-retention` | *(none)* | Data retention cleanup daemon |
-
-> `storage-db` has **no external port** by design. It is only reachable by the sync-service and retention-service containers through the isolated `sync_network`.
-
----
-
-## 3. Network Architecture
-
-Three Docker bridge networks divide traffic by trust level:
-
+**`FileTransfer/sync_service.py` — `sync_files()`**
+```python
+working_cursor.execute("""
+    SELECT * FROM file_metadata
+    WHERE (is_archived = FALSE OR is_archived IS NULL)
+    AND (scan_status = 'clean' OR scan_status IS NULL)
+""")
 ```
-openshare-network  (bridge)
-  └── app ←→ auth-db
-
-app_network  (bridge)
-  └── app ←→ working-db ←→ sync-service ←→ vt-worker ←→ retention-service
-
-sync_network  (bridge, internal=true — NO host routing)
-  └── working-db ←→ storage-db ←→ sync-service ←→ retention-service
-```
-
-`sync_network` is declared `internal: true`, meaning Docker will not route packets from it to the host or internet. Only the `sync-service` and `retention-service` containers straddle both `app_network` and `sync_network`, acting as the only bridge to `storage-db`.
-
-**Key implication:** A compromised main app cannot directly query or modify the long-term archive database — it must go through the sync-service HTTP API on port 8080.
-
----
-
-## 4. Database Architecture
-
-### 4a. Auth DB (`auth-db`)
-
-- **ORM:** SQLAlchemy (via `app/models.py`)
-- **Accessed by:** main app only
-- **Tables:**
-  - `users` — accounts, hashed passwords, MFA secrets, roles
-  - `login_history` — session audit log
-- **Connection:** env vars `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USER` / `MYSQL_PASSWORD`
-
-### 4b. Working DB (`working-db`)
-
-- **ORM:** Raw `mysql.connector` (no SQLAlchemy), via `FileTransfer/db.py`
-- **Accessed by:** main app, sync-service, vt-worker, retention-service
-- **Tables:**
-
-| Table | Purpose |
-|-------|---------|
-| `file_metadata` | Per-file record: filename, hash, OTP, VT status, classification, uploader, encrypted file content |
-| `access_logs` | Every OTP attempt, download, verification event |
-| `failed_upload_logs` | Rejected uploads (bad MIME, malicious, etc.) |
-| `virus_scan_logs` | VT scan outcomes (clean / malicious / pending) |
-| `approval_requests` | Two-person rule queue for Classified files |
-| `download_watermarks` | Encrypted forensic watermarks per download event |
-| `file_ml_analysis` | ML trust-score results per file |
-
-### 4c. Storage DB (`storage-db`)
-
-- **ORM:** Raw `mysql.connector`
-- **Accessed by:** sync-service and retention-service **only**
-- **Tables (subset of working-db):**
-  - `file_metadata` — archived copy; includes `file_content LONGBLOB` + `synced_at` timestamp
-  - `access_logs` — replicated from working-db
-- **NOTE:** Never queried directly by the main app.
-
----
-
-## 5. Database Class (`FileTransfer/db.py`)
-
-The `Database` class wraps raw `mysql.connector` with `autocommit=True`. Every method calls `self.ensure_connection()` first to reconnect if the socket dropped.
-
-**Key patterns:**
-
-- `cursor(dictionary=True, buffered=True)` — returns rows as dicts, avoids unread-result errors on multiple sequential queries per connection.
-- All `datetime` fields are converted to `.isoformat()` strings before returning, so callers always receive plain strings (no datetime objects leaking out).
-- File content is stored as an encrypted `LONGBLOB` in `file_metadata.file_content`.
-- OTP codes are **never stored in plaintext** — Fernet-encrypted before `INSERT`, decrypted on `SELECT`.
-- `get_db()` is a module-level singleton factory — one `Database` instance per process. The VT worker intentionally bypasses this and creates a fresh `Database()` each cycle to avoid stale connection caching.
-
----
-
-## 6. Encryption System (`FileTransfer/encryption.py`)
-
-Two separate Fernet (AES-128-CBC + HMAC-SHA256) keys are used:
-
-| Key | Purpose |
-|-----|---------|
-| `FILE_ENCRYPTION_KEY` | Encrypts raw file bytes before storing in the DB |
-| `OTP_ENCRYPTION_KEY` | Encrypts OTP codes before storing in the DB |
-
-**Key resolution order (for each key):**
-1. Environment variable (`FILE_ENCRYPTION_KEY` / `OTP_ENCRYPTION_KEY`)
-2. Persistent file in Docker volume at `/app/keys/<name>.key`
-3. Auto-generate and save (first-run only)
-
-The `/app/keys` volume is declared in `docker-compose.yml` so keys survive container restarts.
-
-> Because Fernet encryption is **non-deterministic** (random IV per encrypt call), OTP lookup cannot use a `WHERE` clause. Instead `find_file_by_otp()` fetches all encrypted OTPs, decrypts each one in Python, and compares in memory.
-
----
-
-## 7. File Upload Flow
-
-`POST /upload` → `FileTransfer/app.py → upload_file()`
-
-```
-1.  Login check          (login_required decorator)
-2.  Rate limiting        (secure_endpoint decorator, security.py)
-3.  Extension whitelist  (ALLOWED_EXTENSIONS set)
-4.  Read file into memory
-5.  Magic-byte validation
-      - Write bytes to temp file, detect actual MIME type via python-magic
-      - Compare detected MIME against expected types for the claimed extension
-      - Block any executable MIME regardless of extension
-      - Log to failed_upload_logs on rejection
-6.  VirusTotal hybrid scan
-      a. Hash lookup (instant if VT knows this SHA-256)
-      b. Unknown hash → submit full file → status = 'pending'
-         File IS stored but OTP is NOT returned until background worker confirms clean
-7.  Generate unique file_id   (secrets.token_urlsafe(16))
-8.  Generate 16-char OTP      (secrets.choice, cryptographically secure, 24h expiry)
-9.  Encrypt file content      (Fernet / FILE_ENCRYPTION_KEY)
-10. Encrypt OTP code          (Fernet / OTP_ENCRYPTION_KEY)
-11. INSERT into working-db    (encrypted content + encrypted OTP)
-12. ML trust-score analysis   (non-blocking try/except — never fails an upload)
-13. Log VT scan result        (virus_scan_logs)
-14. SIEM event                (siem.file_uploaded)
-15. Return JSON               (file_id, otp_code only if scan_status='clean', VT details)
-```
-
----
-
-## 8. File Download Flow
-
-### Step 1 — OTP Verification &nbsp;`POST /verify-code`
-
-- User submits the 16-char OTP received after upload.
-- `find_file_by_otp()` scans all encrypted OTPs, decrypts, compares in memory.
-- `validate_otp()` checks: code match, 24-hour expiry, not already used.
-- Marks OTP as used (`otp_used=TRUE`).
-- **Classification-based session branching:**
-
-| Classification | Gates |
-|---------------|-------|
-| Public | OTP only → full access granted |
-| Internal Use | OTP + TOTP required |
-| Classified | OTP + TOTP + owner approval (two-person rule) |
-
-### Step 2 — TOTP Verification &nbsp;`POST /verify-totp`
-
-- User submits their TOTP code (from authenticator app).
-- Verified against user's MFA secret via `pyotp.TOTP.verify`.
-- Session upgraded to `session['verified_<file_id>']` with `totp_verified: True`.
-
-### Step 3 — Owner Approval (Classified only) &nbsp;`POST /request-approval`
-
-- Creates `approval_requests` record with 5-minute TTL.
-- File owner sees pending badge and approves or denies via UI.
-- On approval: `session['verified_<file_id>']['approval_granted'] = True`.
-
-### Step 4 — Actual Download &nbsp;`GET /get-file/<file_id>`
-
-```
-1.  Verify session['verified_<file_id>'] present and unexpired
-2.  If is_archived=TRUE → fetch content from sync-service API
-      GET http://sync-service:8080/retrieve/<file_id>
-3.  Decrypt file content (Fernet / FILE_ENCRYPTION_KEY)
-4.  Forensic watermark
-      - create_watermark() → AES-256-GCM encrypted payload
-        (user ID, username, email, IP, user-agent, timestamp, access context)
-      - embed_watermark_in_file() → append bytes → unique SHA-256 per downloader
-      - Store watermark record in download_watermarks table
-5.  Increment download_count
-6.  SIEM event (siem.file_downloaded)
-7.  Stream file to browser (send_file, as_attachment=True)
-```
-
----
-
-## 9. VirusTotal Integration
-
-Two components handle VT scanning:
-
-| Component | File | Role |
-|-----------|------|------|
-| API wrapper | `FileTransfer/virustotal_service.py` | Used by upload route |
-| Background daemon | `FileTransfer/vt_worker.py` | Separate container |
-
-**Hybrid scan strategy:**
-
-- **On upload:** `scan_file_async_start()` first does a hash lookup (`GET /files/{sha256}`). If VT knows the hash → immediate result. If not → submit file bytes (`POST /files`) and store `analysis_id` with `scan_status='pending'`. OTP is withheld from the user.
-- **VT worker** runs every `VT_WORKER_INTERVAL` seconds (default: 10). Polls `GET /analyses/{id}` for each pending file:
-  - **Clean** → `scan_status='clean'`, log to `virus_scan_logs`
-  - **Malicious** → `scan_status='malicious'`, then `db.delete_file()` removes the record entirely (cascades to `access_logs`)
-  - **Still scanning** → skip, retry next cycle
-
-The sync-service only copies files with `scan_status='clean'` (or `NULL`) to `storage-db`, so malicious or pending files never reach the archive.
-
----
-
-## 10. DB Sync Service (`FileTransfer/sync_service.py`)
-
-Runs as `openshare-sync` with access to both `working-db` and `storage-db` via `sync_network`. The main app has no direct path to `storage-db` — only this container bridges them.
-
-### Two threads run simultaneously:
-
-**Thread 1 — Flask API on port 8080**
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/retrieve/<file_id>` | `GET` | Returns encrypted file bytes from storage-db |
-| `/delete/<file_id>` | `DELETE` | Removes file from storage-db (on user deletion) |
-| `/health` | `GET` | Health check |
-
-**Thread 2 — Sync loop (main thread)**
-
-Runs every `SYNC_INTERVAL_SECONDS` (default: `3600` = 1 hour).
-
-```
-sync_files():
-  SELECT * FROM working-db.file_metadata
-  WHERE is_archived=FALSE AND (scan_status='clean' OR scan_status IS NULL)
-
-  For each row:
-    INSERT INTO storage-db.file_metadata ... ON DUPLICATE KEY UPDATE
-    (only mutable fields: download_count, otp state, file_content)
-
-  If DELETE_FILES_OLDER_THAN_SECONDS > 0 and file exceeds age threshold:
-    SET file_content=NULL, is_archived=TRUE in working-db
-    (content now lives only in storage-db; working-db keeps metadata shell)
-
-sync_logs():
-  Replicate all access_logs rows from working-db → storage-db
-  INSERT ... ON DUPLICATE KEY UPDATE (idempotent, uses PK id column)
-```
-
-**Archiving semantics:**
-- "Archived" = `file_content IS NULL` and `is_archived=TRUE` in working-db.
-- Metadata (filename, hash, OTP state, scan status) remains in working-db.
-- The download route detects `is_archived=TRUE` and transparently fetches content from the sync-service API.
-- This keeps working-db lean while preserving long-term copies in storage-db.
-
----
-
-## 11. Retention Service (`FileTransfer/retention_service.py`)
-
-Runs as `openshare-retention`. Reads `retention_policy.json` from a shared Docker volume — the main app can update this file via the admin panel without restarting the container.
-
-**Each cleanup cycle:**
-
-1. Reload policy file (picks up live admin changes)
-2. Delete from `working-db.file_metadata` where `upload_time < cutoff`
-3. Delete from `storage-db.file_metadata` where `upload_time < cutoff`
-4. Delete physical files from `/app/uploads/` filesystem
-5. Delete old `access_logs`, `failed_upload_logs`, `virus_scan_logs`, `approval_requests` per individual retention windows
-6. Clean up orphaned files on disk (files with no DB record)
-
-Supports **dry-run mode** — logs what would be deleted without acting. Separate retention windows are configurable per storage layer: `working_db`, `storage_db`, `filesystem`.
-
----
-
-## 12. Forensic Watermark System (`FileTransfer/watermark.py`)
-
-**Purpose:** Identify exactly which user leaked a file if it appears externally.
-
-**Encryption:** AES-256-GCM (not Fernet). Key at `/app/keys/watermark.key` or env `WATERMARK_KEY` (base64-encoded 32 bytes).
-
-### On every download:
-
-`create_watermark()` builds a JSON payload containing:
-
-```json
-{
-  "watermark_id": "<uuid>",
-  "watermark_version": "1.0",
-  "created_at": "<UTC ISO timestamp>",
-  "file_id": "...",
-  "file_hash_sha256": "...",
-  "original_filename": "...",
-  "file_classification": "...",
-  "downloader": {
-    "user_id": 42,
-    "username": "...",
-    "email": "...",
-    "ip_address": "...",
-    "user_agent": "...",
-    "session_id": "..."
-  },
-  "access_context": {
-    "otp_verified": true,
-    "totp_verified": true,
-    "approval_granted": false
-  },
-  "system": {
-    "app_version": "1.0",
-    "system_fingerprint": "...",
-    "server_hostname": "..."
-  }
-}
-```
-
-`embed_watermark_in_file()` **appends** to the file bytes:
-
-```
-[original content] + [_WM_HEADER 14B] + [payload_len 4B uint32] + [encrypted blob] + [_WM_FOOTER 15B]
-```
-
-This changes the file's SHA-256, making each user's download **uniquely identifiable by hash alone**.
-
-Both the encrypted payload and the `watermarked_hash` are stored in the `download_watermarks` table.
-
-### Forensic check (admin panel):
-
-Admin uploads a suspected leaked file → system:
-1. SHA-256 hashes the uploaded file
-2. Looks up `download_watermarks` by `watermarked_hash` (exact match)
-3. If found: `decrypt_watermark()` reveals full downloader identity
-4. Fallback: `extract_watermark_from_file()` scans file bytes for embedded sentinel bytes and decrypts inline
-
----
-
-## 13. ML Trust-Score Analyzer (`FileTransfer/ml_analyzer.py`)
-
-Called **non-blocking** after every successful upload. Extracts heuristic features from the file and produces:
-
-| Output | Description |
-|--------|-------------|
-| `trust_score` | 0–100 (higher = more trustworthy) |
-| `risk_level` | `low`, `medium`, `high`, `critical` |
-| `risk_signals` | List of human-readable warning flags |
-| `anomaly_score` | IsolationForest outlier score |
-
-Results stored in `file_ml_analysis` table. If analysis fails for any reason, the **upload is not blocked** — the exception is caught and logged.
-
-An IsolationForest model is retrained as new data accumulates via `get_all_ml_features()`. Trust scores are visible in the admin FileTransfer panel alongside VT scan results.
-
----
-
-## 14. Admin File Transfer Panel
-
-All routes require: active session **and** `user.is_admin = True`.
-
-| Route | Method | Purpose |
-|-------|--------|---------|
-| `/admin/filetransfer` | `GET` | File list with VT status, ML scores, retention config form |
-| `/admin/filetransfer/retention` | `POST` | Update retention policy *(requires TOTP)* |
-| `/admin/filetransfer/search` | `GET` | Full-text search across file metadata |
-| `/admin/filetransfer/ml-analysis/<file_id>` | `GET` | Detailed ML analysis JSON |
-| `/admin/filetransfer/ml-scores` | `GET` | All trust scores for dashboard charts |
-| `/admin/filetransfer/watermarks/<file_id>` | `GET` | All decrypted watermarks for a file |
-| `/admin/filetransfer/forensic-check` | `POST` | Upload leaked file → identify downloader |
-| `/admin/filetransfer/file/<file_id>/logs` | `GET` | Full access log history (JSON) |
-
-> Retention changes require a valid TOTP code before any settings are saved — an extra verification layer for potentially destructive operations.
-
----
-
-## 15. Security Layers Summary
-
-### Transport / Input
-- All responses receive security headers via `after_request` hook (CSP, HSTS, etc.)
-- IP blocker records and rate-limits repeated violations (`security.py`)
-- File extension whitelist **+** magic-byte MIME validation (double check)
-- Executable MIME types blocked unconditionally
-
-### At-Rest Encryption
-
-| Data | Algorithm | Key Location |
-|------|-----------|-------------|
-| File content | Fernet (AES-128-CBC + HMAC) | `/app/keys/file_encryption.key` |
-| OTP codes | Fernet (AES-128-CBC + HMAC) | `/app/keys/otp_encryption.key` |
-| Forensic watermarks | AES-256-GCM | `/app/keys/watermark.key` |
-
-All keys are stored in a Docker named volume — never in the image or source code.
-
-### Access Control
-
-| Classification | Required Gates |
-|---------------|---------------|
-| Public | Login + OTP |
-| Internal Use | Login + OTP + TOTP |
-| Classified | Login + OTP + TOTP + file owner approval |
-
-Admin routes additionally check `user.is_admin`; retention changes also require TOTP.
-
-### Audit / Forensics
-- Every access attempt (success, failure, verification) logged to `access_logs`
-- All uploads and downloads reported to SIEM
-- Each download produces a unique AES-256-GCM encrypted watermark tied to the downloader
-- Failed uploads (bad MIME, malicious) logged to `failed_upload_logs`
-
-### Network Isolation
-- `storage-db` has no external port; only reachable via `sync_network`
-- Main app cannot query `storage-db` directly — must use sync-service HTTP API
-- `sync_network` declared `internal: true` (no Docker host routing)
-
-### Malware Prevention
-- VirusTotal hash lookup before saving any file
-- Background worker auto-deletes files flagged as malicious
-- Only `scan_status='clean'` files ever replicate to `storage-db`
-
----
-
-## 16. Session Format
-
-| Key | Value |
-|-----|-------|
-| `session['user']` | Username string |
-| `session['user_id']` | `user.id` integer |
-| `session['verified_<file_id>']` | `{timestamp, ip, totp_verified, approval_granted}` |
-| `session['otp_verified_<file_id>']` | Intermediate state — OTP passed, TOTP/approval pending |
-
----
-
-## 17. SIEM Integration
-
-Two `SIEMLogger` instances (`app/siem_logger.py`):
-
-| Instance | `log_source` |
-|----------|-------------|
-| Auth app | `"authentication"` |
-| FileTransfer | `"file_transfer"` |
-
-Both post JSON events to `SIEM_URL`. Key FileTransfer events:
+Filters out `pending` and `malicious` files — only clean files ever reach storage-db.
 
 ```python
-siem.file_uploaded(user_id, filename, file_size, ip, file_hash)
-siem.file_downloaded(user_id, filename, ip, file_hash)
-siem.custom_event(event_type, description, severity, user_id, ip, **extras)
+storage_cursor.execute("""
+    INSERT INTO file_metadata (file_id, ..., file_content, synced_at)
+    VALUES (%s, ..., %s, %s)
+    ON DUPLICATE KEY UPDATE
+        download_count = VALUES(download_count),
+        file_content   = VALUES(file_content),
+        synced_at      = VALUES(synced_at)
+""", (...))
 ```
+Upserts into storage-db — safe to run repeatedly, only mutable fields are overwritten.
 
-> The standalone `siem-dashboard` container is decommissioned. SIEM is now integrated into the main app at the `/siem` route.
+```python
+archive_cursor.execute(
+    "UPDATE file_metadata SET file_content = NULL, is_archived = TRUE WHERE file_id = %s",
+    (file['file_id'],)
+)
+```
+Once synced, the file content is NULLed in working-db. The metadata row stays so the file is still listed and searchable, but the bytes only live in storage-db.
+
+When a user downloads an archived file, the main app calls the sync-service HTTP API — it has no direct DB path:
+
+**`FileTransfer/app.py` — `get_file()`**
+```python
+if file_info.get('is_archived', False):
+    response = http_requests.get(f'http://sync-service:8080/retrieve/{file_id}', timeout=30)
+    file_content = response.content
+else:
+    file_info_with_content = db.get_file_metadata(file_id, include_content=True)
+    file_content = file_info_with_content['file_content']
+```
+Checks `is_archived` flag first. If set, it hits the sync-service REST API (`/retrieve/<file_id>`) which pulls the encrypted blob from storage-db and returns it. Otherwise it reads directly from working-db. Transparent to the user either way.
+
+---
+
+## 2. Data Classification
+
+Three levels are set at upload and drive every downstream auth decision:
+
+| Level | Download gates |
+|-------|---------------|
+| Public | OTP only |
+| Internal Use | OTP + TOTP |
+| Classified | OTP + TOTP + owner approval |
+
+**`FileTransfer/app.py` — `verify_code()`**
+```python
+classification = file_info.get('classification', 'Public')
+
+if classification == 'Internal Use' or classification == 'Classified':
+    session[f'otp_verified_{file_id}'] = {
+        'timestamp': datetime.now().isoformat(),
+        'ip': request.remote_addr,
+        'totp_verified': False,
+        'classification': classification
+    }
+    return jsonify({'success': True, 'requires_totp': True, ...})
+
+session[f'verified_{file_id}'] = {'timestamp': ..., 'ip': ...}
+```
+After a valid OTP, Public files write the final `verified_<file_id>` session key immediately — download is unlocked. Internal Use and Classified write a partial `otp_verified_<file_id>` key instead, signalling the frontend to prompt for TOTP next.
+
+**`FileTransfer/app.py` — `verify_totp()`**
+```python
+if classification == 'Classified':
+    otp_session['totp_verified'] = True
+    session[f'otp_verified_{file_id}'] = otp_session  # still partial — approval still needed
+    return jsonify({'success': True, 'requires_approval': True, ...})
+
+session[f'verified_{file_id}'] = {'totp_verified': True, ...}
+```
+After a valid TOTP, Internal Use is promoted to full access. Classified stays in the partial `otp_verified_` state with `totp_verified=True`, and the frontend is told to request owner approval next.
+
+---
+
+## 3. Upload Pipeline & Scans
+
+**`FileTransfer/app.py` — `upload_file()`** runs three sequential checks before storing anything.
+
+### Magic-byte validation
+```python
+detected_mime = magic.Magic(mime=True).from_file(temp_path)
+
+dangerous_mimes = ['application/x-executable', 'application/x-dosexec',
+                   'application/x-elf', 'application/x-mach-binary', ...]
+
+if detected_mime in dangerous_mimes:
+    return False, f'Executable files are not allowed (detected: {detected_mime})'
+
+if detected_mime not in expected_mimes:
+    return False, f'File type mismatch: appears to be {detected_mime} but has .{ext} extension'
+```
+`python-magic` reads the actual file header bytes (not the filename) to determine the real type. First checks if the real type is a known executable — blocked unconditionally. Then checks if the real type matches the expected types for the declared extension, catching extension spoofing (e.g. a `.jpg` that is actually a PE binary).
+
+### VirusTotal hybrid scan
+```python
+scan_result = vt_service.scan_file_async_start(file_content, original_filename, file_hash)
+
+if scan_result['immediate_result']:
+    if not scan_result['passed']:
+        return jsonify({'error': 'File is suspected to be malicious'}), 400
+    scan_status = 'clean'
+else:
+    scan_status = 'pending'
+    vt_analysis_id = scan_result['analysis_id']
+
+if scan_status == 'clean':
+    response_data['otp_code'] = otp_code
+```
+First tries a hash lookup against VirusTotal — if VT already knows this SHA-256, the result is instant. If VT doesn't know the file, it's submitted for a full scan and stored with `scan_status='pending'`. The OTP is intentionally withheld from the response until the background `vt_worker` confirms it clean. Malicious files are rejected immediately (known hash) or auto-deleted by the worker (new submission).
+
+### Encrypt & store
+```python
+db.save_file_metadata(file_id, metadata, file_content)
+# Inside db.py: encrypt_file(file_content) → LONGBLOB, encrypt_otp(otp_code) → TEXT
+```
+Both the file bytes and the OTP code are Fernet-encrypted with separate keys before being written to working-db. Nothing sensitive is stored in plaintext.
+
+### ML analysis (non-blocking)
+```python
+try:
+    ml_result = ml_analyze_file(file_content, original_filename, detected_mime, db)
+    db.store_ml_analysis(file_id=file_id, **ml_result)
+except Exception as _ml_e:
+    print(f'[ML] Analysis skipped for {file_id}: {_ml_e}')
+```
+Wrapped in a bare `try/except` so any ML failure — missing model, sklearn not installed, DB error — silently logs and continues. The upload is never blocked by the analysis step.
+
+---
+
+## 4. Download — OTP Lookup
+
+**`FileTransfer/db.py` — `find_file_by_otp()`**
+```python
+cursor.execute("""
+    SELECT file_id, current_otp_code FROM file_metadata
+    WHERE current_otp_code IS NOT NULL
+""")
+for row in cursor.fetchall():
+    decrypted_otp = decrypt_otp(row['current_otp_code'])
+    if decrypted_otp == otp_code:
+        return row['file_id']
+return None
+```
+Fernet encryption is non-deterministic (random IV per call), so the same OTP string encrypts to a different ciphertext each time — a SQL `WHERE` comparison is impossible. Instead, every stored OTP is fetched and decrypted in Python one by one until a match is found. `validate_otp()` then checks expiry and the `otp_used` flag before granting access.
+
+---
+
+## 5. Approval System (Classified — Two-Person Rule)
+
+**`FileTransfer/app.py` — `request_approval()`**
+```python
+if int(owner_id) == int(requester_id):
+    session[f'verified_{file_id}'] = {'totp_verified': True, 'self_approved': True, ...}
+    return jsonify({'success': True, 'self_approved': True})
+
+request_id = db.create_approval_request(
+    file_id=file_id, requester_id=requester_id,
+    owner_id=owner_id, requester_ip=request.remote_addr
+)
+session[f'approval_request_{file_id}'] = request_id
+```
+If the requester is the file owner, the two-person rule is bypassed and the session is promoted immediately — owners can always access their own files. Otherwise, an `approval_requests` row is created with a 5-minute TTL and the `request_id` is stored in the session so the poll endpoint can verify the right user is checking it.
+
+**`FileTransfer/app.py` — `check_approval_status()`**
+```python
+if approval['status'] == 'approved':
+    session.pop(f'otp_verified_{file_id}', None)
+    session[f'verified_{file_id}'] = {'totp_verified': True, 'owner_approved': True, ...}
+```
+The requester's browser polls this endpoint. Once the owner has approved, the partial `otp_verified_` session is cleared and replaced with the final `verified_` key, unlocking the download. If the 5-minute TTL expires before the owner responds, the status is set to `'expired'` and the requester must start over.
+
+---
+
+## 6. ML Trust-Score Analyzer
+
+**`FileTransfer/ml_analyzer.py` — `analyze_file()`** runs on every upload, non-blocking.
+
+### Stage 1 — Feature extraction
+```python
+entropy               = _shannon_entropy(file_bytes)
+mime_mismatch         = int(declared_is_text and not detected_is_text)
+dangerous_extension   = int(ext in DANGEROUS_EXTENSIONS)
+pe_in_non_exe         = int(file_bytes[:2] == b'\x4d\x5a' and ext not in {'.exe', ...})
+null_byte_ratio       = file_bytes.count(b'\x00') / len(file_bytes)
+printable_ratio       = sum(1 for b in file_bytes if 32 <= b <= 126) / len(file_bytes)
+suspicious_pattern_count = sum(1 for pat in _COMPILED_PATTERNS if pat.search(file_bytes))
+```
+Eight numeric features are computed purely from the file bytes and filename — no external calls. `pe_in_non_exe` checks for the Windows PE magic bytes `\x4d\x5a` (MZ header) in a file that isn't declared as an executable. `_COMPILED_PATTERNS` catches PowerShell cmdlets, `eval()`, `<script>` tags, and base64 blobs ≥60 chars.
+
+### Stage 2 — IsolationForest anomaly score
+```python
+existing_rows = db.get_all_ml_features()
+model = _get_or_train_model(feature_rows)   # retrains when sample count grows by ≥10
+
+if model is not None:
+    anomaly_score_val = float(model.decision_function([vec])[0])
+```
+Loads all previously analyzed files' feature vectors from the DB and (re)trains a sklearn `IsolationForest`. The model scores the new file — a negative score means it looks like an outlier compared to everything seen before. Requires at least 5 samples to activate.
+
+### Stage 3 — Trust score
+```python
+if entropy > 7.5:          score -= 25   # likely encrypted/packed
+if mime_mismatch:          score -= 30
+if pe_in_non_exe:          score -= 35   # critical — likely embedded malware
+if pattern_count >= 3:     score -= 25
+if anomaly_score < -0.1:   score -= 15
+# ≥80 trustworthy | ≥60 caution | ≥40 suspicious | <40 high_risk
+```
+Starts at 100 and deducts for each risk signal. Each deduction is recorded with a human-readable description and severity, stored as JSON in `file_ml_analysis.risk_signals`. The final score and `risk_level` label are surfaced in the admin panel.
+
+---
+
+## 7. Forensic Watermark System
+
+On every download, an AES-256-GCM encrypted payload (user identity, IP, user-agent, timestamp, which auth gates passed) is appended to the file bytes — changing the SHA-256 so every user's copy is unique.
+
+**`FileTransfer/watermark.py` — `embed_watermark_in_file()`**
+```python
+_WM_HEADER = b'\x00\x00OpenShare_WMv1\x00'   # 14 bytes
+_WM_FOOTER = b'\x00OpenShare_WMEv1\x00\x00'  # 15 bytes
+
+def embed_watermark_in_file(file_content, encrypted_blob):
+    length = struct.pack('>I', len(encrypted_blob))
+    return file_content + _WM_HEADER + length + encrypted_blob + _WM_FOOTER
+```
+Appends a fixed-format block after the original content: a sentinel header, a 4-byte length prefix, the encrypted payload, and a sentinel footer. The sentinels are used by the forensic extractor to locate the block even if the file hash doesn't match.
+
+**`FileTransfer/app.py` — `get_file()`**
+```python
+watermark_id, encrypted_payload = create_watermark(
+    file_id=file_id, user_id=session.get('user_id'),
+    download_ip=request.remote_addr, ...
+)
+watermarked_content = embed_watermark_in_file(file_content, encrypted_payload)
+watermarked_hash    = hashlib.sha256(watermarked_content).hexdigest()
+db.store_watermark(watermark_id, file_id, original_hash, watermarked_hash, encrypted_payload)
+```
+After decrypting the file, the watermark is built and embedded before streaming. The resulting SHA-256 (`watermarked_hash`) is stored in `download_watermarks` alongside the encrypted payload so it can be looked up later. The whole block is in a `try/except` — if watermarking fails, the original bytes are sent instead.
+
+**`app/routes.py` — `admin_forensic_check()`**
+```python
+file_hash = hashlib.sha256(file_bytes).hexdigest()
+
+# Path 1: O(1) hash lookup
+wm_row = db.get_watermark_by_watermarked_hash(file_hash)
+
+# Path 2: scan for embedded sentinel bytes if hash lookup misses
+if wm_row is None:
+    embedded_blob = extract_watermark_from_file(file_bytes)
+    if embedded_blob:
+        decrypted = decrypt_watermark(embedded_blob)
+```
+Path 1 is instant — hashes the uploaded file and looks it up directly in `download_watermarks`. Path 2 is the fallback for cases where someone stripped or modified the trailing bytes but the sentinels survived: `extract_watermark_from_file()` scans for `_WM_FOOTER` then `_WM_HEADER`, reads the length prefix, and extracts the encrypted blob to decrypt inline.
+
+---
+
+## 8. Admin File Transfer Panel
+
+All routes in `app/routes.py` require `user.is_admin`.
+
+**File search** — `GET /admin/filetransfer/search` joins `file_metadata` with `file_ml_analysis` to return trust scores alongside file info. Supports `file_id` (exact), `filename` (LIKE), `hash` (LIKE), or `all` (keyword across all three fields).
+
+**ML dashboard** — `GET /admin/filetransfer/ml-scores` returns all analyzed files with trust scores, risk levels, and per-risk-band aggregate stats (count/avg/min/max) used for charts.
+
+**Retention policy** — `POST /admin/filetransfer/retention`
+```python
+totp = pyotp.TOTP(user.mfa_secret)
+if not totp.verify(totp_code, valid_window=1):
+    return jsonify({'success': False, 'message': 'Invalid TOTP code'}), 400
+```
+TOTP is verified before any retention settings are saved. Once saved, `retention_policy.json` is updated on the shared Docker volume — the `openshare-retention` container reads it on every cleanup cycle, so changes take effect without a restart.
+
+**Watermark viewer** — `GET /admin/filetransfer/watermarks/<file_id>` decrypts and returns every download record for a file, showing full downloader identity per event.
+
+**Access logs** — `GET /admin/filetransfer/file/<file_id>/logs` returns the last 100 rows from `access_logs` (every OTP attempt, TOTP check, approval event, and download for that file).
 
 ---
 
